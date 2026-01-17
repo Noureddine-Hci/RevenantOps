@@ -73,6 +73,14 @@ void ARevenantOpsCharacter::SetupPlayerInputComponent(
     // Looking
     EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered,
                                        this, &ARevenantOpsCharacter::Look);
+
+    // Sprinting
+    EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Triggered,
+                                       this,
+                                       &ARevenantOpsCharacter::StartSprint);
+    EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Completed,
+                                       this,
+                                       &ARevenantOpsCharacter::StopSprint);
   } else {
     UE_LOG(
         LogRevenantOps, Error,
@@ -135,4 +143,12 @@ void ARevenantOpsCharacter::DoJumpStart() {
 void ARevenantOpsCharacter::DoJumpEnd() {
   // signal the character to stop jumping
   StopJumping();
+}
+
+void ARevenantOpsCharacter::StartSprint() {
+  GetCharacterMovement()->MaxWalkSpeed = 1000.f;
+}
+
+void ARevenantOpsCharacter::StopSprint() {
+  GetCharacterMovement()->MaxWalkSpeed = 500.f;
 }
