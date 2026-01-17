@@ -1,5 +1,7 @@
 # Carnet de Bord - RevenantOps
 
+Programmeur : Noureddine Houichi    
+
 ## Session 1 : Initialisation & Caméra Tactique
 **Date :** 17/01/2026
 **Durée :** 1h30
@@ -56,3 +58,13 @@
    - Assignation `IA_Sprint` dans le Blueprint.
    - **Note :** Le changement de vitesse est brusque et les animations de course ne sont pas encore reliées (le personnage "glisse" vite).
    - **TODO :** Ajouter la transition d'animation et lissage de la vitesse (Interpolation).
+
+### Session 2 : Character Locomotion & Animation ( Vitesse & BlendSpace)
+**Temps passé :** 1h15
+
+**Détails :**
+- Création du BlendSpace `BS_IdleRun` pour gérer la transition Idle/Walk/Run.
+- Configuration des axes de vitesse (0 à 1000).
+- Mise à jour de l'Animation Blueprint (`ABP_Unarmed`) pour utiliser la variable `Ground Speed`.
+- Ajout d'un lissage (Smoothing Time: 0.4s) pour donner de l'inertie au mouvement.
+- Test et validation : Le personnage sprinte correctement avec Shift.
