@@ -68,3 +68,26 @@ Programmeur : Noureddine Houichi
 - Mise à jour de l'Animation Blueprint (`ABP_Unarmed`) pour utiliser la variable `Ground Speed`.
 - Ajout d'un lissage (Smoothing Time: 0.4s) pour donner de l'inertie au mouvement.
 - Test et validation : Le personnage sprinte correctement avec Shift.
+
+
+📅 Journal de bord - 18 Janvier 2026
+
+Objectif : Créer un système de ramassage (Pickup) pour l'arme BP_LaserRifle_Pickup.
+
+2h00
+
+Réussites :
+
+Mise en place de l'événement BeginOverlap avec le Player Character.
+
+Utilisation de Attach Actor To Component pour lier l'arme au Mesh du joueur via un WeaponSocket.
+
+Correction du bug de "vol infini" en désactivant la collision de l'acteur via Set Actor Enable Collision.
+
+Problèmes rencontrés :
+
+Difficultés d'alignement des axes de rotation (Relative Rotation) du Socket.
+
+L'arme pointait initialement vers l'arrière ou le sol.
+
+Solution trouvée : Pivotement du Socket à 180° sur l'axe Z dans le Squelette SK_Mannequin. ( Pas tout a fais ca )
