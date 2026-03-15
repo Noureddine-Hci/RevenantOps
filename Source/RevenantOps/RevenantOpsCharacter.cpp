@@ -40,7 +40,7 @@ ARevenantOpsCharacter::ARevenantOpsCharacter() {
   // Enable crouching
   GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
   GetCharacterMovement()->MaxWalkSpeedCrouched = CrouchMoveSpeed;
-  GetCharacterMovement()->CrouchedHalfHeight = 58.f;
+  GetCharacterMovement()->SetCrouchedHalfHeight(58.f);
 
   // Camera boom (over-the-shoulder tactical view)
   CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));

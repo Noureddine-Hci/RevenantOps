@@ -311,9 +311,11 @@ void AWeaponBase::ApplyRecoil() {
                                        HorizontalRecoilRange) *
                      RecoilMultiplier;
 
-  // Apply to controller
-  OwnerController->AddPitchInput(Pitch);
-  OwnerController->AddYawInput(Yaw);
+  // Apply to controller (AddPitchInput/AddYawInput are on APlayerController)
+  if (APlayerController *PC = Cast<APlayerController>(OwnerController)) {
+    PC->AddPitchInput(Pitch);
+    PC->AddYawInput(Yaw);
+  }
 
   // Track accumulated recoil for recovery
   AccumulatedRecoil.X += Pitch;
@@ -335,15 +337,17 @@ void AWeaponBase::RecoverRecoil(float DeltaTime) {
   const float PitchRecovery =
       FMath::FInterpTo(0.f, AccumulatedRecoil.X, DeltaTime,
                        RecoilRecoverySpeed);
-  OwnerController->AddPitchInput(-PitchRecovery);
-  AccumulatedRecoil.X -= PitchRecovery;
+  if (APlayerController *PC = Cast<APlayerController>(OwnerController)) {
+    PC->AddPitchInput(-PitchRecovery);
+    AccumulatedRecoil.X -= PitchRecovery;
 
-  // Recover yaw (horizontal)
-  const float YawRecovery =
-      FMath::FInterpTo(0.f, AccumulatedRecoil.Y, DeltaTime,
-                       RecoilRecoverySpeed);
-  OwnerController->AddYawInput(-YawRecovery);
-  AccumulatedRecoil.Y -= YawRecovery;
+    // Recover yaw (horizontal)
+    const float YawRecovery =
+        FMath::FInterpTo(0.f, AccumulatedRecoil.Y, DeltaTime,
+                         RecoilRecoverySpeed);
+    PC->AddYawInput(-YawRecovery);
+    AccumulatedRecoil.Y -= YawRecovery;
+  }
 }
 
 // =============================================================================
