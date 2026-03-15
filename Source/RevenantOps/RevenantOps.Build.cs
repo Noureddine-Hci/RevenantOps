@@ -15,6 +15,7 @@ public class RevenantOps : ModuleRules
 			"InputCore",
 			"EnhancedInput",
 			"AIModule",
+			"NavigationSystem",
 			"StateTreeModule",
 			"GameplayStateTreeModule",
 			"UMG",
@@ -25,6 +26,10 @@ public class RevenantOps : ModuleRules
 
 		PublicIncludePaths.AddRange(new string[] {
 			"RevenantOps",
+			"RevenantOps/Weapons",
+			"RevenantOps/UI",
+			"RevenantOps/AI",
+			"RevenantOps/Gameplay",
 			"RevenantOps/Variant_Platforming",
 			"RevenantOps/Variant_Platforming/Animation",
 			"RevenantOps/Variant_Combat",
