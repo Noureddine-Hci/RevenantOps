@@ -26,6 +26,7 @@ public class RevenantOps : ModuleRules
 		PublicIncludePaths.AddRange(new string[] {
 			"RevenantOps",
 			"RevenantOps/Weapons",
+			"RevenantOps/UI",
 			"RevenantOps/Variant_Platforming",
 			"RevenantOps/Variant_Platforming/Animation",
 			"RevenantOps/Variant_Combat",
