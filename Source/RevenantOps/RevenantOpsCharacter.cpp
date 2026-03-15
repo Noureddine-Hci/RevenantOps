@@ -14,6 +14,7 @@
 #include "InputActionValue.h"
 #include "RevenantOps.h"
 #include "TimerManager.h"
+#include "WeaponBase.h"
 
 ARevenantOpsCharacter::ARevenantOpsCharacter() {
   PrimaryActorTick.bCanEverTick = true;
@@ -79,6 +80,9 @@ void ARevenantOpsCharacter::BeginPlay() {
   if (FollowCamera) {
     FollowCamera->SetFieldOfView(DefaultFOV);
   }
+
+  // Spawn weapons from loadout
+  SpawnDefaultWeapons();
 }
 
 // =============================================================================
@@ -108,46 +112,69 @@ void ARevenantOpsCharacter::Tick(float DeltaTime) {
 
 void ARevenantOpsCharacter::SetupPlayerInputComponent(
     UInputComponent *PlayerInputComponent) {
-  if (UEnhancedInputComponent *EnhancedInputComponent =
+  if (UEnhancedInputComponent *EIC =
           Cast<UEnhancedInputComponent>(PlayerInputComponent)) {
 
     // Jumping
-    EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this,
-                                       &ACharacter::Jump);
-    EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed,
-                                       this, &ACharacter::StopJumping);
+    EIC->BindAction(JumpAction, ETriggerEvent::Started, this,
+                    &ACharacter::Jump);
+    EIC->BindAction(JumpAction, ETriggerEvent::Completed, this,
+                    &ACharacter::StopJumping);
 
     // Moving
-    EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered,
-                                       this, &ARevenantOpsCharacter::Move);
-    EnhancedInputComponent->BindAction(MouseLookAction,
-                                       ETriggerEvent::Triggered, this,
-                                       &ARevenantOpsCharacter::Look);
+    EIC->BindAction(MoveAction, ETriggerEvent::Triggered, this,
+                    &ARevenantOpsCharacter::Move);
+    EIC->BindAction(MouseLookAction, ETriggerEvent::Triggered, this,
+                    &ARevenantOpsCharacter::Look);
 
     // Looking
-    EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered,
-                                       this, &ARevenantOpsCharacter::Look);
+    EIC->BindAction(LookAction, ETriggerEvent::Triggered, this,
+                    &ARevenantOpsCharacter::Look);
 
     // Sprinting (hold)
-    EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Triggered,
-                                       this,
-                                       &ARevenantOpsCharacter::StartSprint);
-    EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Completed,
-                                       this,
-                                       &ARevenantOpsCharacter::StopSprint);
+    EIC->BindAction(SprintAction, ETriggerEvent::Triggered, this,
+                    &ARevenantOpsCharacter::StartSprint);
+    EIC->BindAction(SprintAction, ETriggerEvent::Completed, this,
+                    &ARevenantOpsCharacter::StopSprint);
 
     // Crouching (toggle)
     if (CrouchAction) {
-      EnhancedInputComponent->BindAction(CrouchAction, ETriggerEvent::Started,
-                                         this,
-                                         &ARevenantOpsCharacter::CrouchPressed);
+      EIC->BindAction(CrouchAction, ETriggerEvent::Started, this,
+                      &ARevenantOpsCharacter::CrouchPressed);
     }
 
     // Dodge/Roll
     if (DodgeAction) {
-      EnhancedInputComponent->BindAction(DodgeAction, ETriggerEvent::Started,
-                                         this,
-                                         &ARevenantOpsCharacter::DodgePressed);
+      EIC->BindAction(DodgeAction, ETriggerEvent::Started, this,
+                      &ARevenantOpsCharacter::DodgePressed);
+    }
+
+    // Fire (hold for auto)
+    if (FireAction) {
+      EIC->BindAction(FireAction, ETriggerEvent::Started, this,
+                      &ARevenantOpsCharacter::FirePressed);
+      EIC->BindAction(FireAction, ETriggerEvent::Completed, this,
+                      &ARevenantOpsCharacter::FireReleased);
+    }
+
+    // ADS / Aim (hold)
+    if (AimAction) {
+      EIC->BindAction(AimAction, ETriggerEvent::Started, this,
+                      &ARevenantOpsCharacter::AimPressed);
+      EIC->BindAction(AimAction, ETriggerEvent::Completed, this,
+                      &ARevenantOpsCharacter::AimReleased);
+    }
+
+    // Reload
+    if (ReloadAction) {
+      EIC->BindAction(ReloadAction, ETriggerEvent::Started, this,
+                      &ARevenantOpsCharacter::ReloadPressed);
+    }
+
+    // Switch Weapon (scroll wheel or key)
+    if (SwitchWeaponAction) {
+      EIC->BindAction(SwitchWeaponAction, ETriggerEvent::Started, this,
+                      &ARevenantOpsCharacter::SwitchWeaponPressed);
     }
 
   } else {
@@ -179,7 +206,7 @@ void ARevenantOpsCharacter::DoMove(float Right, float Forward) {
     return;
   }
 
-  // No manual movement while sliding (momentum carries the character)
+  // No manual movement while sliding
   if (bIsSliding) {
     return;
   }
@@ -204,7 +231,6 @@ void ARevenantOpsCharacter::DoLook(float Yaw, float Pitch) {
 }
 
 void ARevenantOpsCharacter::DoJumpStart() {
-  // Cancel slide on jump
   if (bIsSliding) {
     EndSlide();
   }
@@ -220,8 +246,7 @@ void ARevenantOpsCharacter::DoJumpEnd() { StopJumping(); }
 void ARevenantOpsCharacter::StartSprint() {
   bWantsToSprint = true;
 
-  // Can't sprint if stamina is depleted, crouching, or sliding
-  if (bStaminaDepleted || bIsCrouched || bIsSliding) {
+  if (bStaminaDepleted || bIsCrouched || bIsSliding || bIsAiming) {
     return;
   }
 
@@ -243,21 +268,17 @@ void ARevenantOpsCharacter::StopSprint() {
 // =============================================================================
 
 void ARevenantOpsCharacter::CrouchPressed() {
-  // Can't crouch while dodging
   if (bIsDodging) {
     return;
   }
 
-  // If sliding, cancel the slide
   if (bIsSliding) {
     EndSlide();
     return;
   }
 
   if (bIsCrouched) {
-    // Uncrouch
     UnCrouch();
-    // Restore sprint if still holding sprint
     if (bWantsToSprint && !bStaminaDepleted) {
       bIsSprinting = true;
       TargetSpeed = SprintSpeed;
@@ -270,7 +291,6 @@ void ARevenantOpsCharacter::CrouchPressed() {
         GetCharacterMovement()->Velocity.Size2D() > WalkSpeed * 0.8f) {
       StartSlide();
     } else {
-      // Normal crouch
       Crouch();
       bIsSprinting = false;
       TargetSpeed = CrouchMoveSpeed;
@@ -283,9 +303,7 @@ void ARevenantOpsCharacter::CrouchPressed() {
 // =============================================================================
 
 void ARevenantOpsCharacter::StartSlide() {
-  // Check stamina
   if (!ConsumeStamina(SlideCost)) {
-    // Not enough stamina, just crouch instead
     Crouch();
     bIsSprinting = false;
     TargetSpeed = CrouchMoveSpeed;
@@ -295,19 +313,15 @@ void ARevenantOpsCharacter::StartSlide() {
   bIsSliding = true;
   bIsSprinting = false;
 
-  // Enter crouch state for the lower capsule
   Crouch();
 
-  // Override friction for slide momentum
   GetCharacterMovement()->GroundFriction = SlideGroundFriction;
   GetCharacterMovement()->BrakingDecelerationWalking = SlideBrakingDeceleration;
   GetCharacterMovement()->MaxWalkSpeedCrouched = SlideBoostSpeed;
 
-  // Launch the character forward
   const FVector SlideDirection = GetActorForwardVector();
   LaunchCharacter(SlideDirection * SlideBoostSpeed, true, false);
 
-  // Safety timer to end slide after max duration
   GetWorld()->GetTimerManager().SetTimer(
       SlideTimerHandle, this, &ARevenantOpsCharacter::EndSlide,
       SlideMaxDuration, false);
@@ -319,20 +333,15 @@ void ARevenantOpsCharacter::EndSlide() {
   }
 
   bIsSliding = false;
-
-  // Clear the safety timer
   GetWorld()->GetTimerManager().ClearTimer(SlideTimerHandle);
 
-  // Restore default movement values
   GetCharacterMovement()->GroundFriction = DefaultGroundFriction;
   GetCharacterMovement()->BrakingDecelerationWalking =
       DefaultBrakingDeceleration;
   GetCharacterMovement()->MaxWalkSpeedCrouched = CrouchMoveSpeed;
 
-  // Stand back up
   UnCrouch();
 
-  // Determine post-slide speed
   if (bWantsToSprint && !bStaminaDepleted) {
     bIsSprinting = true;
     TargetSpeed = SprintSpeed;
@@ -348,18 +357,15 @@ void ARevenantOpsCharacter::EndSlide() {
 void ARevenantOpsCharacter::DodgePressed() { StartDodge(); }
 
 void ARevenantOpsCharacter::StartDodge() {
-  // Cooldown check
   const float CurrentTime = GetWorld()->GetTimeSeconds();
   if (CurrentTime - LastDodgeTime < DodgeCooldown) {
     return;
   }
 
-  // Can't dodge while already dodging or sliding
   if (bIsDodging || bIsSliding) {
     return;
   }
 
-  // Stamina check
   if (!ConsumeStamina(DodgeCost)) {
     return;
   }
@@ -367,8 +373,6 @@ void ARevenantOpsCharacter::StartDodge() {
   bIsDodging = true;
   LastDodgeTime = CurrentTime;
 
-  // Determine dodge direction: use movement input or fall back to character
-  // forward
   FVector DodgeDirection;
   const FVector InputVector = GetCharacterMovement()->GetLastInputVector();
   if (InputVector.SizeSquared() > 0.1f) {
@@ -377,22 +381,18 @@ void ARevenantOpsCharacter::StartDodge() {
     DodgeDirection = GetActorForwardVector();
   }
 
-  // Launch the character
   LaunchCharacter(DodgeDirection * DodgeLaunchForce, true, false);
 
-  // Play dodge montage if assigned
   if (DodgeMontage) {
     if (UAnimInstance *AnimInstance = GetMesh()->GetAnimInstance()) {
       const float MontageLength = AnimInstance->Montage_Play(DodgeMontage);
       if (MontageLength > 0.f) {
         AnimInstance->Montage_SetEndDelegate(OnDodgeMontageEnded, DodgeMontage);
       } else {
-        // Montage failed to play, reset dodge state
         bIsDodging = false;
       }
     }
   } else {
-    // No montage assigned - end dodge after a brief delay
     FTimerHandle DodgeEndTimer;
     GetWorld()->GetTimerManager().SetTimer(
         DodgeEndTimer,
@@ -421,7 +421,6 @@ bool ARevenantOpsCharacter::ConsumeStamina(float Amount) {
     CurrentStamina = 0.f;
     bStaminaDepleted = true;
 
-    // Force stop sprint
     if (bIsSprinting) {
       bIsSprinting = false;
       TargetSpeed = bIsCrouched ? CrouchMoveSpeed : WalkSpeed;
@@ -434,7 +433,6 @@ bool ARevenantOpsCharacter::ConsumeStamina(float Amount) {
 void ARevenantOpsCharacter::UpdateStamina(float DeltaTime) {
   const float CurrentTime = GetWorld()->GetTimeSeconds();
 
-  // Drain stamina while sprinting
   if (bIsSprinting && GetCharacterMovement()->IsMovingOnGround() &&
       GetCharacterMovement()->Velocity.SizeSquared() > 0.f) {
     CurrentStamina -= SprintStaminaDrain * DeltaTime;
@@ -446,17 +444,13 @@ void ARevenantOpsCharacter::UpdateStamina(float DeltaTime) {
       bIsSprinting = false;
       TargetSpeed = WalkSpeed;
     }
-  }
-  // Regenerate stamina after delay
-  else if (CurrentTime - LastStaminaDrainTime >= StaminaRegenDelay) {
+  } else if (CurrentTime - LastStaminaDrainTime >= StaminaRegenDelay) {
     CurrentStamina =
         FMath::Min(CurrentStamina + StaminaRegenRate * DeltaTime, MaxStamina);
 
-    // Recover from depleted state
     if (bStaminaDepleted && CurrentStamina >= StaminaRecoveryThreshold) {
       bStaminaDepleted = false;
 
-      // Re-enable sprint if still holding input
       if (bWantsToSprint && !bIsCrouched && !bIsSliding) {
         bIsSprinting = true;
         TargetSpeed = SprintSpeed;
@@ -475,13 +469,18 @@ float ARevenantOpsCharacter::GetStaminaPercent() const {
 
 void ARevenantOpsCharacter::UpdateMovementSpeed(float DeltaTime) {
   if (bIsSliding) {
-    // During slide, the physics/friction handle deceleration - don't override
     return;
+  }
+
+  // ADS slows movement
+  float EffectiveTarget = TargetSpeed;
+  if (bIsAiming && CurrentWeapon) {
+    EffectiveTarget *= 0.6f;
   }
 
   const float CurrentSpeed = GetCharacterMovement()->MaxWalkSpeed;
   const float NewSpeed =
-      FMath::FInterpTo(CurrentSpeed, TargetSpeed, DeltaTime, SpeedInterpRate);
+      FMath::FInterpTo(CurrentSpeed, EffectiveTarget, DeltaTime, SpeedInterpRate);
   GetCharacterMovement()->MaxWalkSpeed = NewSpeed;
 }
 
@@ -490,9 +489,165 @@ void ARevenantOpsCharacter::UpdateCameraFOV(float DeltaTime) {
     return;
   }
 
-  const float TargetFOV = bIsSprinting ? SprintFOV : DefaultFOV;
+  // Priority: ADS FOV > Sprint FOV > Default FOV
+  float TargetFOV = DefaultFOV;
+  if (bIsAiming && CurrentWeapon) {
+    TargetFOV = CurrentWeapon->GetADSAlpha() > 0.5f
+                    ? FMath::Lerp(DefaultFOV, 65.f, CurrentWeapon->GetADSAlpha())
+                    : DefaultFOV;
+  } else if (bIsSprinting) {
+    TargetFOV = SprintFOV;
+  }
+
   const float CurrentFOV = FollowCamera->FieldOfView;
   const float NewFOV =
       FMath::FInterpTo(CurrentFOV, TargetFOV, DeltaTime, FOVInterpSpeed);
   FollowCamera->SetFieldOfView(NewFOV);
+}
+
+// =============================================================================
+// WEAPON SYSTEM
+// =============================================================================
+
+void ARevenantOpsCharacter::SpawnDefaultWeapons() {
+  for (const TSubclassOf<AWeaponBase> &WeaponClass : DefaultWeaponClasses) {
+    if (!WeaponClass) {
+      continue;
+    }
+
+    FActorSpawnParameters SpawnParams;
+    SpawnParams.Owner = this;
+    SpawnParams.Instigator = GetInstigator();
+
+    AWeaponBase *NewWeapon =
+        GetWorld()->SpawnActor<AWeaponBase>(WeaponClass, SpawnParams);
+
+    if (NewWeapon) {
+      NewWeapon->SetOwnerPawn(this);
+      WeaponInventory.Add(NewWeapon);
+
+      // Hide all weapons initially (EquipWeapon will show the active one)
+      NewWeapon->SetActorHiddenInGame(true);
+      NewWeapon->SetActorTickEnabled(false);
+    }
+  }
+
+  // Equip the first weapon
+  if (WeaponInventory.Num() > 0) {
+    EquipWeapon(0);
+  }
+}
+
+void ARevenantOpsCharacter::EquipWeapon(int32 Index) {
+  if (!WeaponInventory.IsValidIndex(Index)) {
+    return;
+  }
+
+  // Unequip current weapon
+  if (CurrentWeapon) {
+    CurrentWeapon->StopFire();
+    CurrentWeapon->StopADS();
+    CurrentWeapon->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+    CurrentWeapon->SetActorHiddenInGame(true);
+    CurrentWeapon->SetActorTickEnabled(false);
+  }
+
+  // Equip new weapon
+  CurrentWeaponIndex = Index;
+  CurrentWeapon = WeaponInventory[Index];
+
+  if (CurrentWeapon) {
+    CurrentWeapon->SetActorHiddenInGame(false);
+    CurrentWeapon->SetActorTickEnabled(true);
+    AttachWeaponToSocket(CurrentWeapon);
+  }
+}
+
+void ARevenantOpsCharacter::AttachWeaponToSocket(AWeaponBase *Weapon) {
+  if (!Weapon || !GetMesh()) {
+    return;
+  }
+
+  Weapon->AttachToComponent(GetMesh(),
+                            FAttachmentTransformRules::SnapToTargetNotIncludingScale,
+                            WeaponAttachSocket);
+}
+
+// ========== WEAPON INPUT HANDLERS ==========
+
+void ARevenantOpsCharacter::FirePressed() {
+  if (CurrentWeapon) {
+    // Stop sprinting when firing
+    if (bIsSprinting) {
+      bIsSprinting = false;
+      TargetSpeed = WalkSpeed;
+    }
+
+    // Orient character to camera direction when firing
+    if (!bIsAiming) {
+      GetCharacterMovement()->bOrientRotationToMovement = false;
+      bUseControllerRotationYaw = true;
+    }
+
+    CurrentWeapon->StartFire();
+  }
+}
+
+void ARevenantOpsCharacter::FireReleased() {
+  if (CurrentWeapon) {
+    CurrentWeapon->StopFire();
+
+    // Restore rotation mode if not aiming
+    if (!bIsAiming) {
+      GetCharacterMovement()->bOrientRotationToMovement = true;
+      bUseControllerRotationYaw = false;
+    }
+  }
+}
+
+void ARevenantOpsCharacter::AimPressed() {
+  bIsAiming = true;
+
+  // Lock rotation to camera
+  GetCharacterMovement()->bOrientRotationToMovement = false;
+  bUseControllerRotationYaw = true;
+
+  // Stop sprinting
+  if (bIsSprinting) {
+    bIsSprinting = false;
+    TargetSpeed = WalkSpeed;
+  }
+
+  if (CurrentWeapon) {
+    CurrentWeapon->StartADS();
+  }
+}
+
+void ARevenantOpsCharacter::AimReleased() {
+  bIsAiming = false;
+
+  // Restore free rotation (only if not firing)
+  if (!CurrentWeapon || !CurrentWeapon->CanFire()) {
+    GetCharacterMovement()->bOrientRotationToMovement = true;
+    bUseControllerRotationYaw = false;
+  }
+
+  if (CurrentWeapon) {
+    CurrentWeapon->StopADS();
+  }
+}
+
+void ARevenantOpsCharacter::ReloadPressed() {
+  if (CurrentWeapon) {
+    CurrentWeapon->StartReload();
+  }
+}
+
+void ARevenantOpsCharacter::SwitchWeaponPressed() {
+  if (WeaponInventory.Num() <= 1) {
+    return;
+  }
+
+  const int32 NextIndex = (CurrentWeaponIndex + 1) % WeaponInventory.Num();
+  EquipWeapon(NextIndex);
 }
