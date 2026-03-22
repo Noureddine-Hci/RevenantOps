@@ -152,6 +152,14 @@ public:
   UFUNCTION(BlueprintCallable, Category = "Spawner")
   int32 GetAliveEnemyCount() const { return AliveEnemies.Num(); }
 
+  /** Set the wave configuration at runtime */
+  UFUNCTION(BlueprintCallable, Category = "Spawner")
+  void SetWaves(const TArray<FEnemyWave>& NewWaves) { Waves = NewWaves; }
+
+  /** Set the max alive enemies cap */
+  UFUNCTION(BlueprintCallable, Category = "Spawner")
+  void SetMaxAliveEnemies(int32 NewMax) { MaxAliveEnemies = FMath::Clamp(NewMax, 1, 50); }
+
 protected:
   /** Starts the next wave */
   void StartNextWave();
