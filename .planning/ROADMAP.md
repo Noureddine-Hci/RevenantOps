@@ -10,7 +10,7 @@ En partant d'une base TPS fonctionnelle (locomotion, tir pistolet, HUD basique, 
 - Integer phases (1, 2, 3): Planned milestone work
 - Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
 
-- [ ] **Phase 1: Zombies** - 5 types de zombies avec comportements distincts, waves progressives
+- [x] **Phase 1: Zombies** - 5 types de zombies avec comportements distincts, waves progressives (completed 2026-03-22)
 - [ ] **Phase 2: Arsenal** - 5 armes a feu aux stats differenties + melee, switch en jeu
 - [ ] **Phase 3: Timer & Score** - Boucle Mercenaires : timer 5 min, score par kill, combo multiplicateur
 - [ ] **Phase 4: Arene** - 1 arene jouable avec zones variees, spawners, pickups, ambiance sombre
@@ -32,13 +32,13 @@ En partant d'une base TPS fonctionnelle (locomotion, tir pistolet, HUD basique, 
   3. Les waves successives augmentent le nombre de zombies et melangent plusieurs types dans une meme vague
   4. Un zombie explosif cause des degats de zone au joueur s'il s'approche trop
   5. Le wave spawner fait spawn le bon type de zombie selon la configuration de la vague
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 
 Plans:
 - [x] 01-01-PLAN.md — ZombieBase + ZombieSlow + ZombieRunner (fondation + 2 types melee)
 - [x] 01-02-PLAN.md — ZombieTank + ZombieExploder (tank HP eleve + explosif AoE)
 - [x] 01-03-PLAN.md — ZombieSpitter + ZombieProjectile (zombie a distance + projectile)
-- [ ] 01-04-PLAN.md — Configuration 10 waves progressives + verification editeur
+- [x] 01-04-PLAN.md — Configuration 10 waves progressives + verification editeur
 
 ### Phase 2: Arsenal
 **Goal**: Le joueur dispose de 5 armes a feu avec comportements distincts et d'une arme de melee, switchables en jeu
@@ -138,7 +138,7 @@ Phases executent dans l'ordre numerique : 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Zombies | 3/4 | In Progress|  |
+| 1. Zombies | 4/4 | Complete   | 2026-03-22 |
 | 2. Arsenal | 0/TBD | Not started | - |
 | 3. Timer & Score | 0/TBD | Not started | - |
 | 4. Arene | 0/TBD | Not started | - |

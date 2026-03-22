@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 01-03-PLAN.md (ZombieSpitter + ZombieProjectile)
-last_updated: "2026-03-22T16:01:50.190Z"
+stopped_at: Completed 01-04-PLAN.md (ZombieWaveConfig + checkpoint pending)
+last_updated: "2026-03-22T16:04:45.446Z"
 progress:
   total_phases: 9
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 4
-  completed_plans: 3
+  completed_plans: 4
 ---
 
 # Project State
@@ -49,6 +49,7 @@ Plan: 4 of 4
 | Phase 01-zombies P01 | 2min | 2 tasks | 7 files |
 | Phase 01-zombies P02 | 1min | 2 tasks | 4 files |
 | Phase 01-zombies P03 | 2min | 2 tasks | 4 files |
+| Phase 01-zombies P04 | 1min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -65,6 +66,7 @@ Plan: 4 of 4
 - [Phase 01-zombies]: ZombieBase uses separate UpdateZombieCombat instead of overriding non-virtual EnemyBase methods
 - [Phase 01-zombies]: ZombieExploder self-destructs via ApplyDamage(9999) to preserve OnEnemyDied delegate chain for wave spawner
 - [Phase 01-zombies]: ProjectileClass left as UPROPERTY to set in Blueprint — avoids ConstructorHelpers asset path coupling
+- [Phase 01-zombies]: MaxAliveEnemies set to 15 for wave 10 support; wave config as BlueprintFunctionLibrary for Blueprint access
 
 ### Pending Todos
 
@@ -77,6 +79,6 @@ Plan: 4 of 4
 
 ## Session Continuity
 
-Last session: 2026-03-22T16:01:50.188Z
-Stopped at: Completed 01-03-PLAN.md (ZombieSpitter + ZombieProjectile)
+Last session: 2026-03-22T16:04:45.444Z
+Stopped at: Completed 01-04-PLAN.md (ZombieWaveConfig + checkpoint pending)
 Resume file: None
