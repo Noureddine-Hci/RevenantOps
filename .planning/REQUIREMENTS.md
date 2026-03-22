@@ -32,11 +32,11 @@ Requirements pour la demo partageable du mode Mercenaires.
 
 ### Armes
 
-- [ ] **ARME-01**: Pistolet (semi-auto, degats moyens, munitions abondantes)
-- [ ] **ARME-02**: Fusil d'assaut (full-auto, degats faibles, cadence rapide)
+- [x] **ARME-01**: Pistolet (semi-auto, degats moyens, munitions abondantes)
+- [x] **ARME-02**: Fusil d'assaut (full-auto, degats faibles, cadence rapide)
 - [x] **ARME-03**: Shotgun (degats massifs proches, spread, rechargement lent)
 - [x] **ARME-04**: Sniper (degats enormes, lent, zoom)
-- [ ] **ARME-05**: SMG (cadence tres rapide, degats faibles, grande capacite)
+- [x] **ARME-05**: SMG (cadence tres rapide, degats faibles, grande capacite)
 - [ ] **ARME-06**: Arme de melee (couteau/machette, degats bons, pas de munitions, risque)
 
 ### Loadout
@@ -116,11 +116,11 @@ Requirements pour la demo partageable du mode Mercenaires.
 | ZOMB-04 | Phase 1 | Complete |
 | ZOMB-05 | Phase 1 | Complete |
 | ZOMB-06 | Phase 1 | Complete |
-| ARME-01 | Phase 2 | Pending |
-| ARME-02 | Phase 2 | Pending |
+| ARME-01 | Phase 2 | Complete |
+| ARME-02 | Phase 2 | Complete |
 | ARME-03 | Phase 2 | Complete |
 | ARME-04 | Phase 2 | Complete |
-| ARME-05 | Phase 2 | Pending |
+| ARME-05 | Phase 2 | Complete |
 | ARME-06 | Phase 2 | Pending |
 | SCORE-01 | Phase 3 | Pending |
 | SCORE-02 | Phase 3 | Pending |
