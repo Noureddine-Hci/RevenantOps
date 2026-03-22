@@ -23,8 +23,8 @@ Requirements pour la demo partageable du mode Mercenaires.
 
 ### Zombies
 
-- [ ] **ZOMB-01**: Zombie lent (horde de base, peu de vie, degats faibles, spawn en groupe)
-- [ ] **ZOMB-02**: Zombie rapide (coureur, peu de vie, degats moyens, attaque en sprint)
+- [x] **ZOMB-01**: Zombie lent (horde de base, peu de vie, degats faibles, spawn en groupe)
+- [x] **ZOMB-02**: Zombie rapide (coureur, peu de vie, degats moyens, attaque en sprint)
 - [ ] **ZOMB-03**: Zombie tank (gros costaud, beaucoup de vie, degats lourds, lent)
 - [ ] **ZOMB-04**: Zombie cracheur (attaque a distance, projectile, vie moyenne)
 - [ ] **ZOMB-05**: Zombie explosif (explose a proximite, degats de zone, meurt en explosant)
@@ -104,55 +104,55 @@ Requirements pour la demo partageable du mode Mercenaires.
 | Variant Platforming | Reorientation du projet |
 | Variant SideScrolling | Reorientation du projet |
 | Assets custom (modeles 3D) | Mannequin placeholder pour v1 |
-| Ccinematiques | Pas pertinent pour arcade |
+| Cinematiques | Pas pertinent pour arcade |
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CAM-01 | TBD | Pending |
-| CAM-02 | TBD | Pending |
-| SCORE-01 | TBD | Pending |
-| SCORE-02 | TBD | Pending |
-| SCORE-03 | TBD | Pending |
-| SCORE-04 | TBD | Pending |
-| SCORE-05 | TBD | Pending |
-| SCORE-06 | TBD | Pending |
-| ZOMB-01 | TBD | Pending |
-| ZOMB-02 | TBD | Pending |
-| ZOMB-03 | TBD | Pending |
-| ZOMB-04 | TBD | Pending |
-| ZOMB-05 | TBD | Pending |
-| ZOMB-06 | TBD | Pending |
-| ARME-01 | TBD | Pending |
-| ARME-02 | TBD | Pending |
-| ARME-03 | TBD | Pending |
-| ARME-04 | TBD | Pending |
-| ARME-05 | TBD | Pending |
-| ARME-06 | TBD | Pending |
-| LOAD-01 | TBD | Pending |
-| LOAD-02 | TBD | Pending |
-| LOAD-03 | TBD | Pending |
-| AREN-01 | TBD | Pending |
-| AREN-02 | TBD | Pending |
-| AREN-03 | TBD | Pending |
-| AREN-04 | TBD | Pending |
-| AREN-05 | TBD | Pending |
-| UI-01 | TBD | Pending |
-| UI-02 | TBD | Pending |
-| UI-03 | TBD | Pending |
-| UI-04 | TBD | Pending |
-| FX-01 | TBD | Pending |
-| FX-02 | TBD | Pending |
-| FX-03 | TBD | Pending |
-| FX-04 | TBD | Pending |
-| FX-05 | TBD | Pending |
+| ZOMB-01 | Phase 1 | Complete |
+| ZOMB-02 | Phase 1 | Complete |
+| ZOMB-03 | Phase 1 | Pending |
+| ZOMB-04 | Phase 1 | Pending |
+| ZOMB-05 | Phase 1 | Pending |
+| ZOMB-06 | Phase 1 | Pending |
+| ARME-01 | Phase 2 | Pending |
+| ARME-02 | Phase 2 | Pending |
+| ARME-03 | Phase 2 | Pending |
+| ARME-04 | Phase 2 | Pending |
+| ARME-05 | Phase 2 | Pending |
+| ARME-06 | Phase 2 | Pending |
+| SCORE-01 | Phase 3 | Pending |
+| SCORE-02 | Phase 3 | Pending |
+| SCORE-03 | Phase 3 | Pending |
+| SCORE-04 | Phase 3 | Pending |
+| SCORE-05 | Phase 3 | Pending |
+| SCORE-06 | Phase 3 | Pending |
+| AREN-01 | Phase 4 | Pending |
+| AREN-02 | Phase 4 | Pending |
+| AREN-03 | Phase 4 | Pending |
+| AREN-04 | Phase 4 | Pending |
+| AREN-05 | Phase 4 | Pending |
+| LOAD-01 | Phase 5 | Pending |
+| LOAD-02 | Phase 5 | Pending |
+| LOAD-03 | Phase 5 | Pending |
+| UI-01 | Phase 6 | Pending |
+| UI-02 | Phase 6 | Pending |
+| UI-03 | Phase 6 | Pending |
+| UI-04 | Phase 6 | Pending |
+| CAM-01 | Phase 7 | Pending |
+| CAM-02 | Phase 7 | Pending |
+| FX-01 | Phase 8 | Pending |
+| FX-02 | Phase 8 | Pending |
+| FX-03 | Phase 8 | Pending |
+| FX-04 | Phase 8 | Pending |
+| FX-05 | Phase 8 | Pending |
 
 **Coverage:**
 - v1 requirements: 37 total
-- Mapped to phases: 0
-- Unmapped: 37
+- Mapped to phases: 37
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-22*
-*Last updated: 2026-03-22 after project redefinition*
+*Last updated: 2026-03-22 — traceability complete, all 37 requirements mapped to phases 1-8*
