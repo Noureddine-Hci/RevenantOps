@@ -2,77 +2,89 @@
 
 ## What This Is
 
-RevenantOps est un TPS (Third-Person Shooter) multivariante sous Unreal Engine 5.7, ecrit en C++ pur. Le projet comprend un mode TPS principal (tir, locomotion, IA ennemie, wave spawner, HUD, save system) et un mode Combat melee (combo, charged attacks, StateTree AI). Developpe en solo par Noureddine.
+RevenantOps est un TPS arcade score-attack inspire du mode Mercenaires de Resident Evil, sous Unreal Engine 5.7 en C++ pur. Le joueur affronte des vagues de zombies dans une arene en temps limite, enchaine des combos pour maximiser son score, et choisit son loadout avant chaque partie. Camera over-the-shoulder serree style RE4. Developpe en solo par Noureddine.
 
 ## Core Value
 
-Le joueur peut incarner un personnage TPS complet avec tir, esquive, et affronter des vagues d'ennemis IA dans un environnement reactif.
+Le joueur peut lancer une partie, choisir son loadout, tuer des zombies en enchainant des combos sous pression du timer, et voir son score final.
 
-## Current Milestone: v2.0 Editor Integration
+## Current Milestone: v1.0 Demo Partageable
 
-**Goal:** Configurer tout ce qui manque cote editeur UE5 pour rendre le jeu jouable — le code C++ est ecrit mais jamais teste en jeu.
+**Goal:** Produire une demo jouable et partageable du mode Mercenaires — une boucle de gameplay complete qu'un joueur externe peut comprendre et apprecier.
 
-**Target features:**
-- Input Actions et Input Mapping Contexts configures
-- Blueprints lies aux classes C++ (Character, Weapons, Enemies, GameMode, PlayerController)
-- HUD Widget et LifeBar Widgets fonctionnels
-- Variant Combat entierement configure (Blueprints, StateTree IA, Montages)
-- Integration testee et jouable
+**Target:** 1 arene, 4-5 types de zombies, 4-5 armes + melee, timer fixe, systeme de score/combo, loadout selection, ecran titre.
 
 ## Requirements
 
 ### Validated
 
-- Locomotion TPS (sprint, crouch, dodge) — v1.0 Phase 1.1
-- Systeme de tir complet & armes — v1.0 Phase 2.2
-- IA ennemie TPS (EnemyBase) — v1.0 Phase 3.1
-- HUD systeme C++ (vie, stamina, munitions, crosshair) — v1.0 Phase 7.1
-- Wave Spawner, Interactables, Destructibles, Pickups — v1.0 Phase 8
-- Health Component reutilisable avec shield — v1.0
-- Save System & Checkpoints — v1.0 Phase 10.1
+- Locomotion TPS (sprint, mouvement, saut) — v0 existant
+- Systeme de tir complet (pistolet fonctionne en jeu) — v0 existant
+- HUD basique (vie, shield, munitions) — v0 existant
+- Wave Spawner C++ — v0 existant
+- IA ennemie de base (EnemyBase) — v0 existant
+- Health Component avec shield — v0 existant
+- Enhanced Input System configure (18 Input Actions, 5 IMC) — v0 existant
+- Blueprints TPS configures (Character, GameMode, PlayerController) — v0 existant
 
 ### Active
 
-- [ ] Input Actions et Mapping Contexts pour TPS et Combat
-- [ ] Blueprints Character/Weapon/Enemy/GameMode/PlayerController
-- [ ] HUD Widget UMG avec bindings
-- [ ] Variant Combat Blueprints et configuration
-- [ ] StateTree IA Combat
-- [ ] Animation Montages references
-- [ ] Integration et test en jeu
+- [ ] Camera over-the-shoulder serree (style RE4)
+- [ ] Systeme de timer (5 min, bonus de temps sur la map)
+- [ ] Systeme de score avec multiplicateur de combo
+- [ ] 4-5 types de zombies (lent, rapide, tank, cracheur, explosif)
+- [ ] 4-5 armes (pistolet, fusil, shotgun, sniper, SMG) + melee
+- [ ] Selection de loadout avant la partie
+- [ ] 1 arene de jeu complete (level design, spawners, pickups)
+- [ ] Ecran titre / menu principal
+- [ ] Ecran de fin de partie (score, stats, rejouer)
+- [ ] Leaderboard local (top scores)
+- [ ] Sons et effets visuels de base (tir, impact, zombie, ambiance)
+- [ ] Ecran de selection de loadout
 
 ### Out of Scope
 
-- Variant Platforming — mode different, milestone futur
-- Variant SideScrolling — mode different, milestone futur
-- Mobile controls widget — pas prioritaire
-- Level design avance — milestone futur
-- Audio/VFX finaux — placeholder suffisants pour v2.0
-- Multiplayer — pas prevu
+- Mode PvP / Affrontement — milestone v2
+- Multijoueur online — milestone v2
+- Arenes supplementaires — apres validation de la premiere
+- Variant Combat melee — reorientation du projet, plus pertinent
+- Variant Platforming — reorientation du projet
+- Variant SideScrolling — reorientation du projet
+- Save system / progression persistante — v1 est arcade, pas de progression
+- Mobile — desktop first
+- Accroupissement — pas pertinent pour l'arcade action
 
 ## Context
 
-- Unreal Engine 5.7 avec Enhanced Input et Python Editor Script Plugin
-- Plugin unreal-mcp connecte : Claude peut piloter l'editeur UE5 via 64 outils MCP
-- Tout le C++ compile mais n'a jamais ete teste en jeu
-- Les classes C++ sont abstract/Blueprintable — necessitent des Blueprints enfants
-- Le HUD utilise BindWidgetOptional — les noms des sous-widgets doivent correspondre exactement
+- UE 5.7 avec Enhanced Input et Python Editor Script Plugin
+- Plugin unreal-mcp connecte : Claude pilote l'editeur UE5 via 64 outils MCP + socket TCP port 12029
+- Code C++ existant compile et teste en PIE : locomotion, tir, HUD, wave spawner fonctionnels
+- Le code des Variants (Combat, Platforming, SideScrolling) existe mais n'est plus dans le scope — elements reutilisables a evaluer
+- Les Blueprints TPS sont configures et fonctionnels (BP_ThirdPersonCharacter, BP_ThirdPersonGameMode, BP_ThirdPersonPlayerController)
+- PIE Play bloque la communication MCP TCP — configuration en mode Editor, test par l'utilisateur
+- Ne jamais changer de niveau via MCP (cause crash)
+- Assets placeholder Mannequin UE5 utilises, pas d'assets custom
 
 ## Constraints
 
 - **Tech stack**: UE 5.7, C++ pur, Enhanced Input System
 - **Solo dev**: Noureddine est le seul developpeur
-- **MCP limitations**: Pas de screenshot UE5, pas de playtesting automatise, pas d'import d'assets externes
-- **Assets**: Utiliser les assets Mannequin/placeholder UE5 par defaut
+- **MCP limitations**: PIE Play bloque TCP, pas de changement de niveau via MCP, screenshots limites
+- **Assets**: Mannequin/placeholder UE5 pour la v1, assets custom en v2
+- **Objectif**: Demo partageable — doit etre comprehensible par un joueur externe
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
+| Mode Mercenaires RE4 comme reference | Gameplay loop prouve, arcade, score-attack | -- Pending |
+| Camera OTS serree | Immersion, tension, style RE4 | -- Pending |
+| Timer fixe 5 min + bonus temps | Balance entre pression et recompense | -- Pending |
+| Combo multiplicateur | Encourage le jeu agressif et la prise de risque | -- Pending |
+| PvE d'abord, PvP plus tard | Reduire la complexite, valider le core gameplay solo | -- Pending |
+| 1 seule arene pour la v1 | Focus sur la qualite du gameplay, pas la quantite de contenu | -- Pending |
+| Loadout pre-partie | Strategie et rejouabilite sans complexite in-game | -- Pending |
 | C++ pur, pas de Blueprint logic | Performance et controle total | -- Pending |
-| Enhanced Input System | Standard UE5.7, flexible | -- Pending |
-| MCP pour pilotage editeur | Autonomie Claude sans intervention manuelle | -- Pending |
-| StateTree pour IA Combat | Plus moderne que Behavior Trees dans UE5 | -- Pending |
 
 ## Evolution
 
@@ -92,4 +104,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-22 after milestone v2.0 initialization*
+*Last updated: 2026-03-22 after project redefinition (Mercenaires vision)*
