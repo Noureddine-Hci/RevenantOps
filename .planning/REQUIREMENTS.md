@@ -25,9 +25,9 @@ Requirements pour la demo partageable du mode Mercenaires.
 
 - [x] **ZOMB-01**: Zombie lent (horde de base, peu de vie, degats faibles, spawn en groupe)
 - [x] **ZOMB-02**: Zombie rapide (coureur, peu de vie, degats moyens, attaque en sprint)
-- [ ] **ZOMB-03**: Zombie tank (gros costaud, beaucoup de vie, degats lourds, lent)
+- [x] **ZOMB-03**: Zombie tank (gros costaud, beaucoup de vie, degats lourds, lent)
 - [ ] **ZOMB-04**: Zombie cracheur (attaque a distance, projectile, vie moyenne)
-- [ ] **ZOMB-05**: Zombie explosif (explose a proximite, degats de zone, meurt en explosant)
+- [x] **ZOMB-05**: Zombie explosif (explose a proximite, degats de zone, meurt en explosant)
 - [ ] **ZOMB-06**: Waves progressives (difficulte croissante, plus de zombies, mix de types)
 
 ### Armes
@@ -112,9 +112,9 @@ Requirements pour la demo partageable du mode Mercenaires.
 |-------------|-------|--------|
 | ZOMB-01 | Phase 1 | Complete |
 | ZOMB-02 | Phase 1 | Complete |
-| ZOMB-03 | Phase 1 | Pending |
+| ZOMB-03 | Phase 1 | Complete |
 | ZOMB-04 | Phase 1 | Pending |
-| ZOMB-05 | Phase 1 | Pending |
+| ZOMB-05 | Phase 1 | Complete |
 | ZOMB-06 | Phase 1 | Pending |
 | ARME-01 | Phase 2 | Pending |
 | ARME-02 | Phase 2 | Pending |

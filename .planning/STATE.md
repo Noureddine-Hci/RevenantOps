@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 01-01-PLAN.md (Zombie Class Hierarchy)
-last_updated: "2026-03-22T15:58:19.694Z"
+stopped_at: Completed 01-02-PLAN.md (Tank & Exploder Variants)
+last_updated: "2026-03-22T16:01:23.354Z"
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 4
-  completed_plans: 1
+  completed_plans: 2
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-22)
 ## Current Position
 
 Phase: 01 (zombies) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 
 ## Performance Metrics
 
@@ -47,6 +47,7 @@ Plan: 2 of 4
 
 *Updated after each plan completion*
 | Phase 01-zombies P01 | 2min | 2 tasks | 7 files |
+| Phase 01-zombies P02 | 1min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -61,6 +62,7 @@ Plan: 2 of 4
 - [Roadmap] Phase 9 Integration sans nouveaux requirements — valide les 37 en conditions demo reelles
 - [Phase 01-zombies]: Added SetMaxHealth public setter to HealthComponent for C++ subclass health customization
 - [Phase 01-zombies]: ZombieBase uses separate UpdateZombieCombat instead of overriding non-virtual EnemyBase methods
+- [Phase 01-zombies]: ZombieExploder self-destructs via ApplyDamage(9999) to preserve OnEnemyDied delegate chain for wave spawner
 
 ### Pending Todos
 
@@ -73,6 +75,6 @@ Plan: 2 of 4
 
 ## Session Continuity
 
-Last session: 2026-03-22T15:58:19.692Z
-Stopped at: Completed 01-01-PLAN.md (Zombie Class Hierarchy)
+Last session: 2026-03-22T16:01:23.352Z
+Stopped at: Completed 01-02-PLAN.md (Tank & Exploder Variants)
 Resume file: None

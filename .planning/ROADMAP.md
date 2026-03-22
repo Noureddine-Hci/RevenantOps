@@ -32,11 +32,11 @@ En partant d'une base TPS fonctionnelle (locomotion, tir pistolet, HUD basique, 
   3. Les waves successives augmentent le nombre de zombies et melangent plusieurs types dans une meme vague
   4. Un zombie explosif cause des degats de zone au joueur s'il s'approche trop
   5. Le wave spawner fait spawn le bon type de zombie selon la configuration de la vague
-**Plans:** 1/4 plans executed
+**Plans:** 2/4 plans executed
 
 Plans:
 - [x] 01-01-PLAN.md — ZombieBase + ZombieSlow + ZombieRunner (fondation + 2 types melee)
-- [ ] 01-02-PLAN.md — ZombieTank + ZombieExploder (tank HP eleve + explosif AoE)
+- [x] 01-02-PLAN.md — ZombieTank + ZombieExploder (tank HP eleve + explosif AoE)
 - [ ] 01-03-PLAN.md — ZombieSpitter + ZombieProjectile (zombie a distance + projectile)
 - [ ] 01-04-PLAN.md — Configuration 10 waves progressives + verification editeur
 
@@ -138,7 +138,7 @@ Phases executent dans l'ordre numerique : 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Zombies | 1/4 | In Progress|  |
+| 1. Zombies | 2/4 | In Progress|  |
 | 2. Arsenal | 0/TBD | Not started | - |
 | 3. Timer & Score | 0/TBD | Not started | - |
 | 4. Arene | 0/TBD | Not started | - |
