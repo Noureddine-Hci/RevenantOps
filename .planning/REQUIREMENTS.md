@@ -1,116 +1,158 @@
 # Requirements: RevenantOps
 
 **Defined:** 2026-03-22
-**Core Value:** Le joueur peut incarner un personnage TPS complet avec tir, esquive, et affronter des vagues d'ennemis IA
+**Core Value:** Le joueur peut lancer une partie, choisir son loadout, tuer des zombies en enchainant des combos sous pression du timer, et voir son score final.
 
-## v2.0 Requirements
+## v1 Requirements
 
-Requirements pour rendre le jeu jouable. Chaque requirement mappe a une phase du roadmap.
+Requirements pour la demo partageable du mode Mercenaires.
 
-### Input System
+### Camera
 
-- [ ] **INPUT-01**: Input Actions TPS crees (Move, Look, MouseLook, Jump, Sprint, Crouch, Dodge, Fire, Aim, Reload, SwitchWeapon)
-- [ ] **INPUT-02**: Input Actions Combat crees (ComboAttack, ChargedAttack, ToggleCamera)
-- [ ] **INPUT-03**: Input Mapping Context TPS configure (clavier/souris + gamepad)
-- [ ] **INPUT-04**: Input Mapping Context Combat configure
+- [ ] **CAM-01**: Camera over-the-shoulder serree (distance courte, offset epaule, style RE4)
+- [ ] **CAM-02**: Zoom-in supplementaire en mode visee (clic droit)
 
-### Blueprints TPS
+### Timer & Score
 
-- [ ] **BPTPS-01**: BP_RevenantOpsCharacter cree et configure (mesh, input actions, weapon slots)
-- [ ] **BPTPS-02**: BP_Pistol cree (herite WeaponBase, parametres de tir configures)
-- [ ] **BPTPS-03**: BP_EnemyBase cree (herite EnemyBase, HealthComponent, LifeBar)
-- [ ] **BPTPS-04**: BP_RevenantOpsGameMode configure (character class, controller class)
-- [ ] **BPTPS-05**: BP_RevenantOpsPlayerController configure (mapping contexts, HUD widget class)
+- [ ] **SCORE-01**: Timer fixe de 5 minutes affiche a l'ecran
+- [ ] **SCORE-02**: Bonus de temps ramassables sur la map (+30s, +15s)
+- [ ] **SCORE-03**: Score par kill (points variables selon type de zombie)
+- [ ] **SCORE-04**: Multiplicateur de combo (x2, x3, x4...) qui monte avec les kills rapides
+- [ ] **SCORE-05**: Le combo reset apres X secondes sans kill (timer de combo visible)
+- [ ] **SCORE-06**: Fin de partie quand le timer atteint zero
 
-### HUD & UI
+### Zombies
 
-- [ ] **UI-01**: WBP_HUD cree (herite RevenantOpsHUD, widgets bindes: HealthBar, ShieldBar, StaminaBar, AmmoText, Crosshair, HitMarker, Vignette)
-- [ ] **UI-02**: WBP_EnemyLifeBar cree pour affichage vie ennemis
+- [ ] **ZOMB-01**: Zombie lent (horde de base, peu de vie, degats faibles, spawn en groupe)
+- [ ] **ZOMB-02**: Zombie rapide (coureur, peu de vie, degats moyens, attaque en sprint)
+- [ ] **ZOMB-03**: Zombie tank (gros costaud, beaucoup de vie, degats lourds, lent)
+- [ ] **ZOMB-04**: Zombie cracheur (attaque a distance, projectile, vie moyenne)
+- [ ] **ZOMB-05**: Zombie explosif (explose a proximite, degats de zone, meurt en explosant)
+- [ ] **ZOMB-06**: Waves progressives (difficulte croissante, plus de zombies, mix de types)
 
-### Variant Combat
+### Armes
 
-- [ ] **COMBAT-01**: BP_CombatCharacter cree et configure (input actions, montages, parametres melee)
-- [ ] **COMBAT-02**: BP_CombatEnemy cree (montages, parametres combat, LifeBar)
-- [ ] **COMBAT-03**: BP_CombatGameMode configure (character class, controller class)
-- [ ] **COMBAT-04**: BP_CombatPlayerController configure (mapping contexts, character class)
-- [ ] **COMBAT-05**: WBP_CombatLifeBar cree (SetLifePercentage, SetBarColor)
+- [ ] **ARME-01**: Pistolet (semi-auto, degats moyens, munitions abondantes)
+- [ ] **ARME-02**: Fusil d'assaut (full-auto, degats faibles, cadence rapide)
+- [ ] **ARME-03**: Shotgun (degats massifs proches, spread, rechargement lent)
+- [ ] **ARME-04**: Sniper (degats enormes, lent, zoom)
+- [ ] **ARME-05**: SMG (cadence tres rapide, degats faibles, grande capacite)
+- [ ] **ARME-06**: Arme de melee (couteau/machette, degats bons, pas de munitions, risque)
 
-### IA Combat
+### Loadout
 
-- [ ] **AI-01**: StateTree CombatEnemy cree avec tasks C++ (ComboAttack, ChargedAttack, FaceActor, etc.)
+- [ ] **LOAD-01**: Ecran de selection de loadout avant la partie
+- [ ] **LOAD-02**: Le joueur choisit 2 armes a feu + melee toujours equipee
+- [ ] **LOAD-03**: Affichage des stats de chaque arme dans l'ecran de selection
 
-### Animation
+### Arene
 
-- [ ] **ANIM-01**: Montages TPS placeholder crees (Dodge, Fire, Reload, Equip)
-- [ ] **ANIM-02**: Montages Combat placeholder crees (ComboAttack avec sections, ChargedAttack avec loop)
-- [ ] **ANIM-03**: AnimBP Character basique (locomotion state machine)
-- [ ] **ANIM-04**: AnimBP Enemy basique
+- [ ] **AREN-01**: 1 arene jouable avec zones variees (ouverte, couloirs, hauteurs)
+- [ ] **AREN-02**: Points de spawn zombies repartis dans l'arene
+- [ ] **AREN-03**: Pickups de bonus temps places dans l'arene
+- [ ] **AREN-04**: Pickups de munitions dans l'arene
+- [ ] **AREN-05**: Eclairage et ambiance sombre/tendue
 
-### Integration
+### UI & Menus
 
-- [ ] **INTEG-01**: Niveau de test configure (spawners, checkpoints, ennemis)
-- [ ] **INTEG-02**: Le jeu se lance en PIE sans crash
-- [ ] **INTEG-03**: Le joueur peut se deplacer, tirer, et tuer des ennemis
+- [ ] **UI-01**: Ecran titre avec "Jouer" et "Quitter"
+- [ ] **UI-02**: HUD en jeu (vie, munitions, arme, timer, score, combo)
+- [ ] **UI-03**: Ecran de fin de partie (score final, kills, meilleur combo, rejouer)
+- [ ] **UI-04**: Leaderboard local (top 10 scores)
 
-## Future Requirements
+### Audio & VFX
 
-### Variant Platforming
-- **PLAT-01**: BP_PlatformingCharacter configure
-- **PLAT-02**: Niveau platforming jouable
+- [ ] **FX-01**: Sons de tir pour chaque arme
+- [ ] **FX-02**: Sons d'impact (balle sur zombie, melee)
+- [ ] **FX-03**: Sons de zombie (grognements, attaque, mort)
+- [ ] **FX-04**: Musique d'ambiance tension/action
+- [ ] **FX-05**: VFX de base (muzzle flash, impact sang, explosion)
 
-### Variant SideScrolling
-- **SIDE-01**: BP_SideScrollingCharacter configure
-- **SIDE-02**: Niveau side-scrolling jouable
+## v2 Requirements
 
-### Polish
-- **POLISH-01**: Audio/SFX integres (tir, impact, reload, UI)
-- **POLISH-02**: VFX (muzzle flash, impact particles, blood)
-- **POLISH-03**: Level design avance
+### PvP Mode
+
+- **PVP-01**: Mode deathmatch humain vs humain
+- **PVP-02**: Matchmaking online
+- **PVP-03**: Arenes PvP dediees
+
+### Contenu
+
+- **CONT-01**: Arenes supplementaires (3+)
+- **CONT-02**: Types de zombies additionnels
+- **CONT-03**: Armes supplementaires
+- **CONT-04**: Personnages jouables avec stats differentes
+
+### Progression
+
+- **PROG-01**: Systeme de progression persistant (XP, niveaux)
+- **PROG-02**: Deblocage d'armes et equipements
+- **PROG-03**: Leaderboard online
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| Mobile controls widget | Pas prioritaire, desktop first |
-| Multiplayer | Pas prevu dans le design |
-| Audio/VFX finaux | Placeholders suffisants pour v2.0 |
-| Level design avance | Milestone futur apres validation gameplay |
-| Import assets externes | Limitation MCP, utiliser mannequin UE5 |
+| Mode PvP | Milestone v2, valider le PvE d'abord |
+| Multijoueur online | Milestone v2, complexite reseau |
+| Coop | Milestone v2 |
+| Arenes multiples | Apres validation de la premiere |
+| Save/progression | v1 est arcade pur, pas de progression |
+| Mobile | Desktop first |
+| Accroupissement | Pas pertinent pour arcade action |
+| Variant Combat melee | Reorientation du projet |
+| Variant Platforming | Reorientation du projet |
+| Variant SideScrolling | Reorientation du projet |
+| Assets custom (modeles 3D) | Mannequin placeholder pour v1 |
+| Ccinematiques | Pas pertinent pour arcade |
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INPUT-01 | TBD | Pending |
-| INPUT-02 | TBD | Pending |
-| INPUT-03 | TBD | Pending |
-| INPUT-04 | TBD | Pending |
-| BPTPS-01 | TBD | Pending |
-| BPTPS-02 | TBD | Pending |
-| BPTPS-03 | TBD | Pending |
-| BPTPS-04 | TBD | Pending |
-| BPTPS-05 | TBD | Pending |
+| CAM-01 | TBD | Pending |
+| CAM-02 | TBD | Pending |
+| SCORE-01 | TBD | Pending |
+| SCORE-02 | TBD | Pending |
+| SCORE-03 | TBD | Pending |
+| SCORE-04 | TBD | Pending |
+| SCORE-05 | TBD | Pending |
+| SCORE-06 | TBD | Pending |
+| ZOMB-01 | TBD | Pending |
+| ZOMB-02 | TBD | Pending |
+| ZOMB-03 | TBD | Pending |
+| ZOMB-04 | TBD | Pending |
+| ZOMB-05 | TBD | Pending |
+| ZOMB-06 | TBD | Pending |
+| ARME-01 | TBD | Pending |
+| ARME-02 | TBD | Pending |
+| ARME-03 | TBD | Pending |
+| ARME-04 | TBD | Pending |
+| ARME-05 | TBD | Pending |
+| ARME-06 | TBD | Pending |
+| LOAD-01 | TBD | Pending |
+| LOAD-02 | TBD | Pending |
+| LOAD-03 | TBD | Pending |
+| AREN-01 | TBD | Pending |
+| AREN-02 | TBD | Pending |
+| AREN-03 | TBD | Pending |
+| AREN-04 | TBD | Pending |
+| AREN-05 | TBD | Pending |
 | UI-01 | TBD | Pending |
 | UI-02 | TBD | Pending |
-| COMBAT-01 | TBD | Pending |
-| COMBAT-02 | TBD | Pending |
-| COMBAT-03 | TBD | Pending |
-| COMBAT-04 | TBD | Pending |
-| COMBAT-05 | TBD | Pending |
-| AI-01 | TBD | Pending |
-| ANIM-01 | TBD | Pending |
-| ANIM-02 | TBD | Pending |
-| ANIM-03 | TBD | Pending |
-| ANIM-04 | TBD | Pending |
-| INTEG-01 | TBD | Pending |
-| INTEG-02 | TBD | Pending |
-| INTEG-03 | TBD | Pending |
+| UI-03 | TBD | Pending |
+| UI-04 | TBD | Pending |
+| FX-01 | TBD | Pending |
+| FX-02 | TBD | Pending |
+| FX-03 | TBD | Pending |
+| FX-04 | TBD | Pending |
+| FX-05 | TBD | Pending |
 
 **Coverage:**
-- v2.0 requirements: 23 total
+- v1 requirements: 37 total
 - Mapped to phases: 0
-- Unmapped: 23
+- Unmapped: 37
 
 ---
 *Requirements defined: 2026-03-22*
-*Last updated: 2026-03-22 after initial definition*
+*Last updated: 2026-03-22 after project redefinition*
