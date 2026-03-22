@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 01-04-PLAN.md (ZombieWaveConfig + checkpoint pending)
-last_updated: "2026-03-22T16:07:47.653Z"
+stopped_at: Completed 02-02-PLAN.md (Shotgun + Sniper)
+last_updated: "2026-03-22T22:45:27.608Z"
 progress:
   total_phases: 9
   completed_phases: 1
-  total_plans: 4
-  completed_plans: 4
+  total_plans: 7
+  completed_plans: 6
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-22)
 
 **Core value:** Le joueur peut lancer une partie, choisir son loadout, tuer des zombies en enchainant des combos sous pression du timer, et voir son score final.
-**Current focus:** Phase 01 — zombies
+**Current focus:** Phase 02 — arsenal
 
 ## Current Position
 
-Phase: 2
-Plan: Not started
+Phase: 02 (arsenal) — EXECUTING
+Plan: 3 of 3
 
 ## Performance Metrics
 
@@ -50,6 +50,7 @@ Plan: Not started
 | Phase 01-zombies P02 | 1min | 2 tasks | 4 files |
 | Phase 01-zombies P03 | 2min | 2 tasks | 4 files |
 | Phase 01-zombies P04 | 1min | 2 tasks | 3 files |
+| Phase 02-arsenal P02 | 1min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -67,6 +68,7 @@ Plan: Not started
 - [Phase 01-zombies]: ZombieExploder self-destructs via ApplyDamage(9999) to preserve OnEnemyDied delegate chain for wave spawner
 - [Phase 01-zombies]: ProjectileClass left as UPROPERTY to set in Blueprint — avoids ConstructorHelpers asset path coupling
 - [Phase 01-zombies]: MaxAliveEnemies set to 15 for wave 10 support; wave config as BlueprintFunctionLibrary for Blueprint access
+- [Phase 02-arsenal]: Constructor-defaults-only pattern for weapon subclasses: no method overrides, all behavior in WeaponBase
 
 ### Pending Todos
 
@@ -79,6 +81,6 @@ Plan: Not started
 
 ## Session Continuity
 
-Last session: 2026-03-22T16:04:45.444Z
-Stopped at: Completed 01-04-PLAN.md (ZombieWaveConfig + checkpoint pending)
+Last session: 2026-03-22T22:45:18.415Z
+Stopped at: Completed 02-02-PLAN.md (Shotgun + Sniper)
 Resume file: None

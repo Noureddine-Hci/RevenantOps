@@ -50,11 +50,11 @@ Plans:
   3. Le rechargement de chaque arme est fonctionnel avec une duree propre a l'arme
   4. L'arme de melee attaque au corps-a-corps sans consommer de munitions
   5. Les degats infliges sur un zombie varient visiblement selon l'arme (le shotgun a bout portant tue plus vite que le pistolet)
-**Plans:** 3 plans
+**Plans:** 2/3 plans executed
 
 Plans:
-- [ ] 02-01-PLAN.md — Pistolet + Fusil d'Assaut + SMG (3 armes a feu + FireShot virtual)
-- [ ] 02-02-PLAN.md — Shotgun + Sniper (armes a comportement unique)
+- [x] 02-01-PLAN.md — Pistolet + Fusil d'Assaut + SMG (3 armes a feu + FireShot virtual)
+- [x] 02-02-PLAN.md — Shotgun + Sniper (armes a comportement unique)
 - [ ] 02-03-PLAN.md — Arme de melee (sphere trace) + verification compilation
 
 ### Phase 3: Timer & Score
@@ -144,7 +144,7 @@ Phases executent dans l'ordre numerique : 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Zombies | 4/4 | Complete   | 2026-03-22 |
-| 2. Arsenal | 0/3 | In progress | - |
+| 2. Arsenal | 2/3 | In Progress|  |
 | 3. Timer & Score | 0/TBD | Not started | - |
 | 4. Arene | 0/TBD | Not started | - |
 | 5. Loadout | 0/TBD | Not started | - |
