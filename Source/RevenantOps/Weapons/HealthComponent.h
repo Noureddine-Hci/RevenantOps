@@ -128,6 +128,10 @@ public:
   UFUNCTION(BlueprintCallable, Category = "Health")
   float GetCurrentShield() const { return CurrentShield; }
 
+  /** Sets the maximum health (use in constructors before BeginPlay) */
+  UFUNCTION(BlueprintCallable, Category = "Health")
+  void SetMaxHealth(float NewMax) { MaxHealth = FMath::Max(1.f, NewMax); }
+
 protected:
   /** Handles incoming damage from the owning actor's TakeDamage */
   UFUNCTION()
