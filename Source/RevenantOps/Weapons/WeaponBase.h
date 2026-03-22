@@ -355,11 +355,23 @@ public:
   UFUNCTION(BlueprintCallable, Category = "Weapon")
   bool CanReload() const;
 
+  /** Gets current ammo in magazine */
+  UFUNCTION(BlueprintCallable, Category = "Weapon")
+  int32 GetCurrentAmmo() const { return CurrentAmmo; }
+
+  /** Gets current reserve ammo */
+  UFUNCTION(BlueprintCallable, Category = "Weapon")
+  int32 GetCurrentReserveAmmo() const { return CurrentReserveAmmo; }
+
+  /** Gets weapon display name */
+  UFUNCTION(BlueprintCallable, Category = "Weapon")
+  FText GetWeaponName() const { return WeaponName; }
+
 protected:
   // ========== INTERNAL ==========
 
-  /** Fires a single shot (hitscan trace + damage) */
-  void FireShot();
+  /** Fires a single shot (hitscan trace + damage) — virtual for melee override */
+  virtual void FireShot();
 
   /** Performs a single hitscan line trace */
   void HitscanTrace(const FVector &TraceStart, const FVector &TraceDirection);
