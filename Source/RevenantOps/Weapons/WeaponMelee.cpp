@@ -7,7 +7,7 @@
 AWeaponMelee::AWeaponMelee() {
   // Identity
   WeaponName = FText::FromString(TEXT("Machette"));
-  WeaponCategory = EWeaponCategory::Pistol; // No Melee enum — Pistol as placeholder
+  WeaponCategory = EWeaponCategory::Melee;
 
   // Firing
   FireMode = EWeaponFireMode::SemiAuto;

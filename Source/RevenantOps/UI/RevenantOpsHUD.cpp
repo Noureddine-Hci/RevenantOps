@@ -6,6 +6,7 @@
 #include "Components/TextBlock.h"
 #include "HealthComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "MercenairesGameState.h"
 #include "RevenantOpsCharacter.h"
 #include "WeaponBase.h"
 
@@ -27,6 +28,9 @@ void URevenantOpsHUD::NativeConstruct() {
   if (HitMarkerImage) {
     HitMarkerImage->SetOpacity(0.f);
   }
+
+  // Cache game state for timer/score
+  CachedGameState = GetWorld()->GetGameState<AMercenairesGameState>();
 }
 
 void URevenantOpsHUD::NativeTick(const FGeometry &MyGeometry,
@@ -43,6 +47,7 @@ void URevenantOpsHUD::NativeTick(const FGeometry &MyGeometry,
   UpdateCrosshair();
   UpdateLowHealthVignette();
   UpdateHitMarker(InDeltaTime);
+  UpdateMercenairesDisplay();
 }
 
 // =============================================================================
@@ -101,14 +106,17 @@ void URevenantOpsHUD::UpdateAmmoDisplay() {
   }
 
   if (AmmoCurrentText) {
-    // We need public access - get via the broadcast or we read from BlueprintReadOnly
-    // For now, use a simple approach through the weapon's public interface
     AmmoCurrentText->SetText(
-        FText::FromString(FString::Printf(TEXT("%d"), 0))); // Will be updated via delegate
+        FText::FromString(FString::Printf(TEXT("%d"), Weapon->GetCurrentAmmo())));
+  }
+
+  if (AmmoReserveText) {
+    AmmoReserveText->SetText(
+        FText::FromString(FString::Printf(TEXT("%d"), Weapon->GetCurrentReserveAmmo())));
   }
 
   if (WeaponNameText) {
-    WeaponNameText->SetText(FText::GetEmpty());
+    WeaponNameText->SetText(Weapon->GetWeaponName());
   }
 }
 
@@ -217,4 +225,66 @@ void URevenantOpsHUD::ShowDamageDirection(const FVector &DamageOrigin) {
   const float AngleDeg = FMath::RadiansToDegrees(AngleRad);
 
   // Subclasses can override this or use BP to display a directional indicator at AngleDeg
+}
+
+// =============================================================================
+// MERCENAIRES DISPLAY (Timer, Score, Combo)
+// =============================================================================
+
+void URevenantOpsHUD::UpdateMercenairesDisplay() {
+  if (!CachedGameState) {
+    CachedGameState = GetWorld()->GetGameState<AMercenairesGameState>();
+    if (!CachedGameState) {
+      return;
+    }
+  }
+
+  // Timer (MM:SS format)
+  if (TimerText) {
+    const float TimeLeft = CachedGameState->GetTimeRemaining();
+    const int32 Minutes = FMath::FloorToInt(TimeLeft / 60.f);
+    const int32 Seconds = FMath::FloorToInt(FMath::Fmod(TimeLeft, 60.f));
+    TimerText->SetText(FText::FromString(
+        FString::Printf(TEXT("%02d:%02d"), Minutes, Seconds)));
+
+    // Flash red when under 30 seconds
+    if (TimeLeft < 30.f) {
+      const float Pulse =
+          (FMath::Sin(GetWorld()->GetTimeSeconds() * 6.f) + 1.f) * 0.5f;
+      TimerText->SetColorAndOpacity(
+          FSlateColor(FLinearColor::LerpUsingHSV(
+              FLinearColor::Red, FLinearColor::White, Pulse)));
+    } else {
+      TimerText->SetColorAndOpacity(FSlateColor(FLinearColor::White));
+    }
+  }
+
+  // Score
+  if (ScoreText) {
+    ScoreText->SetText(FText::FromString(
+        FString::Printf(TEXT("%d"), CachedGameState->GetCurrentScore())));
+  }
+
+  // Combo multiplier
+  if (ComboText) {
+    const int32 Combo = CachedGameState->GetComboMultiplier();
+    if (Combo > 1) {
+      ComboText->SetText(FText::FromString(
+          FString::Printf(TEXT("x%d"), Combo)));
+      ComboText->SetVisibility(ESlateVisibility::HitTestInvisible);
+    } else {
+      ComboText->SetVisibility(ESlateVisibility::Collapsed);
+    }
+  }
+
+  // Combo timer bar
+  if (ComboTimerBar) {
+    const float ComboTime = CachedGameState->GetComboTimeRemaining();
+    if (ComboTime > 0.f) {
+      ComboTimerBar->SetPercent(ComboTime / 5.0f); // 5s window
+      ComboTimerBar->SetVisibility(ESlateVisibility::HitTestInvisible);
+    } else {
+      ComboTimerBar->SetVisibility(ESlateVisibility::Collapsed);
+    }
+  }
 }

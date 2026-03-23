@@ -6,6 +6,9 @@
 #include "ZombieBase.h"
 #include "ZombieExploder.generated.h"
 
+class USoundBase;
+class UNiagaraSystem;
+
 /**
  *  Exploder zombie - fast runner that detonates on proximity.
  *  Runs at speed 350, low HP (60), explodes dealing 50 AoE damage
@@ -30,6 +33,14 @@ protected:
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Zombie|Explosion",
             meta = (ClampMin = 10, ClampMax = 200))
   float ExplosionDamage = 50.f;
+
+  /** Explosion sound */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Zombie|Explosion")
+  USoundBase *ExplosionSound = nullptr;
+
+  /** Explosion VFX (Niagara) */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Zombie|Explosion")
+  UNiagaraSystem *ExplosionVFX = nullptr;
 
   /** Prevents double explosion */
   bool bHasExploded = false;

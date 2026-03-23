@@ -4,6 +4,8 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "HealthComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "NiagaraFunctionLibrary.h"
+#include "NiagaraSystem.h"
 #include "Engine/DamageEvents.h"
 
 AZombieExploder::AZombieExploder() {
@@ -50,6 +52,19 @@ void AZombieExploder::PerformMeleeAttack() {
       true,                    // bDoFullDamage
       ECollisionChannel::ECC_Visibility  // DamagePreventionChannel
   );
+
+  // Play explosion sound
+  if (ExplosionSound) {
+    UGameplayStatics::PlaySoundAtLocation(this, ExplosionSound,
+                                           GetActorLocation());
+  }
+
+  // Spawn explosion VFX
+  if (ExplosionVFX) {
+    UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+        this, ExplosionVFX, GetActorLocation(), FRotator::ZeroRotator,
+        FVector(1.f), true);
+  }
 
   // Notify Blueprint for VFX (particles, sound, camera shake)
   BP_OnExplode();

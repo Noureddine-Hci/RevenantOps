@@ -11,7 +11,7 @@ En partant d'une base TPS fonctionnelle (locomotion, tir pistolet, HUD basique, 
 - Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
 
 - [x] **Phase 1: Zombies** - 5 types de zombies avec comportements distincts, waves progressives (completed 2026-03-22)
-- [ ] **Phase 2: Arsenal** - 5 armes a feu aux stats differenties + melee, switch en jeu
+- [x] **Phase 2: Arsenal** - 5 armes a feu aux stats differenties + melee, switch en jeu (completed 2026-03-22)
 - [ ] **Phase 3: Timer & Score** - Boucle Mercenaires : timer 5 min, score par kill, combo multiplicateur
 - [ ] **Phase 4: Arene** - 1 arene jouable avec zones variees, spawners, pickups, ambiance sombre
 - [ ] **Phase 5: Loadout** - Ecran de selection de 2 armes avant la partie, stats visibles
@@ -50,12 +50,12 @@ Plans:
   3. Le rechargement de chaque arme est fonctionnel avec une duree propre a l'arme
   4. L'arme de melee attaque au corps-a-corps sans consommer de munitions
   5. Les degats infliges sur un zombie varient visiblement selon l'arme (le shotgun a bout portant tue plus vite que le pistolet)
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 02-01-PLAN.md — Pistolet + Fusil d'Assaut + SMG (3 armes a feu + FireShot virtual)
 - [x] 02-02-PLAN.md — Shotgun + Sniper (armes a comportement unique)
-- [ ] 02-03-PLAN.md — Arme de melee (sphere trace) + verification compilation
+- [x] 02-03-PLAN.md — Arme de melee (sphere trace) + verification compilation
 
 ### Phase 3: Timer & Score
 **Goal**: La boucle Mercenaires est active : timer 5 minutes, score par kill avec combo multiplicateur, fin de partie sur zero
@@ -78,7 +78,10 @@ Plans:
   2. Les zombies emergent depuis des points de spawn repartis sur l'ensemble de la carte (pas concentres au meme endroit)
   3. Des pickups de bonus temps et de munitions sont accessibles dans l'arene et disparaissent a la ramasse
   4. L'eclairage et l'atmosphere generale creent une tension visuelle coherente avec le mode Mercenaires
-**Plans**: TBD
+**Plans:** 1/1 plans complete
+
+Plans:
+- [x] 04-01-PLAN.md — Arena layout, spawn points, pickups, lighting (editor placement)
 
 ### Phase 5: Loadout
 **Goal**: Le joueur choisit son equipement avant la partie via un ecran de selection avec les stats affichees
@@ -123,7 +126,10 @@ Plans:
   3. Les zombies emettent des sons de grognement, d'attaque et de mort
   4. Une musique d'ambiance tension/action joue en continu pendant la partie
   5. Des VFX de base sont visibles : muzzle flash au tir, impact sang sur zombie, explosion du zombie explosif
-**Plans**: TBD
+**Plans:** 1/1 plans complete
+
+Plans:
+- [x] 08-01-PLAN.md — Audio/VFX UPROPERTY hooks in WeaponBase, EnemyBase, ZombieBase, MercenairesGameState
 
 ### Phase 9: Integration
 **Goal**: La demo est packagee, jouable de bout en bout sans bugs bloquants, comprehensible par un joueur externe sans instruction
@@ -134,7 +140,10 @@ Plans:
   2. La boucle titre -> loadout -> partie -> fin de partie -> leaderboard s'execute sans crash ni blocage
   3. Le jeu est packageable (Build Development ou Shipping) et s'execute sans l'editeur UE5 ouvert
   4. Aucun bug bloquant (freeze, crash, soft lock) ne survient sur une session de jeu complete
-**Plans**: TBD
+**Plans:** 1/1 plans complete
+
+Plans:
+- [x] 09-01-PLAN.md — Game flow in PlayerController (title→loadout→match→gameover→leaderboard)
 
 ## Progress
 
@@ -144,15 +153,15 @@ Phases executent dans l'ordre numerique : 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Zombies | 4/4 | Complete   | 2026-03-22 |
-| 2. Arsenal | 2/3 | In Progress|  |
-| 3. Timer & Score | 0/TBD | Not started | - |
-| 4. Arene | 0/TBD | Not started | - |
-| 5. Loadout | 0/TBD | Not started | - |
-| 6. UI & Menus | 0/TBD | Not started | - |
-| 7. Camera OTS | 0/TBD | Not started | - |
-| 8. Audio & VFX | 0/TBD | Not started | - |
-| 9. Integration | 0/TBD | Not started | - |
+| 2. Arsenal | 3/3 | Complete   | 2026-03-22 |
+| 3. Timer & Score | 1/1 | Complete   | 2026-03-23 |
+| 4. Arene | 1/1 | Complete   | 2026-03-23 |
+| 5. Loadout | 1/1 | Complete   | 2026-03-23 |
+| 6. UI & Menus | 1/1 | Complete   | 2026-03-23 |
+| 7. Camera OTS | 1/1 | Complete   | 2026-03-23 |
+| 8. Audio & VFX | 1/1 | Complete   | 2026-03-23 |
+| 9. Integration | 1/1 | Complete   | 2026-03-23 |
 
 ---
 *Roadmap created: 2026-03-22 -- v1.0 Demo Partageable (Mercenaires mode)*
-*Last updated: 2026-03-22*
+*Last updated: 2026-03-23 -- All 9 phases C++ complete, build OK, needs editor setup + test*

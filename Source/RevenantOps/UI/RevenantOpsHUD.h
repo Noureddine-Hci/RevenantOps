@@ -12,6 +12,7 @@ class UImage;
 class ARevenantOpsCharacter;
 class AWeaponBase;
 class UHealthComponent;
+class AMercenairesGameState;
 
 /**
  *  Main in-game HUD widget for RevenantOps.
@@ -66,6 +67,24 @@ protected:
   UPROPERTY(meta = (BindWidgetOptional))
   UImage *LowHealthVignette;
 
+  // ========== MERCENAIRES HUD WIDGETS ==========
+
+  /** Match timer text (MM:SS format) */
+  UPROPERTY(meta = (BindWidgetOptional))
+  UTextBlock *TimerText;
+
+  /** Current score text */
+  UPROPERTY(meta = (BindWidgetOptional))
+  UTextBlock *ScoreText;
+
+  /** Combo multiplier text (x2, x3...) */
+  UPROPERTY(meta = (BindWidgetOptional))
+  UTextBlock *ComboText;
+
+  /** Combo timer progress bar (decays to zero) */
+  UPROPERTY(meta = (BindWidgetOptional))
+  UProgressBar *ComboTimerBar;
+
   // ========== CONFIGURATION ==========
 
   /** Health percentage below which the vignette appears */
@@ -100,6 +119,9 @@ protected:
   UPROPERTY()
   UHealthComponent *CachedHealthComp = nullptr;
 
+  UPROPERTY()
+  AMercenairesGameState *CachedGameState = nullptr;
+
   // ========== UPDATE FUNCTIONS ==========
 
   /** Updates health and shield bars */
@@ -119,6 +141,9 @@ protected:
 
   /** Updates hit marker fade */
   void UpdateHitMarker(float DeltaTime);
+
+  /** Updates Mercenaires timer, score, and combo display */
+  void UpdateMercenairesDisplay();
 
 public:
   /** Shows the hit marker (call from weapon hit event) */

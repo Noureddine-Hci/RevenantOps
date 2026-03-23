@@ -166,6 +166,7 @@ protected:
   float DodgeCost = 25.f;
 
   float LastDodgeTime = -100.f;
+  FTimerHandle DodgeEndTimerHandle;
   FOnMontageEnded OnDodgeMontageEnded;
 
   // ========== STAMINA ==========
@@ -278,11 +279,17 @@ protected:
   void StartDodge();
   void DodgeMontageEnded(UAnimMontage *Montage, bool bInterrupted);
 
+public:
   // ========== WEAPON LOGIC ==========
 
-  /** Spawns and stores all default weapons */
+  /** Sets weapon classes for loadout (call before SpawnDefaultWeapons) */
+  void SetDefaultWeaponClasses(
+      const TArray<TSubclassOf<AWeaponBase>> &NewClasses);
+
+  /** Destroys existing weapons and respawns from DefaultWeaponClasses */
   void SpawnDefaultWeapons();
 
+protected:
   /** Equips a weapon from inventory by index */
   void EquipWeapon(int32 Index);
 

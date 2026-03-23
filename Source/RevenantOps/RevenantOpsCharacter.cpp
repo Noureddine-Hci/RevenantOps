@@ -42,12 +42,16 @@ ARevenantOpsCharacter::ARevenantOpsCharacter() {
   GetCharacterMovement()->MaxWalkSpeedCrouched = CrouchMoveSpeed;
   GetCharacterMovement()->SetCrouchedHalfHeight(58.f);
 
-  // Camera boom (over-the-shoulder tactical view)
+  // Camera boom (over-the-shoulder RE4 style)
   CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
   CameraBoom->SetupAttachment(RootComponent);
-  CameraBoom->TargetArmLength = 50.0f;
-  CameraBoom->SocketOffset = FVector(-146.1f, -127.2f, 14.3f);
+  CameraBoom->TargetArmLength = 120.0f;
+  CameraBoom->SocketOffset = FVector(0.f, 50.f, 60.f); // Right shoulder, slightly above
   CameraBoom->bUsePawnControlRotation = true;
+  CameraBoom->bEnableCameraLag = true;
+  CameraBoom->CameraLagSpeed = 15.f;
+  CameraBoom->bEnableCameraRotationLag = true;
+  CameraBoom->CameraRotationLagSpeed = 20.f;
 
   // Follow camera
   FollowCamera =
@@ -393,9 +397,8 @@ void ARevenantOpsCharacter::StartDodge() {
       }
     }
   } else {
-    FTimerHandle DodgeEndTimer;
     GetWorld()->GetTimerManager().SetTimer(
-        DodgeEndTimer,
+        DodgeEndTimerHandle,
         [this]() { bIsDodging = false; }, 0.5f, false);
   }
 }
@@ -485,31 +488,70 @@ void ARevenantOpsCharacter::UpdateMovementSpeed(float DeltaTime) {
 }
 
 void ARevenantOpsCharacter::UpdateCameraFOV(float DeltaTime) {
-  if (!FollowCamera) {
+  if (!FollowCamera || !CameraBoom) {
     return;
   }
 
-  // Priority: ADS FOV > Sprint FOV > Default FOV
+  // Default OTS offsets
+  const FVector HipOffset(0.f, 50.f, 60.f);
+  const FVector ADSOffset(0.f, 40.f, 55.f); // Tighter for ADS
+  const float HipArmLength = 120.f;
+  const float ADSArmLength = 80.f;
+
   float TargetFOV = DefaultFOV;
+  FVector TargetOffset = HipOffset;
+  float TargetArmLen = HipArmLength;
+
   if (bIsAiming && CurrentWeapon) {
-    TargetFOV = CurrentWeapon->GetADSAlpha() > 0.5f
-                    ? FMath::Lerp(DefaultFOV, 65.f, CurrentWeapon->GetADSAlpha())
-                    : DefaultFOV;
+    // Use weapon's ADSFOV for zoom level
+    const float WeaponADSFOV = CurrentWeapon->GetADSFOV();
+    const float Alpha = CurrentWeapon->GetADSAlpha();
+    TargetFOV = FMath::Lerp(DefaultFOV, WeaponADSFOV, Alpha);
+    TargetOffset = FMath::Lerp(HipOffset, ADSOffset, Alpha);
+    TargetArmLen = FMath::Lerp(HipArmLength, ADSArmLength, Alpha);
   } else if (bIsSprinting) {
     TargetFOV = SprintFOV;
   }
 
+  // Smooth FOV transition
   const float CurrentFOV = FollowCamera->FieldOfView;
   const float NewFOV =
       FMath::FInterpTo(CurrentFOV, TargetFOV, DeltaTime, FOVInterpSpeed);
   FollowCamera->SetFieldOfView(NewFOV);
+
+  // Smooth boom offset transition
+  const FVector CurrentOffset = CameraBoom->SocketOffset;
+  const FVector NewOffset =
+      FMath::VInterpTo(CurrentOffset, TargetOffset, DeltaTime, FOVInterpSpeed);
+  CameraBoom->SocketOffset = NewOffset;
+
+  // Smooth arm length transition
+  const float CurrentArmLen = CameraBoom->TargetArmLength;
+  const float NewArmLen =
+      FMath::FInterpTo(CurrentArmLen, TargetArmLen, DeltaTime, FOVInterpSpeed);
+  CameraBoom->TargetArmLength = NewArmLen;
 }
 
 // =============================================================================
 // WEAPON SYSTEM
 // =============================================================================
 
+void ARevenantOpsCharacter::SetDefaultWeaponClasses(
+    const TArray<TSubclassOf<AWeaponBase>> &NewClasses) {
+  DefaultWeaponClasses = NewClasses;
+}
+
 void ARevenantOpsCharacter::SpawnDefaultWeapons() {
+  // Destroy existing weapons first
+  for (AWeaponBase *Weapon : WeaponInventory) {
+    if (Weapon) {
+      Weapon->Destroy();
+    }
+  }
+  WeaponInventory.Empty();
+  CurrentWeapon = nullptr;
+  CurrentWeaponIndex = 0;
+
   for (const TSubclassOf<AWeaponBase> &WeaponClass : DefaultWeaponClasses) {
     if (!WeaponClass) {
       continue;

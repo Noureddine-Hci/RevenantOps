@@ -39,6 +39,10 @@ protected:
             meta = (ClampMin = 0.1, ClampMax = 5.0))
   float MeleeAttackCooldown = 1.5f;
 
+  /** Sound played on melee attack */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Zombie|Audio")
+  USoundBase *MeleeAttackSound = nullptr;
+
   /** Internal cooldown tracker */
   float MeleeAttackTimer = 0.f;
 

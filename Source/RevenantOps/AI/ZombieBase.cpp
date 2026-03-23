@@ -69,6 +69,12 @@ void AZombieBase::PerformMeleeAttack() {
     return;
   }
 
+  // Play melee attack sound
+  if (MeleeAttackSound) {
+    UGameplayStatics::PlaySoundAtLocation(this, MeleeAttackSound,
+                                           GetActorLocation());
+  }
+
   // Apply melee damage to the player
   UGameplayStatics::ApplyDamage(TargetPlayer, MeleeDamage, GetController(),
                                 this, nullptr);

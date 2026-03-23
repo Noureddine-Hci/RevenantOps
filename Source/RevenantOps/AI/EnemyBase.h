@@ -10,6 +10,7 @@ class UHealthComponent;
 class AWeaponBase;
 class UWidgetComponent;
 class UBehaviorTree;
+class USoundBase;
 
 /**
  *  Enemy behavior profile - determines combat style
@@ -192,6 +193,28 @@ protected:
 
   /** Has reacted to seeing the player */
   bool bHasReacted = false;
+
+  // ========== AUDIO ==========
+
+  /** Sound played on death */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Audio")
+  USoundBase *DeathSound = nullptr;
+
+  /** Sound played when taking damage (hit reaction) */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Audio")
+  USoundBase *HitSound = nullptr;
+
+  /** Ambient grunt sound (played periodically) */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Audio")
+  USoundBase *AmbientSound = nullptr;
+
+  /** Interval between ambient grunts */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Audio",
+            meta = (ClampMin = 1.0, ClampMax = 20.0))
+  float AmbientSoundInterval = 5.f;
+
+  /** Timer for ambient sounds */
+  float AmbientSoundTimer = 0.f;
 
   /** Death cleanup timer */
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Death")

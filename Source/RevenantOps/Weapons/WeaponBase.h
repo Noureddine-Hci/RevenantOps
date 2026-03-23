@@ -32,7 +32,8 @@ enum class EWeaponCategory : uint8 {
   Shotgun UMETA(DisplayName = "Shotgun"),
   Sniper UMETA(DisplayName = "Sniper"),
   LMG UMETA(DisplayName = "LMG"),
-  Launcher UMETA(DisplayName = "Launcher")
+  Launcher UMETA(DisplayName = "Launcher"),
+  Melee UMETA(DisplayName = "Melee")
 };
 
 /**
@@ -261,6 +262,34 @@ protected:
             Category = "Weapon|Animation")
   UAnimMontage *EquipMontage;
 
+  // ========== AUDIO ==========
+
+  /** Sound played on each shot */
+  UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Weapon|Audio")
+  USoundBase *FireSound = nullptr;
+
+  /** Sound played when reload starts */
+  UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Weapon|Audio")
+  USoundBase *ReloadSound = nullptr;
+
+  /** Sound played on empty magazine click */
+  UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Weapon|Audio")
+  USoundBase *EmptySound = nullptr;
+
+  // ========== VFX ==========
+
+  /** Muzzle flash Niagara system spawned at muzzle on each shot */
+  UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Weapon|VFX")
+  UNiagaraSystem *MuzzleFlashVFX = nullptr;
+
+  /** Impact Niagara system spawned at hit location */
+  UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Weapon|VFX")
+  UNiagaraSystem *ImpactVFX = nullptr;
+
+  /** Blood impact Niagara system (used when hitting enemies) */
+  UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Weapon|VFX")
+  UNiagaraSystem *BloodImpactVFX = nullptr;
+
   // ========== SOCKETS ==========
 
   /** Muzzle socket name on weapon mesh */
@@ -366,6 +395,33 @@ public:
   /** Gets weapon display name */
   UFUNCTION(BlueprintCallable, Category = "Weapon")
   FText GetWeaponName() const { return WeaponName; }
+
+  /** Gets base damage */
+  UFUNCTION(BlueprintCallable, Category = "Weapon")
+  float GetBaseDamage() const { return BaseDamage; }
+
+  /** Gets fire rate in RPM */
+  UFUNCTION(BlueprintCallable, Category = "Weapon")
+  float GetFireRate() const { return FireRate; }
+
+  /** Gets magazine size */
+  UFUNCTION(BlueprintCallable, Category = "Weapon")
+  int32 GetMagazineSize() const { return MagazineSize; }
+
+  /** Gets reload time in seconds */
+  UFUNCTION(BlueprintCallable, Category = "Weapon")
+  float GetReloadTime() const { return ReloadTime; }
+
+  /** Gets ADS field of view */
+  UFUNCTION(BlueprintCallable, Category = "Weapon")
+  float GetADSFOV() const { return ADSFOV; }
+
+  /** Adds ammo to reserve (from pickups) */
+  UFUNCTION(BlueprintCallable, Category = "Weapon")
+  void AddReserveAmmo(int32 Amount) {
+    CurrentReserveAmmo = FMath::Min(CurrentReserveAmmo + Amount, MaxReserveAmmo);
+    OnAmmoChanged.Broadcast(CurrentAmmo, MagazineSize);
+  }
 
 protected:
   // ========== INTERNAL ==========

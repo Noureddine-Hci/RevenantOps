@@ -66,6 +66,17 @@ void AEnemyBase::Tick(float DeltaTime) {
 
   UpdatePerception(DeltaTime);
   UpdateCombat(DeltaTime);
+
+  // Ambient grunt sounds
+  if (AmbientSound && AlertState == EEnemyAlertState::Alert) {
+    AmbientSoundTimer -= DeltaTime;
+    if (AmbientSoundTimer <= 0.f) {
+      UGameplayStatics::PlaySoundAtLocation(this, AmbientSound,
+                                             GetActorLocation());
+      AmbientSoundTimer =
+          AmbientSoundInterval + FMath::FRandRange(-1.f, 2.f);
+    }
+  }
 }
 
 // =============================================================================
@@ -457,6 +468,11 @@ void AEnemyBase::HandleDeath(UHealthComponent *HealthComponent,
     LifeBarWidget->SetHiddenInGame(true);
   }
 
+  // Play death sound
+  if (DeathSound) {
+    UGameplayStatics::PlaySoundAtLocation(this, DeathSound, GetActorLocation());
+  }
+
   // Broadcast death
   OnEnemyDied.Broadcast(this, const_cast<AController *>(InstigatedBy));
 
@@ -488,6 +504,11 @@ void AEnemyBase::HandleDamage(UHealthComponent *HealthComponent, float Health,
       CurrentReactionTimer = ReactionTime * 0.3f; // Quick reaction when shot
       BP_OnAlertStateChanged(AlertState);
     }
+  }
+
+  // Play hit sound
+  if (HitSound) {
+    UGameplayStatics::PlaySoundAtLocation(this, HitSound, GetActorLocation());
   }
 
   // BP hook

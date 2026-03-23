@@ -10,6 +10,8 @@
 #include "Camera/CameraComponent.h"
 #include "Camera/PlayerCameraManager.h"
 #include "Kismet/GameplayStatics.h"
+#include "NiagaraFunctionLibrary.h"
+#include "NiagaraSystem.h"
 #include "TimerManager.h"
 
 AWeaponBase::AWeaponBase() {
@@ -111,6 +113,11 @@ void AWeaponBase::StartReload() {
     }
   }
 
+  // Play reload sound
+  if (ReloadSound) {
+    UGameplayStatics::PlaySoundAtLocation(this, ReloadSound, GetActorLocation());
+  }
+
   // Notify Blueprint
   BP_OnReloadStart();
 
@@ -161,8 +168,8 @@ void AWeaponBase::FireShot() {
   SetWeaponState(EWeaponState::Firing);
 
   // Get muzzle transform
-  FVector MuzzleLocation;
-  FRotator MuzzleRotation;
+  FVector MuzzleLocation = FVector::ZeroVector;
+  FRotator MuzzleRotation = FRotator::ZeroRotator;
   if (WeaponMesh && WeaponMesh->DoesSocketExist(MuzzleSocketName)) {
     MuzzleLocation = WeaponMesh->GetSocketLocation(MuzzleSocketName);
     MuzzleRotation = WeaponMesh->GetSocketRotation(MuzzleSocketName);
@@ -182,6 +189,17 @@ void AWeaponBase::FireShot() {
   } else {
     TraceStart = MuzzleLocation;
     AimRotation = MuzzleRotation;
+  }
+
+  // Play fire sound
+  if (FireSound) {
+    UGameplayStatics::PlaySoundAtLocation(this, FireSound, MuzzleLocation);
+  }
+
+  // Spawn muzzle flash VFX
+  if (MuzzleFlashVFX) {
+    UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+        this, MuzzleFlashVFX, MuzzleLocation, MuzzleRotation);
   }
 
   // Fire pellets (1 for normal weapons, multiple for shotguns)
@@ -269,6 +287,19 @@ void AWeaponBase::HitscanTrace(const FVector &TraceStart,
                                         this);
     }
 
+    // Spawn impact VFX
+    if (HitResult.GetActor() && HitResult.GetActor()->ActorHasTag(FName("Enemy"))) {
+      if (BloodImpactVFX) {
+        UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+            this, BloodImpactVFX, HitResult.ImpactPoint,
+            HitResult.ImpactNormal.Rotation());
+      }
+    } else if (ImpactVFX) {
+      UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+          this, ImpactVFX, HitResult.ImpactPoint,
+          HitResult.ImpactNormal.Rotation());
+    }
+
     // Notify Blueprint for impact effects
     BP_OnHit(HitResult, Damage);
   }
@@ -333,21 +364,23 @@ void AWeaponBase::RecoverRecoil(float DeltaTime) {
     return;
   }
 
-  // Recover pitch (vertical)
-  const float PitchRecovery =
-      FMath::FInterpTo(0.f, AccumulatedRecoil.X, DeltaTime,
-                       RecoilRecoverySpeed);
-  if (APlayerController *PC = Cast<APlayerController>(OwnerController)) {
-    PC->AddPitchInput(-PitchRecovery);
-    AccumulatedRecoil.X -= PitchRecovery;
-
-    // Recover yaw (horizontal)
-    const float YawRecovery =
-        FMath::FInterpTo(0.f, AccumulatedRecoil.Y, DeltaTime,
-                         RecoilRecoverySpeed);
-    PC->AddYawInput(-YawRecovery);
-    AccumulatedRecoil.Y -= YawRecovery;
+  APlayerController *PC = Cast<APlayerController>(OwnerController);
+  if (!PC) {
+    return;
   }
+
+  // Interpolate accumulated recoil towards zero
+  const float NewPitch =
+      FMath::FInterpTo(AccumulatedRecoil.X, 0.f, DeltaTime, RecoilRecoverySpeed);
+  const float PitchRecovery = AccumulatedRecoil.X - NewPitch;
+  PC->AddPitchInput(-PitchRecovery);
+  AccumulatedRecoil.X = NewPitch;
+
+  const float NewYaw =
+      FMath::FInterpTo(AccumulatedRecoil.Y, 0.f, DeltaTime, RecoilRecoverySpeed);
+  const float YawRecovery = AccumulatedRecoil.Y - NewYaw;
+  PC->AddYawInput(-YawRecovery);
+  AccumulatedRecoil.Y = NewYaw;
 }
 
 // =============================================================================
