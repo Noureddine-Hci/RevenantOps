@@ -98,6 +98,8 @@ protected:
 	/** Returns true if the player should use UMG touch controls */
 	bool ShouldUseTouchControls() const;
 
+public:
+
 	// ========== GAME FLOW ==========
 
 	/** Shows the title screen */
@@ -119,6 +121,8 @@ protected:
 	/** Shows the leaderboard */
 	UFUNCTION(BlueprintCallable, Category = "Mercenaires|Flow")
 	void ShowLeaderboard();
+
+protected:
 
 	/** Handler for loadout confirmation */
 	UFUNCTION()

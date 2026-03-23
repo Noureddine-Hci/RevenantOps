@@ -5,6 +5,7 @@
 #include "Components/TextBlock.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "RevenantOpsPlayerController.h"
 
 void UGameOverWidget::NativeConstruct() {
   Super::NativeConstruct();
@@ -12,6 +13,11 @@ void UGameOverWidget::NativeConstruct() {
   if (ReplayButton) {
     ReplayButton->OnClicked.AddDynamic(this,
                                         &UGameOverWidget::OnReplayClicked);
+  }
+
+  if (LeaderboardButton) {
+    LeaderboardButton->OnClicked.AddDynamic(
+        this, &UGameOverWidget::OnLeaderboardClicked);
   }
 
   if (QuitButton) {
@@ -43,6 +49,14 @@ void UGameOverWidget::OnReplayClicked() {
   // Restart current level
   UGameplayStatics::OpenLevel(
       GetWorld(), FName(*GetWorld()->GetName()), true);
+}
+
+void UGameOverWidget::OnLeaderboardClicked() {
+  if (ARevenantOpsPlayerController* PC =
+          Cast<ARevenantOpsPlayerController>(GetOwningPlayer()))
+  {
+    PC->ShowLeaderboard();
+  }
 }
 
 void UGameOverWidget::OnQuitClicked() {

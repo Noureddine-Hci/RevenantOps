@@ -6,6 +6,7 @@
 #include "Blueprint/UserWidget.h"
 #include "LeaderboardWidget.generated.h"
 
+class UButton;
 class UTextBlock;
 class UVerticalBox;
 
@@ -56,6 +57,11 @@ public:
   UFUNCTION(BlueprintCallable, Category = "Leaderboard")
   const TArray<FScoreEntry> &GetScores() const { return Scores; }
 
+  /** Persist a score entry without requiring a widget instance */
+  UFUNCTION(BlueprintCallable, Category = "Leaderboard")
+  static void SaveScoreStatic(UObject* WorldContext, int32 Score, int32 Kills, int32 BestCombo,
+                               const FString& SlotName = TEXT("Leaderboard"), int32 MaxEntries = 10);
+
 protected:
   /** Max entries in the leaderboard */
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Leaderboard",
@@ -69,6 +75,12 @@ protected:
   /** Sorted score entries (highest first) */
   UPROPERTY(BlueprintReadOnly, Category = "Leaderboard")
   TArray<FScoreEntry> Scores;
+
+  UPROPERTY(meta = (BindWidgetOptional))
+  UButton* BackButton;
+
+  UFUNCTION()
+  void OnBackClicked();
 
   /** BP hook: called when scores are updated (rebuild UI list) */
   UFUNCTION(BlueprintImplementableEvent, Category = "Leaderboard",

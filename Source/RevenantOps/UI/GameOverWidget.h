@@ -38,10 +38,16 @@ protected:
   UButton *ReplayButton;
 
   UPROPERTY(meta = (BindWidgetOptional))
+  UButton *LeaderboardButton;
+
+  UPROPERTY(meta = (BindWidgetOptional))
   UButton *QuitButton;
 
   UFUNCTION()
   void OnReplayClicked();
+
+  UFUNCTION()
+  void OnLeaderboardClicked();
 
   UFUNCTION()
   void OnQuitClicked();

@@ -4,6 +4,7 @@
 #include "Components/Button.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "RevenantOpsPlayerController.h"
 
 void UTitleScreenWidget::NativeConstruct() {
   Super::NativeConstruct();
@@ -19,7 +20,12 @@ void UTitleScreenWidget::NativeConstruct() {
 
 void UTitleScreenWidget::OnPlayClicked() {
   BP_OnPlayPressed();
-  // Actual level transition handled in Blueprint (to avoid MCP level-change crash)
+
+  if (ARevenantOpsPlayerController* PC =
+          Cast<ARevenantOpsPlayerController>(GetOwningPlayer()))
+  {
+    PC->ShowLoadoutScreen();
+  }
 }
 
 void UTitleScreenWidget::OnQuitClicked() {

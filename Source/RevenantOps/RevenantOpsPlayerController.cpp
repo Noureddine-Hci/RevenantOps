@@ -14,6 +14,7 @@
 #include "UI/LoadoutWidget.h"
 #include "UI/GameOverWidget.h"
 #include "UI/LeaderboardWidget.h"
+#include "UI/LeaderboardSaveGame.h"
 #include "Gameplay/MercenairesGameState.h"
 #include "WeaponBase.h"
 
@@ -52,6 +53,12 @@ void ARevenantOpsPlayerController::BeginPlay()
 			{
 				UE_LOG(LogRevenantOps, Error, TEXT("Could not spawn mobile controls widget."));
 			}
+		}
+
+		// Start the Mercenaires flow with the title screen
+		if (TitleScreenClass)
+		{
+			ShowTitleScreen();
 		}
 	}
 }
@@ -180,12 +187,15 @@ void ARevenantOpsPlayerController::ShowGameOverScreen() {
     GameOverWidgetInstance =
         CreateWidget<UGameOverWidget>(this, GameOverWidgetClass);
     if (GameOverWidgetInstance) {
-      // Get match results
+      // Get match results and persist score
       if (AMercenairesGameState *GS =
               GetWorld()->GetGameState<AMercenairesGameState>()) {
-        GameOverWidgetInstance->ShowResults(GS->GetCurrentScore(),
-                                            GS->GetTotalKills(),
-                                            GS->GetBestCombo());
+        const int32 FinalScore = GS->GetCurrentScore();
+        const int32 TotalKills = GS->GetTotalKills();
+        const int32 BestCombo  = GS->GetBestCombo();
+
+        ULeaderboardWidget::SaveScoreStatic(this, FinalScore, TotalKills, BestCombo);
+        GameOverWidgetInstance->ShowResults(FinalScore, TotalKills, BestCombo);
       }
       GameOverWidgetInstance->AddToViewport(10);
       SetShowMouseCursor(true);
