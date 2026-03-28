@@ -40,6 +40,14 @@ void AEnemyWaveSpawner::StartEncounter() {
   CurrentWaveIndex = -1;
   TotalKilled = 0;
 
+  // Clear any leftover timers from previous encounter
+  for (FTimerHandle &Handle : SpawnTimers) {
+    GetWorld()->GetTimerManager().ClearTimer(Handle);
+  }
+  SpawnTimers.Empty();
+  GetWorld()->GetTimerManager().ClearTimer(NextWaveTimer);
+  AliveEnemies.Empty();
+
   StartNextWave();
 }
 

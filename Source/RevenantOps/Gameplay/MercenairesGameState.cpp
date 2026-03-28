@@ -4,11 +4,6 @@
 #include "Components/AudioComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "EnemyBase.h"
-#include "ZombieSlow.h"
-#include "ZombieRunner.h"
-#include "ZombieTank.h"
-#include "ZombieExploder.h"
-#include "ZombieSpitter.h"
 
 AMercenairesGameState::AMercenairesGameState() {
   PrimaryActorTick.bCanEverTick = true;
@@ -24,13 +19,15 @@ void AMercenairesGameState::Tick(float DeltaSeconds) {
 
   // Countdown timer
   TimeRemaining -= DeltaSeconds;
-  OnTimerChanged.Broadcast(TimeRemaining);
 
   if (TimeRemaining <= 0.f) {
     TimeRemaining = 0.f;
+    OnTimerChanged.Broadcast(TimeRemaining);
     EndMatch();
     return;
   }
+
+  OnTimerChanged.Broadcast(TimeRemaining);
 
   // Combo decay
   if (ComboMultiplier > 1) {
@@ -116,23 +113,7 @@ int32 AMercenairesGameState::GetPointsForEnemy(AEnemyBase *Enemy) const {
     return DefaultKillPoints;
   }
 
-  if (Enemy->IsA<AZombieSlow>()) {
-    return SlowZombiePoints;
-  }
-  if (Enemy->IsA<AZombieRunner>()) {
-    return RunnerZombiePoints;
-  }
-  if (Enemy->IsA<AZombieTank>()) {
-    return TankZombiePoints;
-  }
-  if (Enemy->IsA<AZombieExploder>()) {
-    return ExploderZombiePoints;
-  }
-  if (Enemy->IsA<AZombieSpitter>()) {
-    return SpitterZombiePoints;
-  }
-
-  return DefaultKillPoints;
+  return Enemy->GetKillPoints();
 }
 
 void AMercenairesGameState::ResetCombo() {

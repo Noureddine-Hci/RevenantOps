@@ -19,6 +19,7 @@ class AZombieSpitter : public AZombieBase {
 
 public:
   AZombieSpitter();
+  virtual int32 GetKillPoints() const override { return 150; }
 
 protected:
   // ========== RANGED ATTACK ==========

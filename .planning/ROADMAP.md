@@ -19,6 +19,7 @@ En partant d'une base TPS fonctionnelle (locomotion, tir pistolet, HUD basique, 
 - [ ] **Phase 7: Camera OTS** - Camera over-the-shoulder serree style RE4, zoom supplementaire en mode visee
 - [ ] **Phase 8: Audio & VFX** - Sons par arme, impacts, zombies, musique, effets visuels
 - [ ] **Phase 9: Integration** - Demo packagee et partageable, boucle complete validee sans bugs bloquants
+- [ ] **Phase 10: Editor Setup & Playtest** - Configuration editeur UE5 (arena, widgets, PlayerController, audio) + validation partie complete
 
 ## Phase Details
 
@@ -148,7 +149,7 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases executent dans l'ordre numerique : 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
+Phases executent dans l'ordre numerique : 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -161,6 +162,22 @@ Phases executent dans l'ordre numerique : 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -
 | 7. Camera OTS | 1/1 | Complete   | 2026-03-23 |
 | 8. Audio & VFX | 1/1 | Complete   | 2026-03-23 |
 | 9. Integration | 1/1 | Complete   | 2026-03-23 |
+| 10. Editor Setup & Playtest | 0/0 | Not Started | — |
+
+### Phase 10: Editor Setup & Playtest
+**Goal**: L'arene est jouable, les widgets sont fonctionnels, le PlayerController est configure, les assets audio sont en place, et une partie complete se deroule sans blocage
+**Depends on**: Phase 9
+**Requirements**: AREN-01 a AREN-05 (completion), UI-01 a UI-04 (completion), FX-01 a FX-05 (placeholders)
+**Success Criteria** (what must be TRUE):
+  1. Les zombies spawn depuis 4-6 points repartis dans l'arene et naviguent via NavMesh
+  2. Les 4 widgets (Title/Loadout/GameOver/Leaderboard) affichent leurs elements et repondent aux clics
+  3. Le PlayerController enchaine le flow title→loadout→match→gameover→leaderboard sans erreur
+  4. Des sons placeholder jouent au tir, au reload, et a la mort des zombies
+  5. Une partie complete de 5 minutes se deroule du debut a la fin sans crash ni softlock
+**Plans**: TBD
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 10 to break down)
 
 ---
 *Roadmap created: 2026-03-22 -- v1.0 Demo Partageable (Mercenaires mode)*

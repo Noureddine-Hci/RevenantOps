@@ -136,6 +136,9 @@ protected:
 	/** Removes all flow widgets from screen */
 	void ClearFlowWidgets();
 
+	/** Guard against double loadout confirmation */
+	bool bLoadoutConfirmed = false;
+
 public:
 
 	/** Returns the HUD widget instance */

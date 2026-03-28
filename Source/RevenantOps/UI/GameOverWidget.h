@@ -18,6 +18,7 @@ class UGameOverWidget : public UUserWidget {
   GENERATED_BODY()
 
 public:
+  virtual TSharedRef<SWidget> RebuildWidget() override;
   virtual void NativeConstruct() override;
 
   /** Populates the screen with match results */
@@ -56,4 +57,7 @@ protected:
   UFUNCTION(BlueprintImplementableEvent, Category = "UI|GameOver",
             meta = (DisplayName = "On Results Shown"))
   void BP_OnResultsShown(int32 Score, int32 Kills, int32 Combo);
+
+private:
+  void BuildDefaultUI();
 };

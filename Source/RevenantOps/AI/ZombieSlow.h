@@ -17,4 +17,5 @@ class AZombieSlow : public AZombieBase {
 
 public:
   AZombieSlow();
+  virtual int32 GetKillPoints() const override { return 50; }
 };

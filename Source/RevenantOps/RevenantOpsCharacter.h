@@ -227,7 +227,7 @@ protected:
 
   /** Socket name to attach weapons to the character mesh */
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
-  FName WeaponAttachSocket = FName("WeaponSocket");
+  FName WeaponAttachSocket = FName("hand_r");
 
   /** Currently equipped weapon */
   UPROPERTY(BlueprintReadOnly, Category = "Weapon")

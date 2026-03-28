@@ -19,6 +19,7 @@ class UTitleScreenWidget : public UUserWidget {
   GENERATED_BODY()
 
 public:
+  virtual TSharedRef<SWidget> RebuildWidget() override;
   virtual void NativeConstruct() override;
 
 protected:
@@ -38,4 +39,8 @@ protected:
   UFUNCTION(BlueprintImplementableEvent, Category = "UI",
             meta = (DisplayName = "On Play Pressed"))
   void BP_OnPlayPressed();
+
+private:
+  /** Auto-build a functional UI when designer layout is empty */
+  void BuildDefaultUI();
 };

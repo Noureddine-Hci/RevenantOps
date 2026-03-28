@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/SaveGame.h"
-#include "LeaderboardWidget.h"
+#include "ScoreEntry.h"
 #include "LeaderboardSaveGame.generated.h"
 
 /**

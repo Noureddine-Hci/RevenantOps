@@ -20,6 +20,7 @@ public class RevenantOps : ModuleRules
 			"GameplayStateTreeModule",
 			"UMG",
 			"Slate",
+			"SlateCore",
 			"Niagara"
 		});
 

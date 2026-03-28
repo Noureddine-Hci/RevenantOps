@@ -94,7 +94,7 @@ protected:
 
   /** Socket to attach weapon */
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Combat")
-  FName WeaponSocket = FName("WeaponSocket");
+  FName WeaponSocket = FName("hand_r");
 
   /** Ideal engagement distance (tries to stay around this range) */
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Combat",
@@ -194,6 +194,9 @@ protected:
   /** Has reacted to seeing the player */
   bool bHasReacted = false;
 
+  /** Guard against double-death (e.g. rapid damage in same frame) */
+  bool bIsDead = false;
+
   // ========== AUDIO ==========
 
   /** Sound played on death */
@@ -241,6 +244,10 @@ public:
   /** Returns the equipped weapon */
   UFUNCTION(BlueprintCallable, Category = "Enemy")
   AWeaponBase *GetEquippedWeapon() const { return EquippedWeapon; }
+
+  /** Returns kill points for this enemy type. Override in subclasses. */
+  UFUNCTION(BlueprintCallable, Category = "Enemy")
+  virtual int32 GetKillPoints() const { return 100; }
 
   /** Returns the target player (nullptr if none) */
   UFUNCTION(BlueprintCallable, Category = "Enemy")

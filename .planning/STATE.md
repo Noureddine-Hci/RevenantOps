@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: Demo Partageable Mercenaires
 status: in_progress
-stopped_at: Phase 4 Arena — geometrie spawned (22 pieces), manque spawn points + pickups + NavMesh + lighting. Widgets BP crees (WBP_TitleScreen/Loadout/GameOver/Leaderboard) mais PlayerController properties non mappees.
-last_updated: "2026-03-23T00:00:00Z"
+stopped_at: Phase 10 — C++ phases 1-9 complètes. 4 blocages critiques identifiés avant playtest (socket, WaveSpawner, Waves array, weapon meshes). Prêt pour fixes C++ + config MCP + playtest.
+last_updated: "2026-03-24T00:00:00Z"
 progress:
-  total_phases: 9
+  total_phases: 10
   completed_phases: 9
   total_plans: 13
   completed_plans: 13
@@ -89,30 +89,64 @@ Plan: Tous les plans C++ sont done. Reste : setup éditeur (Arena complétion, w
 | **NavMesh bounds** | **MANQUANT** |
 | **Éclairage/atmosphère** | **MANQUANT** |
 
-## Ce Qui RESTE à Faire (avant test final)
+## Ce Qui RESTE à Faire (4 blocages critiques)
 
-### Priorité 1 — Éditeur UE5 obligatoire
-- [ ] **Arène** : Placer EnemyWaveSpawner BP dans la level (spawn points zombies x4-6)
-- [ ] **Arène** : Placer BP_TimeBonusPickup et BP_AmmoBonusPickup dans la level
-- [ ] **Arène** : Volume NavMesh + Build Nav
-- [ ] **Arène** : Directional Light sombre + Point Lights ambiance
+### **PRIORITÉ 1 — Fixes C++ (5 min, BLOCKING)**
 
-- [ ] **Widgets** : Ouvrir WBP_TitleScreen → ajouter Text "REVENANTOPS", Bouton "JOUER", Bouton "QUITTER" → lier au C++ (BindWidget)
-- [ ] **Widgets** : WBP_Loadout → layout grille armes + stats + bouton Confirmer
-- [ ] **Widgets** : WBP_GameOver → afficher score/kills/combo + bouton Rejouer + bouton Leaderboard
-- [ ] **Widgets** : WBP_Leaderboard → liste top 10 + bouton Retour
+#### Blocage 1: Arme invisible
+- [ ] **Fichier**: `Source/RevenantOps/RevenantOpsCharacter.cpp` (constructeur)
+- [ ] **Changement**: L40 `FName("WeaponSocket")` → `FName("hand_r")`
+- [ ] **Raison**: `WeaponSocket` n'existe pas, `hand_r` = socket natif Mannequin UE5
 
-- [ ] **PlayerController** : Vérifier/exposer les UPROPERTY pour TitleScreenClass, LoadoutWidgetClass, GameOverWidgetClass, LeaderboardWidgetClass — les properties n'ont pas été trouvées via MCP (BlueprintGeneratedClass issue)
-- [ ] **PlayerController** : Assigner les widget classes dans le BP_ThirdPersonPlayerController details panel manuellement
+#### Blocage 2: Ennemis ne spawnent jamais
+- [ ] **Fichier**: `Source/RevenantOps/RevenantOpsPlayerController.cpp`
+- [ ] **Lieu**: dans `StartMercenairesMatch()`, après `GS->StartMatch();`
+- [ ] **Ajout**: Boucle WaveSpawner auto-start (voir CLAUDE.md Fix 2 pour code exact)
+- [ ] **Raison**: `StartEncounter()` n'est jamais appelé autrement
 
-### Priorité 2 — Audio/VFX placeholders
-- [ ] Assigner des SoundCue placeholders aux BP armes (FireSound property)
-- [ ] Assigner des NiagaraSystem placeholders aux BP armes (MuzzleFlashVFX)
+#### Blocage 3: Waves vides
+- [ ] **Acteur**: `MercenairesWaveSpawner` dans `Lvl_ThirdPerson`
+- [ ] **Propriété**: Array `Waves`
+- [ ] **Après recompil C++**: Via MCP `util_execute_python`, remplir 3 vagues (voir CLAUDE.md Fix 3)
+- [ ] **Structure**: chaque wave = FEnemyWaveEntry(EnemyClass, Count)
 
-### Priorité 3 — Test final
-- [ ] Lancer une partie complète (title → loadout → match 5min → gameover → leaderboard)
-- [ ] Vérifier timer, score, combo sur kills zombies
-- [ ] Vérifier switch armes, rechargement, melee
+#### Blocage 4: Meshes armes vides (OPTIONNEL)
+- [ ] **BPs**: `BP_Pistol`, `BP_AssaultRifle`, etc. dans `/Game/Mercenaires/Weapons/`
+- [ ] **Optionnel**: Assigner StaticMesh placeholder via MCP ou Details panel
+- [ ] **Note**: Les tirs fonctionnent sans mesh — c'est cosmétique
+
+---
+
+### **PRIORITÉ 2 — Après fixes C++ (avant playtest)**
+- [ ] Recompiler (VS 2022 ou Compile Within Editor)
+- [ ] MCP: Remplir Waves array
+- [ ] Ouvrir UE5 Editor, vérifier MercenairesWaveSpawner en place
+
+---
+
+### **PRIORITÉ 3 — Playtest complet (titre → loadout → match)**
+- [ ] Lancer PIE (Simulate ou Play)
+- [ ] Title Screen "REVENANTOPS" → cliquer JOUER
+- [ ] Loadout: sélectionner arme → CONFIRMER
+- [ ] **Vérifications** (tous doivent être ✅):
+  - [ ] Arme visible au spawn?
+  - [ ] Ennemis spawn wave 1?
+  - [ ] HUD affiche score/temps/combo?
+  - [ ] Coups de feu tuent ennemis?
+  - [ ] GameOver après 5min?
+  - [ ] Leaderboard save/affiche?
+
+---
+
+### Anciennes tâches validées ✅
+- [x] Arène géométrie (22 pièces) — en place
+- [x] Spawn points zombies (10 points) — en place
+- [x] Pickups placés — en place
+- [x] NavMesh — en place
+- [x] Éclairage — en place
+- [x] Widgets layout (Title/Loadout/GameOver/Leaderboard) — fonctionnels end-to-end
+- [x] PlayerController flow — testé et validé
+- [x] Widget classe assignation dans BP_ThirdPersonPlayerController — FAIT (vérifier Details panel)
 
 ## Accumulated Context
 
@@ -143,12 +177,24 @@ Plan: Tous les plans C++ sont done. Reste : setup éditeur (Arena complétion, w
 - [Phase 08-audio] Audio/VFX : UPROPERTY hooks dans WeaponBase (FireSound, MuzzleFlashVFX) et EnemyBase (DeathSound, HitSound)
 - [Phase 09-integration] PlayerController properties non exposées en BP — fix requis manuellement
 
-### Blockers Connus
+### Blockers Critiques (Session 2026-03-24)
 
-- **BlueprintGeneratedClass properties** : Les UPROPERTY de PlayerController (TitleScreenClass, etc.) ne sont pas trouvées via MCP. Probablement besoin de les assigner manuellement dans l'éditeur, ou vérifier que les UPROPERTY sont bien déclarées avec EditAnywhere.
-- **MCP TCP bloqué pendant PIE Play** — tests manuels nécessaires pour valider en jeu
-- **Widget layouts** : Les WBP_* sont créés mais vides — les layouts doivent être faits dans UMG Editor
-- **Audio assets** : Pas d'assets son dans le projet → utiliser StarterContent ou placer des Sound Wave placeholders
+| Blocker | Cause | Fix | Priorité |
+|---------|-------|-----|----------|
+| **Arme invisible** | Socket "WeaponSocket" n'existe pas | C++ → hand_r | CRITIQUE |
+| **Pas d'ennemis** | StartEncounter() jamais appelé | C++ auto-start dans StartMercenairesMatch() | CRITIQUE |
+| **Waves vides** | Array non configuré en éditeur | MCP config après recompil | CRITIQUE |
+| **Meshes armes** | BPs sans StaticMesh assigné | Optionnel: assigner placeholder | OPTIONNEL |
+
+### Blockers Techniques Connus
+- **MCP TCP bloqué pendant PIE Play** — config uniquement en Editor/Simulate mode
+- **BlueprintGeneratedClass properties** : Les UPROPERTY de PlayerController sont assignables en Details panel (✅ vérifié comme FAIT)
+- **Widget layouts** : Les WBP_* layouts sont fonctionnels end-to-end (Title→Loadout→Match flow validé)
+- **Audio assets** : Placeholders non assignés → optionnel pour démo basique
+
+### Roadmap Evolution
+
+- Phase 10 added: Editor Setup & Playtest — configuration éditeur UE5 (arena, widgets, PlayerController, audio) + validation partie complète
 
 ### Leçons Techniques Importantes
 
@@ -160,6 +206,13 @@ Plan: Tous les plans C++ sont done. Reste : setup éditeur (Arena complétion, w
 
 ## Session Continuity
 
-Last session: 2026-03-23
-Stopped at: Création des 4 Widget BPs (WBP_TitleScreen/Loadout/GameOver/Leaderboard) — PlayerController properties non mappées via MCP
-Resume: Compléter setup éditeur (Arena + Widgets layout + PlayerController manual assignment)
+**Last session**: 2026-03-23 — C++ Phases 1-9 complètes, 20 BPs créés, flow end-to-end validé
+**Current session**: 2026-03-24 — Identification des 4 blocages critiques restants
+**Next session**: 2026-03-25 — Appliquer 2 fixes C++ + recompiler + MCP config + playtest PIE complet
+
+### Resume Points for 2026-03-25
+1. Apply Fix 1 (hand_r socket) + Fix 2 (WaveSpawner auto-start) in C++
+2. Recompile (Visual Studio 2022 or Compile Within Editor)
+3. MCP: Configure Waves array (3 vagues, 11 ennemis total wave 1)
+4. PIE test: Title→Loadout→Match, verify weapon visible + enemies spawn + HUD shows
+5. If all OK: declare Phase 10 DONE, start Phase 11 (Polish/Export)

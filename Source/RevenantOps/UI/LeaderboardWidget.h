@@ -4,31 +4,12 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "ScoreEntry.h"
 #include "LeaderboardWidget.generated.h"
 
 class UButton;
 class UTextBlock;
 class UVerticalBox;
-
-/**
- *  Score entry for the local leaderboard.
- */
-USTRUCT(BlueprintType)
-struct FScoreEntry {
-  GENERATED_BODY()
-
-  UPROPERTY(EditAnywhere, BlueprintReadWrite)
-  int32 Score = 0;
-
-  UPROPERTY(EditAnywhere, BlueprintReadWrite)
-  int32 Kills = 0;
-
-  UPROPERTY(EditAnywhere, BlueprintReadWrite)
-  int32 BestCombo = 0;
-
-  UPROPERTY(EditAnywhere, BlueprintReadWrite)
-  FString Date;
-};
 
 /**
  *  Local leaderboard (top 10 scores).
@@ -39,6 +20,7 @@ class ULeaderboardWidget : public UUserWidget {
   GENERATED_BODY()
 
 public:
+  virtual TSharedRef<SWidget> RebuildWidget() override;
   virtual void NativeConstruct() override;
 
   /** Add a new score and refresh the display */
@@ -86,4 +68,12 @@ protected:
   UFUNCTION(BlueprintImplementableEvent, Category = "Leaderboard",
             meta = (DisplayName = "On Scores Updated"))
   void BP_OnScoresUpdated();
+
+private:
+  void BuildDefaultUI();
+  void RebuildScoreList();
+
+  /** VBox for dynamically listing scores (auto-built UI only) */
+  UPROPERTY()
+  UVerticalBox* ScoreListBox = nullptr;
 };

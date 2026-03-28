@@ -9,6 +9,7 @@
 class UButton;
 class UTextBlock;
 class UImage;
+class UVerticalBox;
 class AWeaponBase;
 
 /**
@@ -56,6 +57,7 @@ class ULoadoutWidget : public UUserWidget {
   GENERATED_BODY()
 
 public:
+  virtual TSharedRef<SWidget> RebuildWidget() override;
   virtual void NativeConstruct() override;
 
   // ========== CONFIGURATION ==========
@@ -117,4 +119,22 @@ protected:
   UFUNCTION(BlueprintImplementableEvent, Category = "Loadout",
             meta = (DisplayName = "On Loadout Confirmed"))
   void BP_OnLoadoutConfirmed();
+
+private:
+  void BuildDefaultUI();
+  void RefreshWeaponButtons();
+
+  UPROPERTY()
+  UVerticalBox* WeaponListBox = nullptr;
+
+  UPROPERTY()
+  UButton* ConfirmButton = nullptr;
+
+  UPROPERTY()
+  TArray<UButton*> WeaponButtons;
+
+  UPROPERTY()
+  UTextBlock* SelectionText = nullptr;
+
+  bool bDefaultUIBuilt = false;
 };

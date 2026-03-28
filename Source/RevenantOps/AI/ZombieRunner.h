@@ -17,4 +17,5 @@ class AZombieRunner : public AZombieBase {
 
 public:
   AZombieRunner();
+  virtual int32 GetKillPoints() const override { return 75; }
 };

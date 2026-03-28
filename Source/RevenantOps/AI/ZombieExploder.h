@@ -20,6 +20,7 @@ class AZombieExploder : public AZombieBase {
 
 public:
   AZombieExploder();
+  virtual int32 GetKillPoints() const override { return 125; }
 
 protected:
   // ========== EXPLOSION PROPERTIES ==========

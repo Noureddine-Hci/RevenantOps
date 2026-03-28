@@ -118,31 +118,11 @@ protected:
             meta = (ClampMin = 2, ClampMax = 50))
   int32 MaxComboMultiplier = 20;
 
-  // ========== SCORE CONFIG (points per zombie type) ==========
+  // ========== SCORE CONFIG ==========
 
-  /** Default points for unknown enemy types */
+  /** Default points for unknown enemy types (fallback) */
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mercenaires|Points")
   int32 DefaultKillPoints = 100;
-
-  /** Points for ZombieSlow */
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mercenaires|Points")
-  int32 SlowZombiePoints = 50;
-
-  /** Points for ZombieRunner */
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mercenaires|Points")
-  int32 RunnerZombiePoints = 75;
-
-  /** Points for ZombieTank */
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mercenaires|Points")
-  int32 TankZombiePoints = 200;
-
-  /** Points for ZombieSpitter */
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mercenaires|Points")
-  int32 SpitterZombiePoints = 150;
-
-  /** Points for ZombieExploder */
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mercenaires|Points")
-  int32 ExploderZombiePoints = 125;
 
   // ========== AUDIO ==========
 

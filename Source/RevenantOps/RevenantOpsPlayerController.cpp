@@ -17,6 +17,8 @@
 #include "UI/LeaderboardSaveGame.h"
 #include "Gameplay/MercenairesGameState.h"
 #include "WeaponBase.h"
+#include "AI/EnemyWaveSpawner.h"
+#include "Kismet/GameplayStatics.h"
 
 void ARevenantOpsPlayerController::BeginPlay()
 {
@@ -24,15 +26,12 @@ void ARevenantOpsPlayerController::BeginPlay()
 
 	if (IsLocalPlayerController())
 	{
-		// Create and display the HUD widget
+		// Pre-create the HUD widget but do NOT add to viewport yet.
+		// It will be shown by StartMercenairesMatch() once the match begins.
 		if (HUDWidgetClass)
 		{
 			HUDWidget = CreateWidget<URevenantOpsHUD>(this, HUDWidgetClass);
-			if (HUDWidget)
-			{
-				HUDWidget->AddToViewport(0);
-			}
-			else
+			if (!HUDWidget)
 			{
 				UE_LOG(LogRevenantOps, Error, TEXT("Could not create HUD widget."));
 			}
@@ -115,6 +114,26 @@ void ARevenantOpsPlayerController::ShowTitleScreen() {
 
 void ARevenantOpsPlayerController::ShowLoadoutScreen() {
   ClearFlowWidgets();
+  bLoadoutConfirmed = false;
+
+  // If no weapon classes configured in BP, load defaults from known content paths
+  if (AvailableWeaponClasses.IsEmpty())
+  {
+    static const TCHAR* DefaultPaths[] = {
+      TEXT("/Game/Mercenaires/Weapons/BP_Pistol.BP_Pistol_C"),
+      TEXT("/Game/Mercenaires/Weapons/BP_AssaultRifle.BP_AssaultRifle_C"),
+      TEXT("/Game/Mercenaires/Weapons/BP_SMG.BP_SMG_C"),
+      TEXT("/Game/Mercenaires/Weapons/BP_Shotgun.BP_Shotgun_C"),
+      TEXT("/Game/Mercenaires/Weapons/BP_Sniper.BP_Sniper_C"),
+    };
+    for (const TCHAR* Path : DefaultPaths)
+    {
+      if (UClass* WC = LoadClass<AWeaponBase>(nullptr, Path))
+      {
+        AvailableWeaponClasses.Add(WC);
+      }
+    }
+  }
 
   if (LoadoutWidgetClass) {
     LoadoutWidgetInstance =
@@ -132,6 +151,11 @@ void ARevenantOpsPlayerController::ShowLoadoutScreen() {
 
 void ARevenantOpsPlayerController::OnLoadoutConfirmed(
     TSubclassOf<AWeaponBase> Primary, TSubclassOf<AWeaponBase> Secondary) {
+  if (bLoadoutConfirmed) {
+    return;
+  }
+  bLoadoutConfirmed = true;
+
   // Apply loadout to character
   if (ARevenantOpsCharacter *MercChar =
           Cast<ARevenantOpsCharacter>(GetPawn())) {
@@ -163,9 +187,23 @@ void ARevenantOpsPlayerController::StartMercenairesMatch() {
   // Start the match
   if (AMercenairesGameState *GS =
           GetWorld()->GetGameState<AMercenairesGameState>()) {
+    // Unbind first to prevent double-bind on replay
+    GS->OnMatchStateChanged.RemoveDynamic(
+        this, &ARevenantOpsPlayerController::OnMatchEnded);
     GS->OnMatchStateChanged.AddDynamic(
         this, &ARevenantOpsPlayerController::OnMatchEnded);
     GS->StartMatch();
+  }
+
+  // Démarrer tous les WaveSpawners du level
+  TArray<AActor*> Spawners;
+  UGameplayStatics::GetAllActorsOfClass(GetWorld(), AEnemyWaveSpawner::StaticClass(), Spawners);
+  for (AActor* S : Spawners)
+  {
+    if (AEnemyWaveSpawner* WS = Cast<AEnemyWaveSpawner>(S))
+    {
+      WS->StartEncounter();
+    }
   }
 }
 

@@ -153,6 +153,11 @@ float AWeaponBase::GetFireInterval() const {
 // =============================================================================
 
 void AWeaponBase::FireShot() {
+  if (!OwnerPawn || OwnerPawn->IsPendingKillPending()) {
+    StopFire();
+    return;
+  }
+
   if (CurrentAmmo <= 0) {
     // Auto-reload
     if (CanReload()) {

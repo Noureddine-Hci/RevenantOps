@@ -17,4 +17,5 @@ class AZombieTank : public AZombieBase {
 
 public:
   AZombieTank();
+  virtual int32 GetKillPoints() const override { return 200; }
 };

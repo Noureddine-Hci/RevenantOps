@@ -448,6 +448,11 @@ void AEnemyBase::ReceiveSquadAlert(const FVector &PlayerLocation,
 void AEnemyBase::HandleDeath(UHealthComponent *HealthComponent,
                               const AController *InstigatedBy,
                               AActor *DamageCauser) {
+  if (bIsDead) {
+    return;
+  }
+  bIsDead = true;
+
   // Stop firing
   if (EquippedWeapon) {
     EquippedWeapon->StopFire();
