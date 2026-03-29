@@ -2,6 +2,8 @@
 
 #include "WeaponBase.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Components/StaticMeshComponent.h"
+#include "Engine/StaticMesh.h"
 #include "Engine/DamageEvents.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -17,11 +19,24 @@
 AWeaponBase::AWeaponBase() {
   PrimaryActorTick.bCanEverTick = true;
 
-  // Create weapon mesh
+  // Create weapon skeletal mesh (root)
   WeaponMesh =
       CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponMesh"));
   RootComponent = WeaponMesh;
   WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+  // Placeholder static mesh — visible jusqu'à ce qu'un vrai SKM soit assigné
+  WeaponMeshSM =
+      CreateDefaultSubobject<UStaticMeshComponent>(TEXT("WeaponMeshSM"));
+  WeaponMeshSM->SetupAttachment(RootComponent);
+  WeaponMeshSM->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+  WeaponMeshSM->SetRelativeScale3D(FVector(0.25f, 0.10f, 0.08f));
+  WeaponMeshSM->SetRelativeLocation(FVector(10.f, 0.f, -3.f));
+  static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeMesh(
+      TEXT("/Game/LevelPrototyping/Meshes/SM_ChamferCube.SM_ChamferCube"));
+  if (CubeMesh.Succeeded()) {
+    WeaponMeshSM->SetStaticMesh(CubeMesh.Object);
+  }
 }
 
 void AWeaponBase::BeginPlay() {

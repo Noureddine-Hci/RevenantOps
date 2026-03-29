@@ -7,6 +7,7 @@
 #include "WeaponBase.generated.h"
 
 class USkeletalMeshComponent;
+class UStaticMeshComponent;
 class UAnimMontage;
 class USoundBase;
 class UNiagaraSystem;
@@ -81,6 +82,10 @@ protected:
   /** Weapon skeletal mesh */
   UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
   USkeletalMeshComponent *WeaponMesh;
+
+  /** Placeholder static mesh — visible tant qu'aucun SKM n'est assigné */
+  UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+  UStaticMeshComponent *WeaponMeshSM;
 
   // ========== WEAPON IDENTITY ==========
 
