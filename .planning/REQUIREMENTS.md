@@ -77,10 +77,10 @@ Requirements pour la demo partageable du mode Mercenaires.
 
 ### DataTables (DATA)
 
-- [ ] **DATA-01**: Les stats des armes (damage, fireRate, ammo, range) sont editables via DataTable dans l'editeur UE5 sans recompiler
-- [ ] **DATA-02**: Le jeu applique les stats de la DataTable armes au lancement (BeginPlay) — modifier la DataTable change le comportement en jeu
-- [ ] **DATA-03**: Les stats des ennemis (HP, damage, movementSpeed) sont editables via DataTable pour chaque type de zombie
-- [ ] **DATA-04**: Le jeu applique les stats de la DataTable ennemis au spawn — modifier la DataTable change les ennemis sans recompiler
+- [x] **DATA-01**: Les stats des armes (damage, fireRate, ammo, range) sont editables via DataTable dans l'editeur UE5 sans recompiler
+- [x] **DATA-02**: Le jeu applique les stats de la DataTable armes au lancement (BeginPlay) — modifier la DataTable change le comportement en jeu
+- [x] **DATA-03**: Les stats des ennemis (HP, damage, movementSpeed) sont editables via DataTable pour chaque type de zombie
+- [x] **DATA-04**: Le jeu applique les stats de la DataTable ennemis au spawn — modifier la DataTable change les ennemis sans recompiler
 
 ### Audio & VFX (FX)
 
@@ -159,10 +159,10 @@ Requirements pour la demo partageable du mode Mercenaires.
 | FX-03 | Phase 8 | Pending |
 | FX-04 | Phase 8 | Pending |
 | FX-05 | Phase 8 | Pending |
-| DATA-01 | Phase 11 | Pending |
-| DATA-02 | Phase 11 | Pending |
-| DATA-03 | Phase 11 | Pending |
-| DATA-04 | Phase 11 | Pending |
+| DATA-01 | Phase 11 | Complete |
+| DATA-02 | Phase 11 | Complete |
+| DATA-03 | Phase 11 | Complete |
+| DATA-04 | Phase 11 | Complete |
 | ASSET-01 | Phase 12 | Pending |
 | ASSET-02 | Phase 12 | Pending |
 | FX-06 | Phase 13 | Pending |

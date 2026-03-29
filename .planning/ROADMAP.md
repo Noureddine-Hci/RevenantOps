@@ -189,7 +189,7 @@ A partir d'une demo v1.0 validee en PIE (boucle complete, 6 armes, 5 zombies, BL
 
 ## Phases
 
-- [ ] **Phase 11: DataTables** - Stats armes et ennemis editables dans l'editeur UE5 via FTableRowBase, appliquees au runtime sans recompiler
+- [x] **Phase 11: DataTables** - Stats armes et ennemis editables dans l'editeur UE5 via FTableRowBase, appliquees au runtime sans recompiler (completed 2026-03-29)
 - [ ] **Phase 12: Assets Armes** - Les 6 armes ont de vrais meshes 3D depuis Fab.com, correctement positionnes sur hand_r
 - [ ] **Phase 13: Audio & VFX Niagara** - Sons de tir et zombies depuis vrais assets audio, VFX muzzle flash / impact sang / explosion via Niagara
 
@@ -235,7 +235,7 @@ Phases executent dans l'ordre numerique : 11 -> 12 -> 13
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 11. DataTables | 0/? | Not started | — |
+| 11. DataTables | 1/1 | Complete   | 2026-03-29 |
 | 12. Assets Armes | 0/? | Not started | — |
 | 13. Audio & VFX Niagara | 0/? | Not started | — |
 

@@ -1,15 +1,14 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.0
-milestone_name: Finition Mode Mercenaires
-status: in_progress
-stopped_at: Phase 11 — DataTables (not started, ready to plan)
-last_updated: "2026-03-29T00:00:00Z"
+milestone: v1.0
+milestone_name: milestone
+status: unknown
+last_updated: "2026-03-29T11:11:45.410Z"
 progress:
-  total_phases: 3
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_phases: 10
+  completed_phases: 2
+  total_plans: 8
+  completed_plans: 14
 ---
 
 # Project State
@@ -19,21 +18,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-29)
 
 **Core value:** Le joueur peut lancer une partie, choisir son loadout, tuer des zombies en enchainant des combos sous pression du timer, et voir son score final.
-**Current focus:** Milestone v2.0 — Finition Mode Mercenaires
+**Current focus:** Phase 11 — datatables
 
 ## Current Position
 
-Phase: 11 — DataTables (not started)
-Plan: —
-Status: Roadmap v2.0 cree, pret a planifier Phase 11
-Last activity: 2026-03-29 — Roadmap v2.0 etabli (3 phases : 11 DataTables, 12 Assets Armes, 13 Audio/VFX Niagara)
-
-```
-v2.0 Progress: [          ] 0/3 phases
-Phase 11: [ ] DataTables
-Phase 12: [ ] Assets Armes
-Phase 13: [ ] Audio & VFX Niagara
-```
+Phase: 11 (datatables) — EXECUTING
+Plan: 1 of 1
 
 ## v1.0 — COMPLETE (2026-03-29)
 
@@ -109,6 +99,7 @@ Toutes les phases 1-10 terminees. PIE valide. Demo partageable operationnelle.
 ### Phase 11: DataTables (NEXT)
 
 Prerequis technique :
+
 - Creer `FWeaponTableRow : public FTableRowBase` en C++ avec champs : Damage, FireRate, MaxAmmo, Range
 - Creer `FEnemyTableRow : public FTableRowBase` avec champs : MaxHP, Damage, MovementSpeed
 - Modifier WeaponBase::BeginPlay() pour lire stats depuis DT_WeaponStats via FDataTableRowHandle
@@ -144,6 +135,8 @@ Prerequis technique :
 - [Phase 03-timer] Points : Slow=50, Runner=75, Tank=200, Spitter=150, Exploder=125
 - [Phase 07-camera] SpringArm OTS : TargetArmLength=120, SocketOffset=(0,50,60), lag active
 - [Phase 08-audio] Audio/VFX : UPROPERTY hooks dans WeaponBase et EnemyBase — valeurs nullptr en v1, assignees en v2.0 Phase 13
+- [Phase 11-datatables]: ApplyWeaponDataRow called BEFORE CurrentAmmo init so DT MaxAmmo takes effect at startup
+- [Phase 11-datatables]: ApplyEnemyDataRow called AFTER Super::BeginPlay so HealthComp events are bound before SetMaxHealth/ResetHealth
 
 ### Blockers Techniques Connus
 
