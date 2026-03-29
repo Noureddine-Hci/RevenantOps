@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Unreal Editor (RevenantOps)",
+      "runtimeExecutable": "C:/Program Files/Epic Games/UE_5.7/Engine/Binaries/Win64/UnrealEditor.exe",
+      "runtimeArgs": ["C:/Users/Noureddine/Documents/RevenantOps/RevenantOps.uproject"],
+      "port": 12029
+    },
+    {
+      "name": "MCP Python Server",
+      "runtimeExecutable": "C:/Users/Noureddine/Documents/RevenantOps/Plugins/unreal-mcp/mcp-server/.venv/Scripts/python.exe",
+      "runtimeArgs": ["C:/Users/Noureddine/Documents/RevenantOps/Plugins/unreal-mcp/mcp-server/src/unreal_mcp/main.py"],
+      "port": 0
+    }
+  ]
+}

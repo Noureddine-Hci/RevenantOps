@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "unreal-mcpython": {
+      "command": "C:/Users/Noureddine/.local/bin/uv.exe",
+      "args": [
+        "--directory",
+        "C:/Users/Noureddine/.gemini/antigravity/scratch/RevenantOps/Plugins/unreal-mcp/mcp-server",
+        "run",
+        "--python",
+        "3.12",
+        "src/unreal_mcp/main.py"
+      ]
+    }
+  }
+}

@@ -53,6 +53,37 @@ unreal.EditorLevelLibrary.set_level_viewport_camera_info(
 - Objet sur le sol : `center_z = -37.5 + scale_z * 50`
 - Objet sureleve de H : `center_z = -37.5 + H + scale_z * 50`
 
+## DataTable BP CDO — Workflow Python TCP (session 2026-03-29)
+```python
+# Pattern valide pour setter une propriete C++ heritee sur un BP CDO via TCP
+bp = unreal.load_asset(path)
+unreal.BlueprintEditorLibrary.compile_blueprint(bp)   # compile AVANT
+cdo = unreal.get_default_object(bp.generated_class())
+handle = unreal.DataTableRowHandle(data_table=dt, row_name='RowName')
+with unreal.ScopedEditorTransaction('Set prop') as t:
+    bp.modify()
+    cdo.modify()
+    cdo.set_editor_property('prop_name', handle)
+unreal.BlueprintEditorLibrary.compile_blueprint(bp)   # compile APRES
+unreal.EditorAssetLibrary.save_asset(path)
+# IMPORTANT: Clean+Build VS requis quand UE5 est ferme avant ouverture
+# Sans ScopedEditorTransaction + modify() : la valeur ne survit pas aux compilations
+```
+
+---
+
+## Etat Phase 11 — DataTables (COMPLETE 2026-03-29)
+- FWeaponTableRow + FEnemyTableRow structs C++ OK
+- WeaponBase::ApplyWeaponDataRow() + ZombieBase::ApplyEnemyDataRow() OK
+- DT_WeaponStats (6 lignes) + DT_EnemyStats (5 lignes) crees et peuples
+- 11 BPs configures (WeaponDataRow / EnemyDataRow pointe vers DTs)
+- PIE validee : Pistol = 12 balles (DT), Tank = 400 HP
+- Dernier commit : 17cb395
+
+## Etat Phase 12 — A FAIRE
+- ASSET-01 : Trouver et importer meshes armes depuis Fab.com
+- ASSET-02 : Assigner meshes dans BP_Pistol, BP_AssaultRifle, etc.
+
 ---
 
 ## Etat Phase 10 — Blueprint Setup & Playtest

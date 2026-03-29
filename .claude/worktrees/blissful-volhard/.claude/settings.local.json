@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:www.vibeue.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(uv --version)",
+      "Bash(pip install:*)",
+      "Bash(where uv:*)",
+      "Bash(python -c \"import shutil; print\\(shutil.which\\(''uv''\\)\\)\")",
+      "Bash(python -c \"import sysconfig; print\\(sysconfig.get_path\\(''scripts''\\)\\)\")",
+      "Bash(pip show:*)",
+      "Bash(ls \"C:/Users/Noureddine/AppData/Roaming/Python/Python314/Scripts/uv\"*)"
+    ]
+  }
+}
