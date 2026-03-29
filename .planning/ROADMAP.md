@@ -146,6 +146,21 @@ Plans:
 Plans:
 - [x] 09-01-PLAN.md — Game flow in PlayerController (title→loadout→match→gameover→leaderboard)
 
+### Phase 10: Editor Setup & Playtest
+**Goal**: L'arene est jouable, les widgets sont fonctionnels, le PlayerController est configure, les assets audio sont en place, et une partie complete se deroule sans blocage
+**Depends on**: Phase 9
+**Requirements**: AREN-01 a AREN-05 (completion), UI-01 a UI-04 (completion), FX-01 a FX-05 (placeholders)
+**Success Criteria** (what must be TRUE):
+  1. Les zombies spawn depuis 4-6 points repartis dans l'arene et naviguent via NavMesh
+  2. Les 4 widgets (Title/Loadout/GameOver/Leaderboard) affichent leurs elements et repondent aux clics
+  3. Le PlayerController enchaine le flow title→loadout→match→gameover→leaderboard sans erreur
+  4. Des sons placeholder jouent au tir, au reload, et a la mort des zombies
+  5. Une partie complete de 5 minutes se deroule du debut a la fin sans crash ni softlock
+**Plans**: Complete (2026-03-29)
+
+Plans:
+- [x] 10-01-PLAN.md — BLACKSITE level + WaveSpawner config + PIE validation
+
 ## Progress
 
 **Execution Order:**
@@ -162,23 +177,68 @@ Phases executent dans l'ordre numerique : 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -
 | 7. Camera OTS | 1/1 | Complete   | 2026-03-23 |
 | 8. Audio & VFX | 1/1 | Complete   | 2026-03-23 |
 | 9. Integration | 1/1 | Complete   | 2026-03-23 |
-| 10. Editor Setup & Playtest | 0/0 | Not Started | — |
+| 10. Editor Setup & Playtest | 1/1 | Complete | 2026-03-29 |
 
-### Phase 10: Editor Setup & Playtest
-**Goal**: L'arene est jouable, les widgets sont fonctionnels, le PlayerController est configure, les assets audio sont en place, et une partie complete se deroule sans blocage
-**Depends on**: Phase 9
-**Requirements**: AREN-01 a AREN-05 (completion), UI-01 a UI-04 (completion), FX-01 a FX-05 (placeholders)
+---
+
+# Roadmap: RevenantOps v2.0 Finition Mode Mercenaires
+
+## Overview
+
+A partir d'une demo v1.0 validee en PIE (boucle complete, 6 armes, 5 zombies, BLACKSITE), v2.0 finalise le mode Mercenaires avec de vrais assets visuels et sonores, et des systemes de donnees editables sans recompiler. Les trois phases livrent la fondation data-driven d'abord (DataTables), puis les assets visuels armes, puis le polish audio et VFX Niagara — dans l'ordre qui minimise les reprises.
+
+## Phases
+
+- [ ] **Phase 11: DataTables** - Stats armes et ennemis editables dans l'editeur UE5 via FTableRowBase, appliquees au runtime sans recompiler
+- [ ] **Phase 12: Assets Armes** - Les 6 armes ont de vrais meshes 3D depuis Fab.com, correctement positionnes sur hand_r
+- [ ] **Phase 13: Audio & VFX Niagara** - Sons de tir et zombies depuis vrais assets audio, VFX muzzle flash / impact sang / explosion via Niagara
+
+## Phase Details
+
+### Phase 11: DataTables
+**Goal**: Les stats des armes et des ennemis sont editables via DataTable dans l'editeur UE5 et s'appliquent au runtime sans recompiler
+**Depends on**: Phase 10 (v1.0 complete)
+**Requirements**: DATA-01, DATA-02, DATA-03, DATA-04
 **Success Criteria** (what must be TRUE):
-  1. Les zombies spawn depuis 4-6 points repartis dans l'arene et naviguent via NavMesh
-  2. Les 4 widgets (Title/Loadout/GameOver/Leaderboard) affichent leurs elements et repondent aux clics
-  3. Le PlayerController enchaine le flow title→loadout→match→gameover→leaderboard sans erreur
-  4. Des sons placeholder jouent au tir, au reload, et a la mort des zombies
-  5. Une partie complete de 5 minutes se deroule du debut a la fin sans crash ni softlock
+  1. Une DataTable DT_WeaponStats existe dans l'editeur avec une ligne par arme (pistolet, fusil, SMG, shotgun, sniper, melee) exposant damage, fireRate, ammo, range
+  2. Modifier une valeur dans DT_WeaponStats et lancer PIE change le comportement de l'arme en jeu (ex : augmenter damage du pistolet = kills plus rapides) sans recompiler
+  3. Une DataTable DT_EnemyStats existe avec une ligne par type de zombie (Slow, Runner, Tank, Spitter, Exploder) exposant HP, damage, movementSpeed
+  4. Modifier une valeur dans DT_EnemyStats et spawner l'ennemi correspondant en PIE reflète la nouvelle stat (ex : augmenter HP du Tank = plus de balles necessaires)
 **Plans**: TBD
 
-Plans:
-- [ ] TBD (run /gsd:plan-phase 10 to break down)
+### Phase 12: Assets Armes
+**Goal**: Les 6 armes affichent de vrais meshes 3D visibles dans la main du joueur, correctement orientes sur le socket hand_r
+**Depends on**: Phase 11
+**Requirements**: ASSET-01, ASSET-02
+**Success Criteria** (what must be TRUE):
+  1. Chacune des 6 armes (pistolet, fusil, SMG, shotgun, sniper, melee) affiche un vrai mesh 3D importe depuis Fab.com — plus de SM_ChamferCube ni de mesh vide
+  2. En PIE, chaque arme selectionnee au loadout apparait correctement positionnee dans la main droite du joueur (pas de rotation absurde, pas de flottement)
+  3. Le switch d'arme en jeu met a jour le mesh visible immediatement sans artefact
+**Plans**: TBD
+
+### Phase 13: Audio & VFX Niagara
+**Goal**: Le jeu produit des sons de tir distincts par arme, des sons zombies realistes, et des VFX Niagara visibles au tir, a l'impact et a l'explosion
+**Depends on**: Phase 12
+**Requirements**: FX-06, FX-07, FX-08, FX-09, FX-10
+**Success Criteria** (what must be TRUE):
+  1. Chaque arme produit un son de tir audiblement different (le shotgun sonne differemment du pistolet) depuis un vrai asset audio assigne dans le BP
+  2. Les zombies emettent des sons depuis vrais assets : un grognement idle distinct, un son d'attaque et un son de mort audibles en PIE
+  3. Un VFX Niagara de muzzle flash s'affiche au bout du canon a chaque tir (visible en PIE, disparait apres l'effet)
+  4. Un VFX Niagara d'impact sang s'affiche sur le zombie au point d'impact quand une balle le touche
+  5. Un VFX Niagara d'explosion s'affiche a la mort d'un ZombieExploder (remplacement ou complement de l'explosion de degats existante)
+**Plans**: TBD
+
+## Progress
+
+**Execution Order:**
+Phases executent dans l'ordre numerique : 11 -> 12 -> 13
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 11. DataTables | 0/? | Not started | — |
+| 12. Assets Armes | 0/? | Not started | — |
+| 13. Audio & VFX Niagara | 0/? | Not started | — |
 
 ---
 *Roadmap created: 2026-03-22 -- v1.0 Demo Partageable (Mercenaires mode)*
-*Last updated: 2026-03-23 -- All 9 phases C++ complete, build OK, needs editor setup + test*
+*Last updated: 2026-03-29 -- v1.0 complete (Phase 10 done), v2.0 phases 11-13 added*

@@ -1,34 +1,60 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: Demo Partageable Mercenaires
+milestone: v2.0
+milestone_name: Finition Mode Mercenaires
 status: in_progress
-stopped_at: Phase 10 — C++ phases 1-9 complètes. 4 blocages critiques identifiés avant playtest (socket, WaveSpawner, Waves array, weapon meshes). Prêt pour fixes C++ + config MCP + playtest.
-last_updated: "2026-03-24T00:00:00Z"
+stopped_at: Phase 11 — DataTables (not started, ready to plan)
+last_updated: "2026-03-29T00:00:00Z"
 progress:
-  total_phases: 10
-  completed_phases: 9
-  total_plans: 13
-  completed_plans: 13
+  total_phases: 3
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-22)
+See: .planning/PROJECT.md (updated 2026-03-29)
 
 **Core value:** Le joueur peut lancer une partie, choisir son loadout, tuer des zombies en enchainant des combos sous pression du timer, et voir son score final.
-**Current focus:** Phase 4 — complétion éditeur + validation complète en jeu
+**Current focus:** Milestone v2.0 — Finition Mode Mercenaires
 
 ## Current Position
 
-Phase: 09 (integration) — C++ COMPLETE, Blueprint setup en cours
-Plan: Tous les plans C++ sont done. Reste : setup éditeur (Arena complétion, widgets layout, PlayerController flow).
+Phase: 11 — DataTables (not started)
+Plan: —
+Status: Roadmap v2.0 cree, pret a planifier Phase 11
+Last activity: 2026-03-29 — Roadmap v2.0 etabli (3 phases : 11 DataTables, 12 Assets Armes, 13 Audio/VFX Niagara)
+
+```
+v2.0 Progress: [          ] 0/3 phases
+Phase 11: [ ] DataTables
+Phase 12: [ ] Assets Armes
+Phase 13: [ ] Audio & VFX Niagara
+```
+
+## v1.0 — COMPLETE (2026-03-29)
+
+Toutes les phases 1-10 terminees. PIE valide. Demo partageable operationnelle.
+
+| Phase | Statut | Date |
+|-------|--------|------|
+| 1. Zombies | Complete | 2026-03-22 |
+| 2. Arsenal | Complete | 2026-03-22 |
+| 3. Timer & Score | Complete | 2026-03-23 |
+| 4. Arene | Complete | 2026-03-23 |
+| 5. Loadout | Complete | 2026-03-23 |
+| 6. UI & Menus | Complete | 2026-03-23 |
+| 7. Camera OTS | Complete | 2026-03-23 |
+| 8. Audio & VFX | Complete | 2026-03-23 |
+| 9. Integration | Complete | 2026-03-23 |
+| 10. Editor Setup & Playtest | Complete | 2026-03-29 |
 
 ## Ce Qui Est FAIT (C++ + Blueprints)
 
-### C++ — 100% compilé et chargé
+### C++ — 100% compile et charge
 
 | Fichier | Phase | Statut |
 |---------|-------|--------|
@@ -48,171 +74,93 @@ Plan: Tous les plans C++ sont done. Reste : setup éditeur (Arena complétion, w
 | RevenantOpsCharacter.cpp | 7 | OK (SpringArm OTS RE4 style + ADS zoom) |
 | RevenantOpsPlayerController.h/.cpp | 9 | OK (flow title→loadout→match→gameover→leaderboard) |
 
-### Blueprints créés dans UE5
+### UPROPERTY Hooks existants (base pour v2.0)
+
+| Hook | Classe | Phase v2.0 |
+|------|--------|-----------|
+| FireSound (USoundBase*) | WeaponBase | Phase 13 |
+| MuzzleFlashVFX (UNiagaraSystem*) | WeaponBase | Phase 13 |
+| DeathSound (USoundBase*) | EnemyBase | Phase 13 |
+| HitSound (USoundBase*) | EnemyBase | Phase 13 |
+| WeaponMeshSM (UStaticMeshComponent*) | WeaponBase | Phase 12 |
+| Actuellement : SM_ChamferCube par defaut | 6 BPs armes | Remplace Phase 12 |
+
+### Blueprints crees dans UE5
 
 | Blueprint | Chemin | Statut |
 |-----------|--------|--------|
-| BP_ZombieSlow | /Game/Mercenaires/Zombies/ | Créé + configuré |
-| BP_ZombieRunner | /Game/Mercenaires/Zombies/ | Créé + configuré |
-| BP_ZombieTank | /Game/Mercenaires/Zombies/ | Créé + configuré |
-| BP_ZombieSpitter | /Game/Mercenaires/Zombies/ | Créé + configuré (ProjectileClass=BP_ZombieProjectile) |
-| BP_ZombieExploder | /Game/Mercenaires/Zombies/ | Créé + configuré |
-| BP_ZombieProjectile | /Game/Mercenaires/Zombies/ | Créé |
-| BP_Pistol | /Game/Mercenaires/Weapons/ | Créé |
-| BP_AssaultRifle | /Game/Mercenaires/Weapons/ | Créé |
-| BP_SMG | /Game/Mercenaires/Weapons/ | Créé |
-| BP_Shotgun | /Game/Mercenaires/Weapons/ | Créé |
-| BP_Sniper | /Game/Mercenaires/Weapons/ | Créé |
-| BP_Melee | /Game/Mercenaires/Weapons/ | Créé |
-| BP_MercenairesGameState | /Game/Mercenaires/ | Créé + assigné au GameMode |
-| BP_TimeBonusPickup_30s | /Game/Mercenaires/ | Créé (BonusSeconds=30) |
-| BP_TimeBonusPickup_15s | /Game/Mercenaires/ | Créé (BonusSeconds=15) |
-| BP_AmmoBonusPickup | /Game/Mercenaires/ | Créé |
-| WBP_TitleScreen | /Game/Mercenaires/UI/ | Créé (layout à faire dans éditeur) |
-| WBP_Loadout | /Game/Mercenaires/UI/ | Créé (layout à faire dans éditeur) |
-| WBP_GameOver | /Game/Mercenaires/UI/ | Créé (layout à faire dans éditeur) |
-| WBP_Leaderboard | /Game/Mercenaires/UI/ | Créé (layout à faire dans éditeur) |
+| BP_ZombieSlow/Runner/Tank/Spitter/Exploder | /Game/Mercenaires/Zombies/ | Configure |
+| BP_ZombieProjectile | /Game/Mercenaires/Zombies/ | Configure |
+| BP_Pistol/AssaultRifle/SMG/Shotgun/Sniper/Melee | /Game/Mercenaires/Weapons/ | Configure (SM_ChamferCube) |
+| BP_MercenairesGameState | /Game/Mercenaires/ | Configure |
+| BP_TimeBonusPickup_30s / _15s | /Game/Mercenaires/ | Configure |
+| BP_AmmoBonusPickup | /Game/Mercenaires/ | Configure |
+| WBP_TitleScreen/Loadout/GameOver/Leaderboard | /Game/Mercenaires/UI/ | Fonctionnels |
 
-### Arène (Phase 4) — Géométrie en place, setup éditeur en cours
+### Map BLACKSITE (Phase 10 — Complete)
 
-| Élément | Statut |
-|---------|--------|
-| Floor 5000x5000cm | Spawné |
-| 4 murs périmètre | Spawné |
-| Couloir gauche (2 murs + toit) | Spawné |
-| Plateforme élevée droite + rampe | Spawné |
-| 5 caisses de couverture centre | Spawné |
-| 4 piliers | Spawné |
-| Petite salle coin haut-droit | Spawné |
-| **Spawn points zombies** | **MANQUANT** |
-| **Pickups placés dans l'arène** | **MANQUANT** |
-| **NavMesh bounds** | **MANQUANT** |
-| **Éclairage/atmosphère** | **MANQUANT** |
+- 5 zones, 160 actors, NavMesh, 8 SpawnPoints (SP1-SP8)
+- WaveSpawner configure (3 vagues : 7/8/9 ennemis), PIE valide (14 ennemis observes)
+- 5 pickups places (TB1 30s, TB2 15s, TB3 15s, A1 Ammo, A2 Ammo)
+- 13 PointLights (rouge/bleu/orange par zone)
 
-## Ce Qui RESTE à Faire (4 blocages critiques)
+## v2.0 — Ce Qui RESTE a Faire
 
-### **PRIORITÉ 1 — Fixes C++ (5 min, BLOCKING)**
+### Phase 11: DataTables (NEXT)
 
-#### Blocage 1: Arme invisible
-- [ ] **Fichier**: `Source/RevenantOps/RevenantOpsCharacter.cpp` (constructeur)
-- [ ] **Changement**: L40 `FName("WeaponSocket")` → `FName("hand_r")`
-- [ ] **Raison**: `WeaponSocket` n'existe pas, `hand_r` = socket natif Mannequin UE5
+Prerequis technique :
+- Creer `FWeaponTableRow : public FTableRowBase` en C++ avec champs : Damage, FireRate, MaxAmmo, Range
+- Creer `FEnemyTableRow : public FTableRowBase` avec champs : MaxHP, Damage, MovementSpeed
+- Modifier WeaponBase::BeginPlay() pour lire stats depuis DT_WeaponStats via FDataTableRowHandle
+- Modifier EnemyBase::BeginPlay() pour lire stats depuis DT_EnemyStats
+- Creer DT_WeaponStats et DT_EnemyStats dans l'editeur UE5, remplir les lignes
 
-#### Blocage 2: Ennemis ne spawnent jamais
-- [ ] **Fichier**: `Source/RevenantOps/RevenantOpsPlayerController.cpp`
-- [ ] **Lieu**: dans `StartMercenairesMatch()`, après `GS->StartMatch();`
-- [ ] **Ajout**: Boucle WaveSpawner auto-start (voir CLAUDE.md Fix 2 pour code exact)
-- [ ] **Raison**: `StartEncounter()` n'est jamais appelé autrement
+### Phase 12: Assets Armes (apres Phase 11)
 
-#### Blocage 3: Waves vides
-- [ ] **Acteur**: `MercenairesWaveSpawner` dans `Lvl_ThirdPerson`
-- [ ] **Propriété**: Array `Waves`
-- [ ] **Après recompil C++**: Via MCP `util_execute_python`, remplir 3 vagues (voir CLAUDE.md Fix 3)
-- [ ] **Structure**: chaque wave = FEnemyWaveEntry(EnemyClass, Count)
+- Importer 6 meshes armes depuis Fab.com (SM_ pour chaque arme)
+- Assigner dans Details panel de chaque BP arme : WeaponMeshSM = nouveau mesh
+- Verifier positionnement/rotation sur socket hand_r en PIE
 
-#### Blocage 4: Meshes armes vides (OPTIONNEL)
-- [ ] **BPs**: `BP_Pistol`, `BP_AssaultRifle`, etc. dans `/Game/Mercenaires/Weapons/`
-- [ ] **Optionnel**: Assigner StaticMesh placeholder via MCP ou Details panel
-- [ ] **Note**: Les tirs fonctionnent sans mesh — c'est cosmétique
+### Phase 13: Audio & VFX Niagara (apres Phase 12)
 
----
-
-### **PRIORITÉ 2 — Après fixes C++ (avant playtest)**
-- [ ] Recompiler (VS 2022 ou Compile Within Editor)
-- [ ] MCP: Remplir Waves array
-- [ ] Ouvrir UE5 Editor, vérifier MercenairesWaveSpawner en place
-
----
-
-### **PRIORITÉ 3 — Playtest complet (titre → loadout → match)**
-- [ ] Lancer PIE (Simulate ou Play)
-- [ ] Title Screen "REVENANTOPS" → cliquer JOUER
-- [ ] Loadout: sélectionner arme → CONFIRMER
-- [ ] **Vérifications** (tous doivent être ✅):
-  - [ ] Arme visible au spawn?
-  - [ ] Ennemis spawn wave 1?
-  - [ ] HUD affiche score/temps/combo?
-  - [ ] Coups de feu tuent ennemis?
-  - [ ] GameOver après 5min?
-  - [ ] Leaderboard save/affiche?
-
----
-
-### Anciennes tâches validées ✅
-- [x] Arène géométrie (22 pièces) — en place
-- [x] Spawn points zombies (10 points) — en place
-- [x] Pickups placés — en place
-- [x] NavMesh — en place
-- [x] Éclairage — en place
-- [x] Widgets layout (Title/Loadout/GameOver/Leaderboard) — fonctionnels end-to-end
-- [x] PlayerController flow — testé et validé
-- [x] Widget classe assignation dans BP_ThirdPersonPlayerController — FAIT (vérifier Details panel)
+- Importer/creer assets audio : 6 sons de tir, 3 sons zombie (idle/attaque/mort)
+- Creer/importer 3 systemes Niagara : NS_MuzzleFlash, NS_BloodImpact, NS_ZombieExplosion
+- Assigner dans Details panel de chaque BP arme et BP zombie
 
 ## Accumulated Context
 
 ### Decisions
 
-- [Roadmap] Camera OTS deplacee en Phase 7 — la camera actuelle fonctionne, on peaufine plus tard
-- [Roadmap] Zombies en Phase 1 : le core gameplay (ennemis) est la priorite
-- [Roadmap] Zombies avant Arsenal : les armes doivent etre calibrees contre les types d'ennemis existants
-- [Roadmap] Timer & Score depend des Zombies (les kills doivent scorer) mais pas de l'Arsenal (independant)
-- [Roadmap] Arene en Phase 4 apres le systeme de score pour placer les pickups de bonus temps correctement
-- [Roadmap] Loadout en Phase 5 apres Arsenal : pas de selection possible sans armes implementees
-- [Roadmap] Phase 9 Integration sans nouveaux requirements — valide les 37 en conditions demo reelles
+- [Roadmap v1.0] Camera OTS deplacee en Phase 7 — la camera actuelle fonctionne, on peaufine plus tard
+- [Roadmap v1.0] Zombies en Phase 1 : le core gameplay (ennemis) est la priorite
+- [Roadmap v1.0] Phase 9 Integration sans nouveaux requirements — valide les 37 en conditions demo reelles
+- [Roadmap v2.0] DataTables en Phase 11 avant les assets — fondation data-driven d'abord, les BPs armes liront les stats de la DT quand les meshes sont assignes
+- [Roadmap v2.0] Assets armes en Phase 12 apres DataTables — evite de reconfigurer les BPs deux fois
+- [Roadmap v2.0] Audio/VFX en Phase 13 en dernier — polish final, aucune autre phase n'en depend
 - [Phase 01-zombies] SetMaxHealth public setter sur HealthComponent pour customisation en sous-classes C++
-- [Phase 01-zombies] ZombieBase uses separate UpdateZombieCombat instead of overriding non-virtual EnemyBase methods
-- [Phase 01-zombies] ZombieExploder self-destructs via ApplyDamage(9999) pour préserver delegate OnEnemyDied
-- [Phase 01-zombies] ProjectileClass UPROPERTY assigné en BP — pas de ConstructorHelpers pour éviter couplage asset path
-- [Phase 01-zombies] MaxAliveEnemies=15 pour support wave 10 ; wave config via BlueprintFunctionLibrary
+- [Phase 01-zombies] ZombieExploder self-destructs via ApplyDamage(9999) pour preserver delegate OnEnemyDied
 - [Phase 02-arsenal] Constructor-defaults-only pattern : stats dans constructor, comportement dans WeaponBase
 - [Phase 02-arsenal] Melee override FireShot avec sphere trace — pas de Super call, SweepSingleByChannel
-- [Phase 02-arsenal] Melee WeaponCategory corrigé : Pistol → Melee (enum Melee ajouté à EWeaponCategory)
-- [Phase 03-timer] MercenairesGameState : 5 min, points par type zombie, combo x1-x20, decay 5s sans kill
 - [Phase 03-timer] Points : Slow=50, Runner=75, Tank=200, Spitter=150, Exploder=125
-- [Phase 04-arena] Géométrie via MCP Python : 22 pièces /Engine/BasicShapes/Cube scalées
-- [Phase 05-loadout] LoadoutWidget : UWidget::Slot conflict → paramètre renommé SlotIndex
-- [Phase 06-ui] PlayerController flow : title→loadout→match→gameover→leaderboard
-- [Phase 07-camera] SpringArm OTS : TargetArmLength=120, SocketOffset=(0,50,60), lag activé
-- [Phase 07-camera] ADS zoom : ADSFOV depuis GetADSFOV() CDO, offset (0,40,55), ArmLength=80
-- [Phase 08-audio] Audio/VFX : UPROPERTY hooks dans WeaponBase (FireSound, MuzzleFlashVFX) et EnemyBase (DeathSound, HitSound)
-- [Phase 09-integration] PlayerController properties non exposées en BP — fix requis manuellement
-
-### Blockers Critiques (Session 2026-03-24)
-
-| Blocker | Cause | Fix | Priorité |
-|---------|-------|-----|----------|
-| **Arme invisible** | Socket "WeaponSocket" n'existe pas | C++ → hand_r | CRITIQUE |
-| **Pas d'ennemis** | StartEncounter() jamais appelé | C++ auto-start dans StartMercenairesMatch() | CRITIQUE |
-| **Waves vides** | Array non configuré en éditeur | MCP config après recompil | CRITIQUE |
-| **Meshes armes** | BPs sans StaticMesh assigné | Optionnel: assigner placeholder | OPTIONNEL |
+- [Phase 07-camera] SpringArm OTS : TargetArmLength=120, SocketOffset=(0,50,60), lag active
+- [Phase 08-audio] Audio/VFX : UPROPERTY hooks dans WeaponBase et EnemyBase — valeurs nullptr en v1, assignees en v2.0 Phase 13
 
 ### Blockers Techniques Connus
-- **MCP TCP bloqué pendant PIE Play** — config uniquement en Editor/Simulate mode
-- **BlueprintGeneratedClass properties** : Les UPROPERTY de PlayerController sont assignables en Details panel (✅ vérifié comme FAIT)
-- **Widget layouts** : Les WBP_* layouts sont fonctionnels end-to-end (Title→Loadout→Match flow validé)
-- **Audio assets** : Placeholders non assignés → optionnel pour démo basique
 
-### Roadmap Evolution
+- **MCP TCP bloque pendant PIE Play** — config uniquement en Editor/Simulate mode
+- **DataTables UE5** : necessitent FTableRowBase C++ struct + recompilation avant creation des DT assets dans l'editeur
+- **Niagara** : Plugin Niagara doit etre active dans le projet (verifier Plugins avant Phase 13)
 
-- Phase 10 added: Editor Setup & Playtest — configuration éditeur UE5 (arena, widgets, PlayerController, audio) + validation partie complète
+### Lecons Techniques Importantes
 
-### Leçons Techniques Importantes
-
-- LiveCoding ne peut PAS créer de nouvelles classes — full build via Build.bat obligatoire
-- Après full build, redémarrer UE5 pour que les BPs corrompus soient rechargés proprement
-- `hasattr(unreal, 'ClassName')` = méthode fiable pour vérifier qu'une classe C++ est chargée
-- BPs créés pendant LiveCoding se corrompent (références LIVECODING_Xxx_0) → supprimer et recréer après full build
-- OFPA (One File Per Actor) = les External Actors sont stockés séparément dans Content/__ExternalActors__/
+- LiveCoding ne peut PAS creer de nouvelles classes — full build via Build.bat obligatoire
+- Apres full build, redemarrer UE5 pour que les BPs corrompus soient recharges proprement
+- `hasattr(unreal, 'ClassName')` = methode fiable pour verifier qu'une classe C++ est chargee
+- BPs crees pendant LiveCoding se corrompent (references LIVECODING_Xxx_0) → supprimer et recreer apres full build
+- OFPA (One File Per Actor) = les External Actors sont stockes separement dans Content/__ExternalActors__/
 
 ## Session Continuity
 
-**Last session**: 2026-03-23 — C++ Phases 1-9 complètes, 20 BPs créés, flow end-to-end validé
-**Current session**: 2026-03-24 — Identification des 4 blocages critiques restants
-**Next session**: 2026-03-25 — Appliquer 2 fixes C++ + recompiler + MCP config + playtest PIE complet
-
-### Resume Points for 2026-03-25
-1. Apply Fix 1 (hand_r socket) + Fix 2 (WaveSpawner auto-start) in C++
-2. Recompile (Visual Studio 2022 or Compile Within Editor)
-3. MCP: Configure Waves array (3 vagues, 11 ennemis total wave 1)
-4. PIE test: Title→Loadout→Match, verify weapon visible + enemies spawn + HUD shows
-5. If all OK: declare Phase 10 DONE, start Phase 11 (Polish/Export)
+**Last session**: 2026-03-29 — v1.0 complete (Phase 10 done, PIE valide, weapon mesh OK)
+**Current session**: 2026-03-29 — Roadmap v2.0 etabli (phases 11-13)
+**Next session**: Planifier Phase 11 (DataTables) via `/gsd:plan-phase 11`

@@ -8,11 +8,21 @@ RevenantOps est un TPS arcade score-attack inspire du mode Mercenaires de Reside
 
 Le joueur peut lancer une partie, choisir son loadout, tuer des zombies en enchainant des combos sous pression du timer, et voir son score final.
 
-## Current Milestone: v1.0 Demo Partageable
+## Current Milestone: v2.0 Finition Mode Mercenaires
+
+**Goal:** Finaliser le Mode Mercenaires avec de vrais assets (armes, audio/VFX) et des systemes de donnees editables (DataTables armes et ennemis) — pour que le mode soit pleinement jouable et maintenable.
+
+**Target features:**
+- Vrais meshes armes depuis Fab.com (remplacer SM_ChamferCube sur les 6 armes)
+- DataTable armes : stats (damage, fireRate, ammo, range) editables sans recompiler
+- DataTable ennemis : HP, damage, speed par type de zombie
+- Sons reels + VFX : remplacer les placeholders audio par de vrais assets
+
+## Previous Milestone: v1.0 Demo Partageable (COMPLETE — 2026-03-29)
 
 **Goal:** Produire une demo jouable et partageable du mode Mercenaires — une boucle de gameplay complete qu'un joueur externe peut comprendre et apprecier.
 
-**Target:** 1 arene, 4-5 types de zombies, 4-5 armes + melee, timer fixe, systeme de score/combo, loadout selection, ecran titre.
+**Delivered:** 1 arene BLACKSITE, 5 types zombies, 6 armes + melee, timer/score/combo, loadout selection, ecran titre, HUD, GameOver, Leaderboard — PIE valide.
 
 ## Requirements
 
@@ -27,25 +37,34 @@ Le joueur peut lancer une partie, choisir son loadout, tuer des zombies en encha
 - Enhanced Input System configure (18 Input Actions, 5 IMC) — v0 existant
 - Blueprints TPS configures (Character, GameMode, PlayerController) — v0 existant
 
-### Active
+### Validated (v1.0 — 2026-03-29)
 
-- [ ] Camera over-the-shoulder serree (style RE4)
-- [ ] Systeme de timer (5 min, bonus de temps sur la map)
-- [ ] Systeme de score avec multiplicateur de combo
-- [ ] 4-5 types de zombies (lent, rapide, tank, cracheur, explosif)
-- [ ] 4-5 armes (pistolet, fusil, shotgun, sniper, SMG) + melee
-- [ ] Selection de loadout avant la partie
-- [ ] 1 arene de jeu complete (level design, spawners, pickups)
-- [ ] Ecran titre / menu principal
-- [ ] Ecran de fin de partie (score, stats, rejouer)
-- [ ] Leaderboard local (top scores)
-- [ ] Sons et effets visuels de base (tir, impact, zombie, ambiance)
-- [ ] Ecran de selection de loadout
+- [x] Camera over-the-shoulder serree (style RE4)
+- [x] Systeme de timer (5 min, bonus de temps sur la map)
+- [x] Systeme de score avec multiplicateur de combo
+- [x] 4-5 types de zombies (lent, rapide, tank, cracheur, explosif)
+- [x] 4-5 armes (pistolet, fusil, shotgun, sniper, SMG) + melee
+- [x] Selection de loadout avant la partie
+- [x] 1 arene de jeu complete (BLACKSITE — level design, spawners, pickups)
+- [x] Ecran titre / menu principal
+- [x] Ecran de fin de partie (score, stats, rejouer)
+- [x] Leaderboard local (top scores)
+- [x] Boucle complete title→loadout→match→gameover→leaderboard validee en PIE
+
+### Active (v2.0)
+
+- [ ] Vrais meshes armes depuis Fab.com (6 armes : pistolet, fusil, SMG, shotgun, sniper, melee)
+- [ ] DataTable armes : stats editables sans recompiler (damage, fireRate, ammo, range)
+- [ ] DataTable ennemis : HP, damage, speed editables par type
+- [ ] Sons reels au tir par arme (remplacer placeholders)
+- [ ] Sons reels zombies (grognement, attaque, mort)
+- [ ] VFX : muzzle flash, impact sang, explosion ZombieExploder
 
 ### Out of Scope
 
-- Mode PvP / Affrontement — milestone v2
-- Multijoueur online — milestone v2
+- Mode PvP / Affrontement — milestone v3+
+- Multijoueur online — milestone v3+
+- 2eme mode de jeu — deferred to v3.0 (Mode 1 doit etre fini en premier)
 - Arenes supplementaires — apres validation de la premiere
 - Variant Combat melee — reorientation du projet, plus pertinent
 - Variant Platforming — reorientation du projet
@@ -104,4 +123,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-22 after project redefinition (Mercenaires vision)*
+*Last updated: 2026-03-29 — v1.0 complete, v2.0 started (finition Mode Mercenaires)*

@@ -57,7 +57,7 @@ Requirements pour la demo partageable du mode Mercenaires.
 
 - [ ] **UI-01**: Ecran titre avec "Jouer" et "Quitter"
 - [ ] **UI-02**: HUD en jeu (vie, munitions, arme, timer, score, combo)
-- [ ] **UI-03**: Ecran de fin de partie (score final, kills, meilleur combo, rejouer)
+- [ ] **UI-03**: Ecran de fin de partie (score, stats, rejouer)
 - [ ] **UI-04**: Leaderboard local (top 10 scores)
 
 ### Audio & VFX
@@ -68,42 +68,54 @@ Requirements pour la demo partageable du mode Mercenaires.
 - [ ] **FX-04**: Musique d'ambiance tension/action
 - [ ] **FX-05**: VFX de base (muzzle flash, impact sang, explosion)
 
-## v2 Requirements
+## v2.0 Requirements — Finition Mode Mercenaires
 
-### PvP Mode
+### Assets Armes (ASSET)
+
+- [ ] **ASSET-01**: Les 6 armes (pistolet, fusil, SMG, shotgun, sniper, melee) ont un vrai mesh 3D visible quand equipees (assets importes depuis Fab.com)
+- [ ] **ASSET-02**: Les meshes armes sont correctement positionnes et orientes sur le socket hand_r du Mannequin UE5
+
+### DataTables (DATA)
+
+- [ ] **DATA-01**: Les stats des armes (damage, fireRate, ammo, range) sont editables via DataTable dans l'editeur UE5 sans recompiler
+- [ ] **DATA-02**: Le jeu applique les stats de la DataTable armes au lancement (BeginPlay) — modifier la DataTable change le comportement en jeu
+- [ ] **DATA-03**: Les stats des ennemis (HP, damage, movementSpeed) sont editables via DataTable pour chaque type de zombie
+- [ ] **DATA-04**: Le jeu applique les stats de la DataTable ennemis au spawn — modifier la DataTable change les ennemis sans recompiler
+
+### Audio & VFX (FX)
+
+- [ ] **FX-06**: Chaque arme produit un son de tir distinct depuis un vrai asset audio (remplace les placeholders nullptrs)
+- [ ] **FX-07**: Les zombies produisent des sons depuis vrais assets (grognement idle, son d'attaque, son de mort)
+- [ ] **FX-08**: Un VFX muzzle flash Niagara est visible au canon de l'arme a chaque tir
+- [ ] **FX-09**: Un VFX impact sang Niagara est visible la ou une balle touche un zombie
+- [ ] **FX-10**: Un VFX explosion Niagara est visible quand ZombieExploder meurt
+
+## v3+ Requirements (Deferred)
+
+### 2eme Mode de Jeu
+
+- **MODE2-01**: Un deuxieme mode de jeu distinct du mode Mercenaires (survie infinie, chrono inverse, ou defense de zone)
+- **MODE2-02**: Ecran de selection du mode de jeu depuis le menu principal
+
+### PvP / Multijoueur
 
 - **PVP-01**: Mode deathmatch humain vs humain
 - **PVP-02**: Matchmaking online
 - **PVP-03**: Arenes PvP dediees
 
-### Contenu
-
-- **CONT-01**: Arenes supplementaires (3+)
-- **CONT-02**: Types de zombies additionnels
-- **CONT-03**: Armes supplementaires
-- **CONT-04**: Personnages jouables avec stats differentes
-
-### Progression
-
-- **PROG-01**: Systeme de progression persistant (XP, niveaux)
-- **PROG-02**: Deblocage d'armes et equipements
-- **PROG-03**: Leaderboard online
-
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| Mode PvP | Milestone v2, valider le PvE d'abord |
-| Multijoueur online | Milestone v2, complexite reseau |
-| Coop | Milestone v2 |
-| Arenes multiples | Apres validation de la premiere |
-| Save/progression | v1 est arcade pur, pas de progression |
+| 2eme mode de jeu | Deferred v3.0 — Mode 1 doit etre fini en premier |
+| Mode PvP | Milestone v3+, valider le PvE d'abord |
+| Multijoueur online | Milestone v3+, complexite reseau |
+| Coop | Milestone v3+ |
+| Arenes supplementaires | Apres v2.0 |
+| Save/progression | Arcade pur, pas de progression |
 | Mobile | Desktop first |
 | Accroupissement | Pas pertinent pour arcade action |
 | Variant Combat melee | Reorientation du projet |
-| Variant Platforming | Reorientation du projet |
-| Variant SideScrolling | Reorientation du projet |
-| Assets custom (modeles 3D) | Mannequin placeholder pour v1 |
 | Cinematiques | Pas pertinent pour arcade |
 
 ## Traceability
@@ -147,12 +159,25 @@ Requirements pour la demo partageable du mode Mercenaires.
 | FX-03 | Phase 8 | Pending |
 | FX-04 | Phase 8 | Pending |
 | FX-05 | Phase 8 | Pending |
+| DATA-01 | Phase 11 | Pending |
+| DATA-02 | Phase 11 | Pending |
+| DATA-03 | Phase 11 | Pending |
+| DATA-04 | Phase 11 | Pending |
+| ASSET-01 | Phase 12 | Pending |
+| ASSET-02 | Phase 12 | Pending |
+| FX-06 | Phase 13 | Pending |
+| FX-07 | Phase 13 | Pending |
+| FX-08 | Phase 13 | Pending |
+| FX-09 | Phase 13 | Pending |
+| FX-10 | Phase 13 | Pending |
 
 **Coverage:**
 - v1 requirements: 37 total
 - Mapped to phases: 37
+- v2.0 requirements: 11 total
+- Mapped to phases: 11
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-22*
-*Last updated: 2026-03-22 — traceability complete, all 37 requirements mapped to phases 1-8*
+*Last updated: 2026-03-29 — v2.0 traceability added (DATA-01/04 → Phase 11, ASSET-01/02 → Phase 12, FX-06/10 → Phase 13)*
