@@ -1,6 +1,7 @@
 // Copyright RevenantOps. All Rights Reserved.
 
 #include "WeaponBase.h"
+#include "WeaponTableRow.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
@@ -42,10 +43,38 @@ AWeaponBase::AWeaponBase() {
 void AWeaponBase::BeginPlay() {
   Super::BeginPlay();
 
+  // Apply DataTable stats BEFORE ammo initialization (per D-09)
+  ApplyWeaponDataRow();
+
   CurrentAmmo = MagazineSize;
   CurrentReserveAmmo = MaxReserveAmmo;
   CurrentSpread = BaseSpread;
   CurrentState = EWeaponState::Idle;
+}
+
+void AWeaponBase::ApplyWeaponDataRow()
+{
+    if (WeaponDataRow.IsNull())
+    {
+        // No DT assigned — keep constructor defaults (per D-13)
+        return;
+    }
+
+    static const FString ContextString(TEXT("AWeaponBase::ApplyWeaponDataRow"));
+    const FWeaponTableRow* Row = WeaponDataRow.GetRow<FWeaponTableRow>(ContextString);
+
+    if (!Row)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("WeaponBase [%s]: DataTable row '%s' not found. Using constructor defaults."),
+            *GetName(), *WeaponDataRow.RowName.ToString());
+        return;
+    }
+
+    // Map DT fields to weapon properties (per D-11)
+    BaseDamage = Row->Damage;
+    FireRate = Row->FireRate;
+    MagazineSize = Row->MaxAmmo;
+    MaxRange = Row->Range;
 }
 
 void AWeaponBase::Tick(float DeltaTime) {

@@ -1,6 +1,7 @@
 // Copyright RevenantOps. All Rights Reserved.
 
 #include "ZombieBase.h"
+#include "EnemyTableRow.h"
 #include "AIController.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
@@ -27,6 +28,37 @@ AZombieBase::AZombieBase() {
 
 void AZombieBase::BeginPlay() {
   Super::BeginPlay();
+
+  // Apply DataTable stats after Super (which binds HealthComp events) per D-10
+  ApplyEnemyDataRow();
+}
+
+void AZombieBase::ApplyEnemyDataRow()
+{
+    if (EnemyDataRow.IsNull())
+    {
+        // No DT assigned — keep constructor defaults (per D-13)
+        return;
+    }
+
+    static const FString ContextString(TEXT("AZombieBase::ApplyEnemyDataRow"));
+    const FEnemyTableRow* Row = EnemyDataRow.GetRow<FEnemyTableRow>(ContextString);
+
+    if (!Row)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("ZombieBase [%s]: DataTable row '%s' not found. Using constructor defaults."),
+            *GetName(), *EnemyDataRow.RowName.ToString());
+        return;
+    }
+
+    // Map DT fields to zombie properties (per D-12)
+    if (HealthComp)
+    {
+        HealthComp->SetMaxHealth(Row->MaxHP);
+        HealthComp->ResetHealth();
+    }
+    MeleeDamage = Row->MeleeDamage;
+    GetCharacterMovement()->MaxWalkSpeed = Row->MovementSpeed;
 }
 
 void AZombieBase::Tick(float DeltaTime) {

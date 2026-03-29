@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Engine/DataTable.h"
 #include "WeaponBase.generated.h"
 
 class USkeletalMeshComponent;
@@ -96,6 +97,10 @@ protected:
   /** Category */
   UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Identity")
   EWeaponCategory WeaponCategory = EWeaponCategory::AssaultRifle;
+
+  /** DataTable row handle — set in BP Defaults to {DT_WeaponStats, "RowName"} */
+  UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Identity")
+  FDataTableRowHandle WeaponDataRow;
 
   // ========== FIRING ==========
 
@@ -430,6 +435,9 @@ public:
 
 protected:
   // ========== INTERNAL ==========
+
+  /** Reads balance stats from DataTable row. Called in BeginPlay before ammo init. */
+  void ApplyWeaponDataRow();
 
   /** Fires a single shot (hitscan trace + damage) — virtual for melee override */
   virtual void FireShot();

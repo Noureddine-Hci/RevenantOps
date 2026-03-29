@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "EnemyBase.h"
+#include "Engine/DataTable.h"
 #include "ZombieBase.generated.h"
 
 /**
@@ -21,6 +22,12 @@ public:
 protected:
   virtual void BeginPlay() override;
   virtual void Tick(float DeltaTime) override;
+
+  // ========== DATATABLE ==========
+
+  /** DataTable row handle — set in BP Defaults to {DT_EnemyStats, "RowName"} */
+  UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Zombie|Data")
+  FDataTableRowHandle EnemyDataRow;
 
   // ========== MELEE COMBAT ==========
 
@@ -53,6 +60,9 @@ protected:
 
   /** Performs a melee attack on the target player. Virtual so subclasses can override (e.g. exploder). */
   virtual void PerformMeleeAttack();
+
+  /** Reads balance stats from DataTable row. Called in BeginPlay after Super. */
+  void ApplyEnemyDataRow();
 
   /** Melee combat update: attack if in range, otherwise charge at player */
   void UpdateZombieCombat(float DeltaTime);
