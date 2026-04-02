@@ -244,6 +244,10 @@ protected:
   UPROPERTY(BlueprintReadOnly, Category = "Weapon")
   bool bIsAiming = false;
 
+  /** True when the character has at least one weapon equipped — used by ABP */
+  UPROPERTY(BlueprintReadOnly, Category = "Animation")
+  bool bIsArmed = false;
+
 public:
   ARevenantOpsCharacter();
 

@@ -45,8 +45,8 @@ ARevenantOpsCharacter::ARevenantOpsCharacter() {
   // Camera boom (over-the-shoulder RE4 style)
   CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
   CameraBoom->SetupAttachment(RootComponent);
-  CameraBoom->TargetArmLength = 120.0f;
-  CameraBoom->SocketOffset = FVector(0.f, 50.f, 60.f); // Right shoulder, slightly above
+  CameraBoom->TargetArmLength = 600.0f;
+  CameraBoom->SocketOffset = FVector(0.f, 80.f, 70.f); // Right shoulder, slightly above
   CameraBoom->bUsePawnControlRotation = true;
   CameraBoom->bEnableCameraLag = true;
   CameraBoom->CameraLagSpeed = 15.f;
@@ -493,10 +493,10 @@ void ARevenantOpsCharacter::UpdateCameraFOV(float DeltaTime) {
   }
 
   // Default OTS offsets
-  const FVector HipOffset(0.f, 50.f, 60.f);
-  const FVector ADSOffset(0.f, 40.f, 55.f); // Tighter for ADS
-  const float HipArmLength = 120.f;
-  const float ADSArmLength = 80.f;
+  const FVector HipOffset(0.f, 80.f, 70.f);
+  const FVector ADSOffset(0.f, 60.f, 65.f); // Tighter for ADS
+  const float HipArmLength = 350.f;
+  const float ADSArmLength = 250.f;
 
   float TargetFOV = DefaultFOV;
   FVector TargetOffset = HipOffset;
@@ -576,6 +576,7 @@ void ARevenantOpsCharacter::SpawnDefaultWeapons() {
 
   // Equip the first weapon
   if (WeaponInventory.Num() > 0) {
+    bIsArmed = true;
     EquipWeapon(0);
   }
 }
