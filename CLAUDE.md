@@ -135,5 +135,45 @@ Via MCP TCP port 12029 (unreal-mcpython) :
 5. Timer countdown -> GameOver -> Leaderboard save ?
 6. Replay depuis GameOver -> flow propre sans double-bind ?
 
-### OPTIONNEL
-- Meshes armes invisibles (BP_Pistol etc. sans StaticMesh) — cosmetique
+---
+
+## Etat Phase 12 — Weapon Meshes (COMPLETE 2026-04-02)
+- 6 meshes Kenney importes : blaster-a/c/e/g/m + grenade-a
+- Assignes aux BPs : Pistol=blaster-a, AssaultRifle=blaster-c, SMG=blaster-e, Shotgun=blaster-g, Sniper=blaster-m, Melee=grenade-a
+- Rotation socket : (Pitch=0, Yaw=90, Roll=90) pour modeles Y-forward Kenney sur hand_r
+- Camera : HipArmLength=350, ADSArmLength=250 (fix UpdateCameraFOV hardcode)
+- bDoCollisionTest=False sur SpringArm (evite zoom intempestif)
+- Dernier commit : 1d0cba2
+
+## Etat Phase 13 — Weapon Animation System (COMPLETE 2026-04-02)
+- AnimMontages crees depuis AnimSequences existants :
+  AM_Rifle_Fire/Reload/Equip + AM_Pistol_Fire/Reload/Equip (dans /Mercenaires/Anims/Montages/)
+- CharacterFireMontage/ReloadMontage/EquipMontage assignes sur les 6 weapon BPs
+- bIsArmed (BlueprintReadOnly) ajoute a ARevenantOpsCharacter — set dans SpawnDefaultWeapons()
+- ABP_Mercenaire cree (duplique ABP_Unarmed, meme skeleton)
+- BP_ThirdPersonCharacter AnimClass = ABP_Mercenaire
+- Transition Locomotion->Armed : can_enter_transition=True (le perso a toujours une arme)
+- MF_Rifle_Idle_ADS = asset override null-sequence dans Armed state
+- ATTENTION : bIsArmed C++ necess. Live Coding (Ctrl+Alt+F11) avant test PIE
+
+## ABP Mercenaire — API Python utile
+```python
+# Lire les graphes d'animation
+graphs = abp.get_animation_graphs()  # retourne AnimationGraph/StateGraph/TransitionGraph
+g = graphs[15]  # etat Armed
+nodes = g.get_graph_nodes_of_class(unreal.AnimGraphNode_SequenceEvaluator)
+
+# Configurer la regle de transition (TransitionResult)
+tr = g16.get_graph_nodes_of_class(unreal.AnimGraphNode_TransitionResult)[0]
+new_node = unreal.AnimNode_TransitionResult()
+new_node.can_enter_transition = True
+with unreal.ScopedEditorTransaction('...') as _:
+    tr.modify()
+    tr.set_editor_property('Node', new_node)
+
+# Override d'asset (null -> anim)
+abp.add_node_asset_override(None, anim_asset)
+```
+
+## PROCHAINE ETAPE
+Phase 14 : A definir (gameplay polish ? HUD arme ? BlendSpace directionnels armed ?)
