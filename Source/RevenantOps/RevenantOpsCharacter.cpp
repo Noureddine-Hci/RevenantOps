@@ -261,7 +261,8 @@ void ARevenantOpsCharacter::DoJumpEnd() { StopJumping(); }
 void ARevenantOpsCharacter::StartSprint() {
   bWantsToSprint = true;
 
-  if (bStaminaDepleted || bIsCrouched || bIsSliding || bIsAiming) {
+  const bool bWeaponReloading = CurrentWeapon && CurrentWeapon->GetCurrentState() == EWeaponState::Reloading;
+  if (bStaminaDepleted || bIsCrouched || bIsSliding || bIsAiming || bWeaponReloading) {
     return;
   }
 
@@ -465,7 +466,8 @@ void ARevenantOpsCharacter::UpdateStamina(float DeltaTime) {
     if (bStaminaDepleted && CurrentStamina >= StaminaRecoveryThreshold) {
       bStaminaDepleted = false;
 
-      if (bWantsToSprint && !bIsCrouched && !bIsSliding) {
+      const bool bWeaponReloading = CurrentWeapon && CurrentWeapon->GetCurrentState() == EWeaponState::Reloading;
+      if (bWantsToSprint && !bIsCrouched && !bIsSliding && !bWeaponReloading) {
         bIsSprinting = true;
         TargetSpeed = SprintSpeed;
       }
@@ -490,6 +492,11 @@ void ARevenantOpsCharacter::UpdateMovementSpeed(float DeltaTime) {
   float EffectiveTarget = TargetSpeed;
   if (bIsAiming && CurrentWeapon) {
     EffectiveTarget *= 0.6f;
+  }
+
+  // Reload : plafonner la vitesse a WalkSpeed sans casser les flags d'animation
+  if (CurrentWeapon && CurrentWeapon->GetCurrentState() == EWeaponState::Reloading) {
+    EffectiveTarget = FMath::Min(EffectiveTarget, WalkSpeed);
   }
 
   const float CurrentSpeed = GetCharacterMovement()->MaxWalkSpeed;

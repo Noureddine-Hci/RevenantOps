@@ -1,6 +1,8 @@
 // Copyright RevenantOps. All Rights Reserved.
 
 #include "RevenantOpsHUD.h"
+#include "Components/CanvasPanel.h"
+#include "Components/CanvasPanelSlot.h"
 #include "Components/Image.h"
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
@@ -11,8 +13,47 @@
 #include "WeaponBase.h"
 #include "EnemyWaveSpawner.h"
 
+// Helper : positionne un widget dans son slot Canvas Panel
+static void SetCanvasSlot(UWidget* Widget, FVector2D Position, FVector2D Size, FAnchors Anchors)
+{
+  if (!Widget) return;
+  if (UCanvasPanelSlot* Slot = Cast<UCanvasPanelSlot>(Widget->Slot))
+  {
+    Slot->SetAnchors(Anchors);
+    Slot->SetPosition(Position);
+    Slot->SetSize(Size);
+    Slot->SetAutoSize(false);
+  }
+}
+
 void URevenantOpsHUD::NativeConstruct() {
   Super::NativeConstruct();
+
+  // --- Positionnement HUD (layout) ---
+  // Top-left : HealthBar + StaminaBar
+  SetCanvasSlot(HealthBar,   FVector2D(20.f,  20.f), FVector2D(250.f, 18.f), FAnchors(0.f, 0.f));
+  SetCanvasSlot(StaminaBar,  FVector2D(20.f,  46.f), FVector2D(180.f, 12.f), FAnchors(0.f, 0.f));
+
+  // Top-center : Timer
+  SetCanvasSlot(TimerText,   FVector2D(-60.f, 20.f), FVector2D(120.f, 36.f), FAnchors(0.5f, 0.f));
+
+  // Top-right : Score + Wave
+  SetCanvasSlot(ScoreText,   FVector2D(-160.f, 20.f), FVector2D(150.f, 30.f), FAnchors(1.f, 0.f));
+  SetCanvasSlot(WaveText,    FVector2D(-160.f, 55.f), FVector2D(150.f, 24.f), FAnchors(1.f, 0.f));
+
+  // Bottom-right : Ammo
+  SetCanvasSlot(AmmoCurrentText, FVector2D(-170.f, -70.f), FVector2D(120.f, 40.f), FAnchors(1.f, 1.f));
+  SetCanvasSlot(AmmoReserveText, FVector2D(-80.f,  -40.f), FVector2D(70.f,  28.f), FAnchors(1.f, 1.f));
+  SetCanvasSlot(WeaponNameText,  FVector2D(-220.f, -105.f),FVector2D(200.f, 28.f), FAnchors(1.f, 1.f));
+
+  // Center : HitMarker (32x32 centré)
+  SetCanvasSlot(HitMarkerImage, FVector2D(-16.f, -16.f), FVector2D(32.f, 32.f), FAnchors(0.5f, 0.5f));
+
+  // Bottom-center : ReloadBar
+  SetCanvasSlot(ReloadBar, FVector2D(-150.f, -55.f), FVector2D(300.f, 14.f), FAnchors(0.5f, 1.f));
+
+  // Top-center (sous timer) : KillNotification
+  SetCanvasSlot(KillNotificationText, FVector2D(-120.f, 80.f), FVector2D(240.f, 30.f), FAnchors(0.5f, 0.f));
 
   // Cache character reference
   if (APawn *Pawn = GetOwningPlayerPawn()) {

@@ -249,8 +249,8 @@ void AWeaponBase::FireShot() {
     UGameplayStatics::PlaySoundAtLocation(this, FireSound, MuzzleLocation);
   }
 
-  // Spawn muzzle flash VFX
-  if (MuzzleFlashVFX) {
+  // Spawn muzzle flash VFX — seulement si le socket existe (sinon MuzzleLocation = camera = flash blanc)
+  if (MuzzleFlashVFX && WeaponMesh && WeaponMesh->DoesSocketExist(MuzzleSocketName)) {
     UNiagaraFunctionLibrary::SpawnSystemAtLocation(
         this, MuzzleFlashVFX, MuzzleLocation, MuzzleRotation);
   }
