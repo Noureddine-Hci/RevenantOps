@@ -118,8 +118,13 @@ void AWeaponBase::SetOwnerPawn(APawn *NewOwner) {
 void AWeaponBase::StartFire() {
   if (!CanFire()) {
     // Auto-reload when trying to fire with empty magazine
-    if (CurrentAmmo <= 0 && CanReload()) {
-      StartReload();
+    if (CurrentAmmo <= 0) {
+      if (EmptySound) {
+        UGameplayStatics::PlaySoundAtLocation(this, EmptySound, GetActorLocation());
+      }
+      if (CanReload()) {
+        StartReload();
+      }
     }
     return;
   }
