@@ -12,6 +12,7 @@ class UCameraComponent;
 class UInputAction;
 class UAnimMontage;
 class AWeaponBase;
+class UHealthComponent;
 struct FInputActionValue;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
@@ -248,6 +249,10 @@ protected:
   UPROPERTY(BlueprintReadOnly, Category = "Animation")
   bool bIsArmed = false;
 
+  /** Cached health component for damage feedback */
+  UPROPERTY()
+  UHealthComponent *HealthComp = nullptr;
+
 public:
   ARevenantOpsCharacter();
 
@@ -282,6 +287,11 @@ protected:
   void EndSlide();
   void StartDodge();
   void DodgeMontageEnded(UAnimMontage *Montage, bool bInterrupted);
+
+  /** Called when health changes — triggers camera shake and damage direction */
+  UFUNCTION()
+  void OnDamageReceived(UHealthComponent *Comp, float Health, float HealthDelta,
+                        const AController *InstigatedBy);
 
 public:
   // ========== WEAPON LOGIC ==========

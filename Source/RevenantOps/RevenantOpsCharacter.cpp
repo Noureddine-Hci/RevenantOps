@@ -15,6 +15,10 @@
 #include "RevenantOps.h"
 #include "TimerManager.h"
 #include "WeaponBase.h"
+#include "HealthComponent.h"
+#include "CameraShakes.h"
+#include "RevenantOpsPlayerController.h"
+#include "UI/RevenantOpsHUD.h"
 
 ARevenantOpsCharacter::ARevenantOpsCharacter() {
   PrimaryActorTick.bCanEverTick = true;
@@ -83,6 +87,13 @@ void ARevenantOpsCharacter::BeginPlay() {
   // Set initial FOV
   if (FollowCamera) {
     FollowCamera->SetFieldOfView(DefaultFOV);
+  }
+
+  // Cache health component and bind damage feedback
+  HealthComp = FindComponentByClass<UHealthComponent>();
+  if (HealthComp) {
+    HealthComp->OnHealthChanged.AddDynamic(
+        this, &ARevenantOpsCharacter::OnDamageReceived);
   }
 
   // Spawn weapons from loadout
@@ -693,4 +704,37 @@ void ARevenantOpsCharacter::SwitchWeaponPressed() {
 
   const int32 NextIndex = (CurrentWeaponIndex + 1) % WeaponInventory.Num();
   EquipWeapon(NextIndex);
+}
+
+// =============================================================================
+// DAMAGE FEEDBACK
+// =============================================================================
+
+void ARevenantOpsCharacter::OnDamageReceived(UHealthComponent *Comp,
+                                              float Health, float HealthDelta,
+                                              const AController *InstigatedBy) {
+  // Only react to actual damage (negative delta)
+  if (HealthDelta >= 0.f) {
+    return;
+  }
+
+  APlayerController *PC = Cast<APlayerController>(GetController());
+  if (!PC) {
+    return;
+  }
+
+  // Camera shake on taking damage
+  PC->ClientStartCameraShake(UCS_TakeDamage::StaticClass(), 1.0f);
+
+  // Damage direction indicator
+  if (InstigatedBy) {
+    if (APawn *DamagePawn = InstigatedBy->GetPawn()) {
+      if (ARevenantOpsPlayerController *ROPC =
+              Cast<ARevenantOpsPlayerController>(PC)) {
+        if (URevenantOpsHUD *HUD = ROPC->GetHUDWidget()) {
+          HUD->ShowDamageDirection(DamagePawn->GetActorLocation());
+        }
+      }
+    }
+  }
 }

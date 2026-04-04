@@ -13,6 +13,7 @@ class ARevenantOpsCharacter;
 class AWeaponBase;
 class UHealthComponent;
 class AMercenairesGameState;
+class AEnemyWaveSpawner;
 
 /**
  *  Main in-game HUD widget for RevenantOps.
@@ -85,6 +86,22 @@ protected:
   UPROPERTY(meta = (BindWidgetOptional))
   UProgressBar *ComboTimerBar;
 
+  /** Wave counter text (e.g., "Wave 2/3") */
+  UPROPERTY(meta = (BindWidgetOptional))
+  UTextBlock *WaveText;
+
+  /** Reload progress bar (visible only during reload) */
+  UPROPERTY(meta = (BindWidgetOptional))
+  UProgressBar *ReloadBar;
+
+  /** Damage direction indicator arrow (rotated toward damage source) */
+  UPROPERTY(meta = (BindWidgetOptional))
+  UImage *DamageDirectionImage;
+
+  /** Kill notification text ("+100 Zombie") */
+  UPROPERTY(meta = (BindWidgetOptional))
+  UTextBlock *KillNotificationText;
+
   // ========== CONFIGURATION ==========
 
   /** Health percentage below which the vignette appears */
@@ -112,6 +129,15 @@ protected:
   /** Timer for hit marker fade */
   float HitMarkerTimer = 0.f;
 
+  /** Damage direction state */
+  float DamageDirectionTimer = 0.f;
+  float DamageDirectionAngle = 0.f;
+  static constexpr float DamageDirectionDuration = 1.5f;
+
+  /** Kill notification state */
+  float KillNotificationTimer = 0.f;
+  static constexpr float KillNotificationDuration = 1.0f;
+
   /** Cached references */
   UPROPERTY()
   ARevenantOpsCharacter *CachedCharacter = nullptr;
@@ -121,6 +147,9 @@ protected:
 
   UPROPERTY()
   AMercenairesGameState *CachedGameState = nullptr;
+
+  UPROPERTY()
+  AEnemyWaveSpawner *CachedWaveSpawner = nullptr;
 
   // ========== UPDATE FUNCTIONS ==========
 
@@ -145,6 +174,18 @@ protected:
   /** Updates Mercenaires timer, score, and combo display */
   void UpdateMercenairesDisplay();
 
+  /** Updates wave counter display */
+  void UpdateWaveDisplay();
+
+  /** Updates reload progress bar */
+  void UpdateReloadBar();
+
+  /** Updates damage direction indicator fade */
+  void UpdateDamageDirection(float DeltaTime);
+
+  /** Updates kill notification fade */
+  void UpdateKillNotification(float DeltaTime);
+
 public:
   /** Shows the hit marker (call from weapon hit event) */
   UFUNCTION(BlueprintCallable, Category = "HUD")
@@ -153,4 +194,8 @@ public:
   /** Shows damage direction indicator */
   UFUNCTION(BlueprintCallable, Category = "HUD")
   void ShowDamageDirection(const FVector &DamageOrigin);
+
+  /** Shows kill notification popup */
+  UFUNCTION(BlueprintCallable, Category = "HUD")
+  void ShowKillNotification(const FString &EnemyName, int32 Points);
 };

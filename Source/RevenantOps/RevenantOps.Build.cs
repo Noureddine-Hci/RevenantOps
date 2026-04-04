@@ -21,7 +21,8 @@ public class RevenantOps : ModuleRules
 			"UMG",
 			"Slate",
 			"SlateCore",
-			"Niagara"
+			"Niagara",
+			"EngineCameras"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });

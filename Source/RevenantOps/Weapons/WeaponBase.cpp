@@ -16,6 +16,9 @@
 #include "NiagaraFunctionLibrary.h"
 #include "NiagaraSystem.h"
 #include "TimerManager.h"
+#include "RevenantOpsPlayerController.h"
+#include "UI/RevenantOpsHUD.h"
+#include "CameraShakes.h"
 
 AWeaponBase::AWeaponBase() {
   PrimaryActorTick.bCanEverTick = true;
@@ -146,6 +149,7 @@ void AWeaponBase::StartReload() {
 
   SetWeaponState(EWeaponState::Reloading);
   StopFire();
+  ReloadStartTime = GetWorld()->GetTimeSeconds();
 
   // Play reload montage on character
   if (ReloadMontage && OwnerPawn) {
@@ -297,6 +301,11 @@ void AWeaponBase::FireShot() {
   // Return to idle after the fire frame
   SetWeaponState(EWeaponState::Idle);
 
+  // Camera shake on fire
+  if (APlayerController *PC = Cast<APlayerController>(OwnerController)) {
+    PC->ClientStartCameraShake(UCS_WeaponFire::StaticClass(), 0.5f);
+  }
+
   // Auto-reload if magazine is now empty
   if (CurrentAmmo <= 0 && CanReload()) {
     StartReload();
@@ -351,6 +360,13 @@ void AWeaponBase::HitscanTrace(const FVector &TraceStart,
 
     // Notify Blueprint for impact effects
     BP_OnHit(HitResult, Damage);
+
+    // Show hit marker on HUD
+    if (ARevenantOpsPlayerController* ROPC = Cast<ARevenantOpsPlayerController>(OwnerController)) {
+      if (URevenantOpsHUD* HUD = ROPC->GetHUDWidget()) {
+        HUD->ShowHitMarker();
+      }
+    }
   }
 }
 
@@ -473,4 +489,16 @@ void AWeaponBase::SetWeaponState(EWeaponState NewState) {
     CurrentState = NewState;
     OnWeaponStateChanged.Broadcast(NewState);
   }
+}
+
+// =============================================================================
+// RELOAD PROGRESS
+// =============================================================================
+
+float AWeaponBase::GetReloadProgress() const {
+  if (CurrentState != EWeaponState::Reloading) {
+    return 0.f;
+  }
+  const float Elapsed = GetWorld()->GetTimeSeconds() - ReloadStartTime;
+  return FMath::Clamp(Elapsed / ReloadTime, 0.f, 1.f);
 }

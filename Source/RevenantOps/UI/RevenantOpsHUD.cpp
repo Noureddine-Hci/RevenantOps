@@ -9,6 +9,7 @@
 #include "MercenairesGameState.h"
 #include "RevenantOpsCharacter.h"
 #include "WeaponBase.h"
+#include "EnemyWaveSpawner.h"
 
 void URevenantOpsHUD::NativeConstruct() {
   Super::NativeConstruct();
@@ -31,6 +32,25 @@ void URevenantOpsHUD::NativeConstruct() {
 
   // Cache game state for timer/score
   CachedGameState = GetWorld()->GetGameState<AMercenairesGameState>();
+
+  // Cache wave spawner for wave counter
+  TArray<AActor *> Spawners;
+  UGameplayStatics::GetAllActorsOfClass(
+      GetWorld(), AEnemyWaveSpawner::StaticClass(), Spawners);
+  if (Spawners.Num() > 0) {
+    CachedWaveSpawner = Cast<AEnemyWaveSpawner>(Spawners[0]);
+  }
+
+  // Initialize new HUD elements as hidden
+  if (ReloadBar) {
+    ReloadBar->SetVisibility(ESlateVisibility::Collapsed);
+  }
+  if (DamageDirectionImage) {
+    DamageDirectionImage->SetVisibility(ESlateVisibility::Collapsed);
+  }
+  if (KillNotificationText) {
+    KillNotificationText->SetVisibility(ESlateVisibility::Collapsed);
+  }
 }
 
 void URevenantOpsHUD::NativeTick(const FGeometry &MyGeometry,
@@ -48,6 +68,10 @@ void URevenantOpsHUD::NativeTick(const FGeometry &MyGeometry,
   UpdateLowHealthVignette();
   UpdateHitMarker(InDeltaTime);
   UpdateMercenairesDisplay();
+  UpdateWaveDisplay();
+  UpdateReloadBar();
+  UpdateDamageDirection(InDeltaTime);
+  UpdateKillNotification(InDeltaTime);
 }
 
 // =============================================================================
@@ -207,24 +231,116 @@ void URevenantOpsHUD::ShowHitMarker() {
 }
 
 void URevenantOpsHUD::ShowDamageDirection(const FVector &DamageOrigin) {
-  // Damage direction indicator - rotation of an arrow image towards the damage source
-  // This is best handled in Blueprint with a directional widget
-  // The C++ just provides the angle
   if (!CachedCharacter) {
     return;
   }
 
   const FVector CharacterLocation = CachedCharacter->GetActorLocation();
-  const FVector DamageDirection = (DamageOrigin - CharacterLocation).GetSafeNormal2D();
-  const FVector CharacterForward = CachedCharacter->GetActorForwardVector().GetSafeNormal2D();
+  const FVector DamageDir =
+      (DamageOrigin - CharacterLocation).GetSafeNormal2D();
+  const FVector CharForward =
+      CachedCharacter->GetActorForwardVector().GetSafeNormal2D();
 
   // Calculate angle between forward and damage direction
-  const float DotProduct = FVector::DotProduct(CharacterForward, DamageDirection);
-  const float CrossProduct = FVector::CrossProduct(CharacterForward, DamageDirection).Z;
-  const float AngleRad = FMath::Atan2(CrossProduct, DotProduct);
-  const float AngleDeg = FMath::RadiansToDegrees(AngleRad);
+  const float Dot = FVector::DotProduct(CharForward, DamageDir);
+  const float Cross = FVector::CrossProduct(CharForward, DamageDir).Z;
+  const float AngleRad = FMath::Atan2(Cross, Dot);
 
-  // Subclasses can override this or use BP to display a directional indicator at AngleDeg
+  DamageDirectionAngle = FMath::RadiansToDegrees(AngleRad);
+  DamageDirectionTimer = DamageDirectionDuration;
+
+  if (DamageDirectionImage) {
+    DamageDirectionImage->SetRenderTransformAngle(DamageDirectionAngle);
+    DamageDirectionImage->SetOpacity(1.f);
+    DamageDirectionImage->SetVisibility(ESlateVisibility::HitTestInvisible);
+  }
+}
+
+// =============================================================================
+// WAVE DISPLAY
+// =============================================================================
+
+void URevenantOpsHUD::UpdateWaveDisplay() {
+  if (!WaveText || !CachedWaveSpawner) {
+    return;
+  }
+
+  const int32 Current = CachedWaveSpawner->GetCurrentWaveNumber();
+  const int32 Total = CachedWaveSpawner->GetTotalWaves();
+
+  if (Current > 0) {
+    WaveText->SetText(FText::FromString(
+        FString::Printf(TEXT("Wave %d/%d"), Current, Total)));
+    WaveText->SetVisibility(ESlateVisibility::HitTestInvisible);
+  } else {
+    WaveText->SetVisibility(ESlateVisibility::Collapsed);
+  }
+}
+
+// =============================================================================
+// RELOAD BAR
+// =============================================================================
+
+void URevenantOpsHUD::UpdateReloadBar() {
+  if (!ReloadBar || !CachedCharacter) {
+    return;
+  }
+
+  AWeaponBase *Weapon = CachedCharacter->GetCurrentWeapon();
+  if (Weapon && Weapon->GetCurrentState() == EWeaponState::Reloading) {
+    ReloadBar->SetPercent(Weapon->GetReloadProgress());
+    ReloadBar->SetVisibility(ESlateVisibility::HitTestInvisible);
+  } else {
+    ReloadBar->SetVisibility(ESlateVisibility::Collapsed);
+  }
+}
+
+// =============================================================================
+// DAMAGE DIRECTION
+// =============================================================================
+
+void URevenantOpsHUD::UpdateDamageDirection(float DeltaTime) {
+  if (!DamageDirectionImage) {
+    return;
+  }
+
+  if (DamageDirectionTimer > 0.f) {
+    DamageDirectionTimer -= DeltaTime;
+    const float Alpha =
+        FMath::Clamp(DamageDirectionTimer / DamageDirectionDuration, 0.f, 1.f);
+    DamageDirectionImage->SetOpacity(Alpha);
+  } else {
+    DamageDirectionImage->SetVisibility(ESlateVisibility::Collapsed);
+  }
+}
+
+// =============================================================================
+// KILL NOTIFICATION
+// =============================================================================
+
+void URevenantOpsHUD::UpdateKillNotification(float DeltaTime) {
+  if (!KillNotificationText) {
+    return;
+  }
+
+  if (KillNotificationTimer > 0.f) {
+    KillNotificationTimer -= DeltaTime;
+    const float Alpha = FMath::Clamp(KillNotificationTimer / KillNotificationDuration, 0.f, 1.f);
+    KillNotificationText->SetOpacity(Alpha);
+  } else if (KillNotificationText->GetVisibility() != ESlateVisibility::Collapsed) {
+    KillNotificationText->SetVisibility(ESlateVisibility::Collapsed);
+  }
+}
+
+void URevenantOpsHUD::ShowKillNotification(const FString &EnemyName,
+                                            int32 Points) {
+  if (KillNotificationText) {
+    KillNotificationText->SetText(FText::FromString(
+        FString::Printf(TEXT("+%d  %s"), Points, *EnemyName)));
+    KillNotificationTimer = KillNotificationDuration;
+    KillNotificationText->SetOpacity(1.f);
+    KillNotificationText->SetVisibility(ESlateVisibility::HitTestInvisible);
+  }
 }
 
 // =============================================================================

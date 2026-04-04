@@ -55,6 +55,17 @@ void AEnemyBase::BeginPlay() {
 
   // Set initial state
   AlertState = EEnemyAlertState::Idle;
+
+  // Create dynamic material instances for hit flash
+  if (GetMesh()) {
+    for (int32 i = 0; i < GetMesh()->GetNumMaterials(); ++i) {
+      UMaterialInstanceDynamic *MID =
+          GetMesh()->CreateAndSetMaterialInstanceDynamic(i);
+      if (MID) {
+        HitFlashMaterials.Add(MID);
+      }
+    }
+  }
 }
 
 void AEnemyBase::Tick(float DeltaTime) {
@@ -66,6 +77,18 @@ void AEnemyBase::Tick(float DeltaTime) {
 
   UpdatePerception(DeltaTime);
   UpdateCombat(DeltaTime);
+
+  // Hit flash decay
+  if (HitFlashTimer > 0.f) {
+    HitFlashTimer -= DeltaTime;
+    const float Alpha =
+        FMath::Clamp(HitFlashTimer / HitFlashDuration, 0.f, 1.f);
+    for (UMaterialInstanceDynamic *MID : HitFlashMaterials) {
+      if (MID) {
+        MID->SetScalarParameterValue(FName("HitFlash"), Alpha);
+      }
+    }
+  }
 
   // Ambient grunt sounds
   if (AmbientSound && AlertState == EEnemyAlertState::Alert) {
@@ -510,6 +533,9 @@ void AEnemyBase::HandleDamage(UHealthComponent *HealthComponent, float Health,
       BP_OnAlertStateChanged(AlertState);
     }
   }
+
+  // Trigger hit flash
+  HitFlashTimer = HitFlashDuration;
 
   // Play hit sound
   if (HitSound) {

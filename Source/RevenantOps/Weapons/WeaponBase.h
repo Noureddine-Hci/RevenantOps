@@ -332,6 +332,9 @@ protected:
   /** Reload timer */
   FTimerHandle ReloadTimerHandle;
 
+  /** Time when current reload started (for progress calculation) */
+  float ReloadStartTime = 0.f;
+
   /** Cached reference to the owning character's controller */
   UPROPERTY()
   AController *OwnerController = nullptr;
@@ -421,6 +424,14 @@ public:
   /** Gets reload time in seconds */
   UFUNCTION(BlueprintCallable, Category = "Weapon")
   float GetReloadTime() const { return ReloadTime; }
+
+  /** Returns the current weapon state */
+  UFUNCTION(BlueprintCallable, Category = "Weapon")
+  EWeaponState GetCurrentState() const { return CurrentState; }
+
+  /** Returns reload progress (0..1). Valid only when state == Reloading. */
+  UFUNCTION(BlueprintCallable, Category = "Weapon")
+  float GetReloadProgress() const;
 
   /** Gets ADS field of view */
   UFUNCTION(BlueprintCallable, Category = "Weapon")

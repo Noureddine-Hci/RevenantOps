@@ -24,6 +24,25 @@
 - Configurer tout en mode Editor avant de demander de tester en PIE
 - Demander a l'utilisateur d'ouvrir les niveaux manuellement
 
+## Workflow Autonome C++
+Boucle obligatoire pour toute modification C++ :
+1. Ecrire/modifier le code .h/.cpp
+2. Compiler (VS Build ou Live Coding Ctrl+Alt+F11)
+3. Si erreur : lire le message, corriger UNIQUEMENT le probleme, recompiler
+4. Tester en PIE ou via tests unitaires
+5. Si echec : analyser le log, corriger la logique, retester
+6. Valider : zero erreur, zero warning critique, conventions UE5 respectees
+
+Ne pas finaliser une tache sans preuve que ca compile et fonctionne.
+
+## Checklist Validation (avant de declarer une tache complete)
+- Code compile sans erreur (MSVC / VS 2026)
+- Tests passent ou PIE validee
+- Pas de warnings critiques
+- Conventions UE5 (CamelCase, prefixes U/A/F/S/E)
+- Pas de duplication inutile
+- Pas de memory leaks (UPROPERTY pour GC, pas de raw new sans raison)
+
 ## Fichiers d'etat — REGLE OBLIGATOIRE
 - `primer.md` : etat courant du projet — **mettre a jour en DEBUT et FIN de chaque session**
 - `CLAUDE.md` : regles + etat technique — **mettre a jour en DEBUT et FIN de chaque session**
@@ -33,6 +52,7 @@
 - Format : `type(scope): description`
 - Types : feat, fix, docs, refactor, chore
 - Scope = numero de phase ou nom du module
+- Regrouper les changements par feature logique (pas un commit par fichier)
 
 ## Screenshot Editor (workflow fiable)
 ```python
@@ -175,5 +195,51 @@ with unreal.ScopedEditorTransaction('...') as _:
 abp.add_node_asset_override(None, anim_asset)
 ```
 
+## Etat Phase 14 — Demo Polish / Combat Feel (EN COURS 2026-04-04)
+
+### C++ FAIT (compile VS, PAS commit)
+- `CameraShakes.h/.cpp` : UCS_WeaponFire (0.15s subtil) + UCS_TakeDamage (0.25s fort)
+- `Build.cs` : module `EngineCameras` ajoute (requis pour UDefaultCameraShakeBase)
+- `WeaponBase` : hit marker (ShowHitMarker via PC->HUD), camera shake au tir, ReloadStartTime, GetReloadProgress()
+- `RevenantOpsHUD` : WaveText, ReloadBar, DamageDirectionImage, KillNotificationText (BindWidgetOptional), UpdateWaveDisplay/UpdateReloadBar/UpdateDamageDirection/ShowKillNotification
+- `EnemyBase` : HitFlashMaterials (MID), HitFlashTimer, flash blanc 0.15s sur hit
+- `RevenantOpsCharacter` : cache HealthComp, bind OnDamageReceived → shake TakeDamage + ShowDamageDirection
+
+### ASSETS MCP FAITS
+- 3 Niagara : NS_MuzzleFlash, NS_Impact_Surface, NS_Impact_Blood (dans /Mercenaires/VFX/)
+- VFX assignes aux 6 weapon BPs (CDO via ScopedEditorTransaction)
+- WBP_Mercenaires_HUD cree (parent URevenantOpsHUD) + assigne sur BP_ThirdPersonPlayerController
+
+### RESTE A FAIRE (prochaine session)
+1. **MANUEL UE5** : ouvrir WBP_Mercenaires_HUD, ajouter les widgets avec noms EXACTS :
+   HealthBar, StaminaBar, TimerText, ScoreText, WaveText, ReloadBar,
+   HitMarkerImage, KillNotificationText, AmmoCurrentText, AmmoReserveText, WeaponNameText
+2. Commit : `feat(14): combat feel — camera shake + hit flash + VFX + HUD counters`
+3. Sons Kenney CC0 : importer + assigner FireSound/ReloadSound/EmptySound/HitSound/DeathSound
+4. Materiau ennemi : ajouter param scalaire "HitFlash" (emissive blanc) pour l'effet flash
+
+## Camera Shake UE5.7 — PATTERN VALIDE
+```cpp
+// JAMAIS ChangeRootShakePattern<T>() dans le constructeur (NewObject illegal)
+// CORRECT : recuperer le pattern par defaut et le configurer
+UCS_WeaponFire::UCS_WeaponFire(const FObjectInitializer &ObjInit) : Super(ObjInit) {
+    if (UPerlinNoiseCameraShakePattern *P =
+            Cast<UPerlinNoiseCameraShakePattern>(GetRootShakePattern())) {
+        P->Duration = 0.15f;
+        P->Pitch.Amplitude = 0.4f;
+        P->Pitch.Frequency = 25.f;
+    }
+}
+// Module Build.cs : "EngineCameras" (pas GameplayCameras)
+// Include : "Shakes/DefaultCameraShakeBase.h" + "Shakes/PerlinNoiseCameraShakePattern.h"
+// Parent class : UDefaultCameraShakeBase
+```
+
+## Widget Blueprint Python — LIMITATION CONNUE
+- `widget_blueprint.widget_tree` → AttributeError (pas expose Python)
+- `get_editor_property('WidgetTree')` → "property is protected"
+- **Impossible de creer/modifier des widgets UMG via Python MCP**
+- Solution : creer le WBP avec le bon parent class via Python, mais ajouter les widgets manuellement dans UE5
+
 ## PROCHAINE ETAPE
-Phase 14 : A definir (gameplay polish ? HUD arme ? BlendSpace directionnels armed ?)
+Phase 14 completion : widgets UMG manuels + sons + commit
