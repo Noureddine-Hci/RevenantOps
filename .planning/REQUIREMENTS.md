@@ -90,7 +90,38 @@ Requirements pour la demo partageable du mode Mercenaires.
 - [ ] **FX-09**: Un VFX impact sang Niagara est visible la ou une balle touche un zombie
 - [ ] **FX-10**: Un VFX explosion Niagara est visible quand ZombieExploder meurt
 
-## v3+ Requirements (Deferred)
+## v3.0 Requirements — Polish Visuel & Feel
+
+### Arene & Map (MAP)
+
+- [ ] **MAP-01** : L'arene dispose d'au moins 3 zones jouables distinctes avec des caracteristiques differentes (ouverte, couloirs, hauteur)
+- [ ] **MAP-02** : L'eclairage de l'arene cree une atmosphere de tension (zones sombres, lumieres dynamiques, couleurs d'ambiance)
+- [ ] **MAP-03** : Les SpawnPoints ennemis sont repartis intelligemment autour des zones de jeu (zombies emergent de plusieurs directions)
+
+### Animations Armes (ANIM)
+
+- [ ] **ANIM-01** : Chaque type d'arme a une pose de tenue distincte visible en third-person (pistolet tenu different d'un shotgun ou rifle)
+- [ ] **ANIM-02** : Quand le chargeur est vide, une animation "bolt-open/slide-lock" se joue et l'arme reste bloquee jusqu'au rechargement
+- [ ] **ANIM-03** : L'animation de rechargement est visible sur le personnage en third-person (geste de changement de chargeur)
+- [ ] **ANIM-04** : Les transitions entre animations (idle → marche → tir → reload) sont fluides sans saut de pose
+
+### Posture Personnage (POST)
+
+- [ ] **POST-01** : La posture du personnage en combat est naturelle — les mains tiennent vraiment l'arme (IK mains sur l'arme)
+- [ ] **POST-02** : La transition entre "desarme" et "arme" est fluide et visible (pas de pop instantane)
+
+### HUD (HUD)
+
+- [ ] **HUD-01** : La barre de vie affiche des changements visuels progressifs (couleur qui change selon les niveaux de vie)
+- [ ] **HUD-02** : Les munitions (chargeur/reserve) sont affichees clairement avec distinction visuelle entre current/reserve
+- [ ] **HUD-03** : Le multiplicateur de combo est mis en evidence quand il monte (animation ou effet visuel)
+
+### Menu Principal (MENU)
+
+- [ ] **MENU-01** : Le menu principal affiche un background atmospherique (image ou video en boucle) en accord avec l'univers du jeu
+- [ ] **MENU-02** : La navigation dans les menus (titre → loadout → options) est fluide avec transitions et feedback visuel sur les boutons
+
+## v4+ Requirements (Deferred)
 
 ### 2eme Mode de Jeu
 
@@ -170,14 +201,30 @@ Requirements pour la demo partageable du mode Mercenaires.
 | FX-08 | Phase 13 | Pending |
 | FX-09 | Phase 13 | Pending |
 | FX-10 | Phase 13 | Pending |
+| ANIM-01 | Phase 14 | Pending |
+| ANIM-02 | Phase 14 | Pending |
+| ANIM-03 | Phase 14 | Pending |
+| ANIM-04 | Phase 14 | Pending |
+| POST-01 | Phase 14 | Pending |
+| POST-02 | Phase 14 | Pending |
+| MAP-01 | Phase 15 | Pending |
+| MAP-02 | Phase 15 | Pending |
+| MAP-03 | Phase 15 | Pending |
+| HUD-01 | Phase 16 | Pending |
+| HUD-02 | Phase 16 | Pending |
+| HUD-03 | Phase 16 | Pending |
+| MENU-01 | Phase 16 | Pending |
+| MENU-02 | Phase 16 | Pending |
 
 **Coverage:**
 - v1 requirements: 37 total
 - Mapped to phases: 37
 - v2.0 requirements: 11 total
 - Mapped to phases: 11
+- v3.0 requirements: 14 total
+- Mapped to phases: 14
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-22*
-*Last updated: 2026-03-29 — v2.0 traceability added (DATA-01/04 → Phase 11, ASSET-01/02 → Phase 12, FX-06/10 → Phase 13)*
+*Last updated: 2026-04-06 — v3.0 requirements added (MAP-01/03, ANIM-01/04, POST-01/02, HUD-01/03, MENU-01/02) + traceability updated (phases 14-16)*

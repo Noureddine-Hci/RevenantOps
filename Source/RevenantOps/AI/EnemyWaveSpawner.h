@@ -180,6 +180,9 @@ protected:
                         UPrimitiveComponent *OtherComp, int32 OtherBodyIndex,
                         bool bFromSweep, const FHitResult &SweepResult);
 
+  /** Builds 3 hardcoded default waves when none are configured in the editor */
+  void SetupDefaultWaves();
+
   // ========== BLUEPRINT HOOKS ==========
 
   UFUNCTION(BlueprintImplementableEvent, Category = "Spawner|Events",

@@ -169,14 +169,21 @@ void ULoadoutWidget::SelectWeapon(int32 WeaponIndex, int32 SlotIndex) {
 }
 
 void ULoadoutWidget::ConfirmLoadout() {
-  if (!CanConfirm()) {
-    return;
-  }
+  TSubclassOf<AWeaponBase> Primary   = nullptr;
+  TSubclassOf<AWeaponBase> Secondary = nullptr;
 
-  const TSubclassOf<AWeaponBase> Primary =
-      AvailableWeapons[PrimaryWeaponIndex].WeaponClass;
-  const TSubclassOf<AWeaponBase> Secondary =
-      AvailableWeapons[SecondaryWeaponIndex].WeaponClass;
+  if (CanConfirm()) {
+    Primary   = AvailableWeapons[PrimaryWeaponIndex].WeaponClass;
+    Secondary = AvailableWeapons[SecondaryWeaponIndex].WeaponClass;
+  } else if (AvailableWeapons.Num() >= 2) {
+    // Auto-pick first two weapons (fallback if selection indices are stale)
+    Primary   = AvailableWeapons[0].WeaponClass;
+    Secondary = AvailableWeapons[1].WeaponClass;
+  } else if (AvailableWeapons.Num() == 1) {
+    Primary   = AvailableWeapons[0].WeaponClass;
+    Secondary = AvailableWeapons[0].WeaponClass;
+  }
+  // else: Primary/Secondary = nullptr — match starts without weapons (demo fallback)
 
   OnLoadoutConfirmed.Broadcast(Primary, Secondary);
   BP_OnLoadoutConfirmed();
@@ -221,4 +228,37 @@ void ULoadoutWidget::PopulateFromClasses(
 
     AvailableWeapons.Add(Info);
   }
+
+  // Auto-select first two weapons — NativeConstruct runs before PopulateFromClasses
+  // so indices are -1 at that point; fix them here.
+  if (AvailableWeapons.Num() >= 2 && PrimaryWeaponIndex < 0) {
+    PrimaryWeaponIndex   = 0;
+    SecondaryWeaponIndex = 1;
+  }
+
+  // Rebuild the weapon list UI (BuildDefaultUI ran when AvailableWeapons was empty)
+  if (WeaponListBox) {
+    WeaponListBox->ClearChildren();
+    FSlateFontInfo InfoFont = FCoreStyle::GetDefaultFontStyle("Regular", 14);
+    for (int32 i = 0; i < AvailableWeapons.Num(); ++i) {
+      const FWeaponLoadoutInfo &Info = AvailableWeapons[i];
+      FString NameStr = Info.WeaponName.IsEmpty()
+                            ? FString::Printf(TEXT("Arme %d"), i + 1)
+                            : Info.WeaponName.ToString();
+      FString Line = FString::Printf(
+          TEXT("%s%s  —  DMG:%.0f  ROF:%.0f  MAG:%d  RLD:%.1fs"),
+          (i == PrimaryWeaponIndex) ? TEXT("[P] ") : (i == SecondaryWeaponIndex) ? TEXT("[S] ") : TEXT("    "),
+          *NameStr, Info.Damage, Info.FireRate, Info.MagazineSize, Info.ReloadTime);
+      UTextBlock *Entry = NewObject<UTextBlock>(WeaponListBox);
+      Entry->SetText(FText::FromString(Line));
+      Entry->SetFont(InfoFont);
+      Entry->SetJustification(ETextJustify::Center);
+      if (i == PrimaryWeaponIndex || i == SecondaryWeaponIndex) {
+        Entry->SetColorAndOpacity(FSlateColor(FLinearColor(0.2f, 1.f, 0.2f)));
+      }
+      UVerticalBoxSlot *EntrySlot = WeaponListBox->AddChildToVerticalBox(Entry);
+      EntrySlot->SetPadding(FMargin(0, 3, 0, 3));
+    }
+  }
+  RefreshWeaponButtons();
 }

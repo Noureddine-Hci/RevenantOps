@@ -23,42 +23,47 @@
 void ARevenantOpsPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
+	// Widget creation moved to ReceivedPlayer() — safe to call CreateWidget there.
+}
 
-	if (IsLocalPlayerController())
+void ARevenantOpsPlayerController::ReceivedPlayer()
+{
+	Super::ReceivedPlayer();
+
+	// ReceivedPlayer can be called more than once (seamless travel); guard it.
+	if (bFlowInitialized) return;
+	if (!IsLocalPlayerController()) return;
+
+	bFlowInitialized = true;
+
+	// Pre-create the HUD widget but do NOT add to viewport yet.
+	if (HUDWidgetClass)
 	{
-		// Pre-create the HUD widget but do NOT add to viewport yet.
-		// It will be shown by StartMercenairesMatch() once the match begins.
-		if (HUDWidgetClass)
+		HUDWidget = CreateWidget<URevenantOpsHUD>(this, HUDWidgetClass);
+		if (!HUDWidget)
 		{
-			HUDWidget = CreateWidget<URevenantOpsHUD>(this, HUDWidgetClass);
-			if (!HUDWidget)
-			{
-				UE_LOG(LogRevenantOps, Error, TEXT("Could not create HUD widget."));
-			}
+			UE_LOG(LogRevenantOps, Error, TEXT("Could not create HUD widget."));
 		}
+	}
 
-		// only spawn touch controls on mobile
-		if (ShouldUseTouchControls())
+	// Only spawn touch controls on mobile.
+	if (ShouldUseTouchControls())
+	{
+		MobileControlsWidget = CreateWidget<UUserWidget>(this, MobileControlsWidgetClass);
+		if (MobileControlsWidget)
 		{
-			// spawn the mobile controls widget
-			MobileControlsWidget = CreateWidget<UUserWidget>(this, MobileControlsWidgetClass);
-
-			if (MobileControlsWidget)
-			{
-				// add the controls to the player screen
-				MobileControlsWidget->AddToPlayerScreen(0);
-			}
-			else
-			{
-				UE_LOG(LogRevenantOps, Error, TEXT("Could not spawn mobile controls widget."));
-			}
+			MobileControlsWidget->AddToPlayerScreen(0);
 		}
-
-		// Start the Mercenaires flow with the title screen
-		if (TitleScreenClass)
+		else
 		{
-			ShowTitleScreen();
+			UE_LOG(LogRevenantOps, Error, TEXT("Could not spawn mobile controls widget."));
 		}
+	}
+
+	// Start the Mercenaires flow with the title screen.
+	if (TitleScreenClass)
+	{
+		ShowTitleScreen();
 	}
 }
 
@@ -160,10 +165,12 @@ void ARevenantOpsPlayerController::OnLoadoutConfirmed(
   if (ARevenantOpsCharacter *MercChar =
           Cast<ARevenantOpsCharacter>(GetPawn())) {
     TArray<TSubclassOf<AWeaponBase>> Loadout;
-    Loadout.Add(Primary);
-    Loadout.Add(Secondary);
-    MercChar->SetDefaultWeaponClasses(Loadout);
-    MercChar->SpawnDefaultWeapons();
+    if (Primary)                        Loadout.Add(Primary);
+    if (Secondary && Secondary != Primary) Loadout.Add(Secondary);
+    if (Loadout.Num() > 0) {
+      MercChar->SetDefaultWeaponClasses(Loadout);
+      MercChar->SpawnDefaultWeapons();
+    }
   }
 
   StartMercenairesMatch();
@@ -198,10 +205,12 @@ void ARevenantOpsPlayerController::StartMercenairesMatch() {
   // Démarrer tous les WaveSpawners du level
   TArray<AActor*> Spawners;
   UGameplayStatics::GetAllActorsOfClass(GetWorld(), AEnemyWaveSpawner::StaticClass(), Spawners);
+  UE_LOG(LogTemp, Warning, TEXT("[PC] StartMercenairesMatch: found %d WaveSpawner(s)"), Spawners.Num());
   for (AActor* S : Spawners)
   {
     if (AEnemyWaveSpawner* WS = Cast<AEnemyWaveSpawner>(S))
     {
+      UE_LOG(LogTemp, Warning, TEXT("[PC] Calling StartEncounter on %s"), *S->GetName());
       WS->StartEncounter();
     }
   }

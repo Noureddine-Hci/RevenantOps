@@ -2,7 +2,7 @@
 
 ## Projet
 - **RevenantOps** : Third-Person Shooter (mode Mercenaires) en Unreal Engine 5.7, C++
-- Developpeur solo : Noureddine Houichi
+- Developpeurs : Noureddine Houichi + Jilani (depuis 2026-04-06)
 - Langue de communication : **francais**
 
 ## Conventions C++
@@ -241,5 +241,116 @@ UCS_WeaponFire::UCS_WeaponFire(const FObjectInitializer &ObjInit) : Super(ObjIni
 - **Impossible de creer/modifier des widgets UMG via Python MCP**
 - Solution : creer le WBP avec le bon parent class via Python, mais ajouter les widgets manuellement dans UE5
 
+## Etat Phase 16 — Demo Jouable (2026-04-05, NON COMMITÉ)
+
+### C++ FAIT (compilé UBT ✅)
+- `RevenantOpsHUD` : BuildDefaultUI() crée 18 widgets programmatiquement si WBP vide
+- `RevenantOpsPlayerController` : ReceivedPlayer() remplace BeginPlay pour CreateWidget
+  (fix crash "CreateWidget sans joueur joint")
+
+### MCP FAIT (assets sauvegardés ✅)
+- BP_ThirdPersonGameMode → GameStateClass = BP_MercenairesGameState
+- BP_ThirdPersonPlayerController : 5 widget classes + 5 AvailableWeaponClasses
+- BP_ZombieSpitter → ProjectileClass = BP_ZombieProjectile
+- BP_EnemyWaveSpawner créé + placé dans Lvl_ThirdPerson
+  (3 vagues : 5 Slow / 4Slow+3Runner / 4Runner+2Tank, 28 SpawnPoints, MaxAliveEnemies=8)
+
+### ABP_Mercenaire — ÉTAT CORRIGÉ (2026-04-05)
+- Graph[16] Transition Locomotion→Armed : can_enter_transition = **False**
+  (était True → forçait MF_Rifle_Idle_ADS en permanence)
+- Graph[2] Walk/Run state : BlendSpace = **BS_IdleRun** (était BS_Pistol_Walk_Run)
+  → fix crash sprint "Array index 3 out of bounds"
+- BS_Pistol_Walk_Run : 4 samples (0/150/375/950) avec pistol anims corrects
+- ATTENTION : Graph[15] Armed seq = MF_Pistol_Idle_ADS (si transition réactivée)
+
+### CRASH CONNU RÉSOLU
+- "Array index 3 into array of size 3" lors du sprint
+- Cause : BS_Pistol_Walk_Run mal calibré (vitesse max=375 < SprintSpeed=900)
+- Fix : BS_IdleRun (pré-existant, stable toutes vitesses)
+
+### À COMMITTER (après validation PIE)
+```
+feat(16): demo jouable — HUD programmatique + ReceivedPlayer fix + WaveSpawner + animations
+```
+
 ## PROCHAINE ETAPE
-Phase 14 completion : widgets UMG manuels + sons + commit
+1. Ctrl+Alt+F11 (Live Coding) dans UE5
+2. PIE : Title Screen → Loadout → Gameplay (sprint sans crash, zombies, HUD)
+3. Si OK → commit feat(16)
+4. Phase 17 (à définir) : polish audio, animations armed upper body (LBB), etc.
+
+---
+
+## COLLABORATION — Noureddine & Jilani (depuis 2026-04-06)
+
+### Identification du dev actif
+Au début de chaque session Claude, le dev se présente : "Je suis Noureddine" ou "Je suis Jilani".
+Si non précisé, Claude doit demander : "Tu es Noureddine ou Jilani ?"
+
+### Git — Branches & Convention
+```
+main              → stable, buildable, validé en PIE. JAMAIS travailler directement dessus.
+noureddine/phase-XX  → branche de travail Noureddine
+jilani/phase-XX      → branche de travail Jilani
+```
+- Commits : format `[N] feat(scope): desc` ou `[J] feat(scope): desc`
+  ex: `[J] feat(15): arena zone B eclairage`
+- Workflow merge : push ta branche → PR → review par l'autre → merge dans main → les deux font `git pull`
+
+### Règle d'or — Ownership des assets binaires
+Les `.uasset` UE5 sont des **binaires non-mergeables**. Un seul dev les touche à la fois.
+Avant de modifier un Blueprint ou le level :
+- Annoncer à l'autre (Discord/WhatsApp) : "je prends BP_ZombieSpitter"
+- L'autre ne touche pas cet asset jusqu'au merge
+
+Ownership par défaut :
+- `Lvl_ThirdPerson.umap` → UN seul à la fois, annoncer avant
+- `ABP_Mercenaire` → UN seul à la fois, annoncer avant
+- BPs gameplay → pareil, jamais les deux en même temps
+
+### Division du travail v3.0
+```
+Phase 14 (Animations posture)   → Noureddine (déjà en cours)
+Phase 15 (Arena retravaillée)   → Jilani
+Phase 16 (HUD & Menus polish)   → à décider après phases 14+15
+```
+
+### Tuto — Commencer une session
+1. `git pull origin main` — récupérer la dernière version stable
+2. `git checkout ta-branche` (ex: `jilani/phase-15`)
+3. Annoncer à l'autre ce que tu vas toucher
+4. Travailler → committer sur ta branche avec le préfixe `[N]` ou `[J]`
+
+### Tuto — Merger vers main
+1. `git push origin ta-branche`
+2. `gh pr create` ou PR GitHub
+3. L'autre dev review et approuve
+4. Merge dans main
+5. Les deux font `git pull origin main`
+
+### Onboarding Jilani (à faire UNE FOIS sur sa machine)
+```
+1. Cloner le repo : git clone <url-du-repo> RevenantOps
+2. Créer ~/.claude/primer.md avec le template ci-dessous
+3. Créer sa branche : git checkout -b jilani/phase-15
+4. Lire CLAUDE.md avant toute session
+5. Ne jamais committer sur main directement
+```
+
+Template `~/.claude/primer.md` pour Jilani :
+```markdown
+# Active Project: RevenantOps (UE5 TPS — Mode Mercenaires)
+## Dev: JILANI
+## Location: [chemin local sur ta machine vers le repo]
+## Branche active: jilani/phase-15
+## Etat: v3.0 en cours — Phase 14 par Noureddine, Phase 15 (Arena) par toi
+## Prochaine étape: [à remplir après ta première session]
+
+## Contexte rapide
+- UE5.7, C++ + Blueprints
+- Gameplay loop complet (title → loadout → match → gameover → leaderboard)
+- 5 types de zombies, 6 armes, timer/score/combo
+- MCP TCP port 12029 : python Scripts/mcp_run.py script.py timeout
+- JAMAIS ouvrir level via MCP | JAMAIS MCP pendant PIE
+- Live Coding : Ctrl+Alt+F11
+```

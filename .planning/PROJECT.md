@@ -8,15 +8,20 @@ RevenantOps est un TPS arcade score-attack inspire du mode Mercenaires de Reside
 
 Le joueur peut lancer une partie, choisir son loadout, tuer des zombies en enchainant des combos sous pression du timer, et voir son score final.
 
-## Current Milestone: v2.0 Finition Mode Mercenaires
+## Current Milestone: v3.0 Polish Visuel & Feel
 
-**Goal:** Finaliser le Mode Mercenaires avec de vrais assets (armes, audio/VFX) et des systemes de donnees editables (DataTables armes et ennemis) — pour que le mode soit pleinement jouable et maintenable.
+**Goal:** Ameliorer le ressenti global du jeu — arene plus immersive, animations armes realistes par type d'arme, posture personnage naturelle, HUD lisible et moderne, menu principal attrayant.
 
 **Target features:**
-- Vrais meshes armes depuis Fab.com (remplacer SM_ChamferCube sur les 6 armes)
-- DataTable armes : stats (damage, fireRate, ammo, range) editables sans recompiler
-- DataTable ennemis : HP, damage, speed par type de zombie
-- Sons reels + VFX : remplacer les placeholders audio par de vrais assets
+- Arene retravaillee : layout plus dynamique, zones distinctes, eclairage atmospherique
+- Animations armes : pose de tenue specifique par type (pistolet vs shotgun vs rifle), anim chargeur vide, anim rechargement visible
+- Posture personnage : transition naturelle entre decontracte et arme, IK mains propre
+- HUD ameliore : barre de vie progressive, indicateurs de munitions clairs, combo visible
+- Menu principal retravaille : background atmospherique, navigation fluide, presentation soignee
+
+## Previous Milestone: v2.0 Finition Mode Mercenaires (COMPLETE — 2026-04-05)
+
+**Delivered:** DataTables armes+ennemis (DT_WeaponStats, DT_EnemyStats), 6 vrais meshes armes Kenney, sons de tir/rechargement/impact, VFX Niagara (muzzle flash, impact, blood), animated montages, armed locomotion avec BS_Pistol_Walk_Run, HitFlash emissive.
 
 ## Previous Milestone: v1.0 Demo Partageable (COMPLETE — 2026-03-29)
 
@@ -51,14 +56,27 @@ Le joueur peut lancer une partie, choisir son loadout, tuer des zombies en encha
 - [x] Leaderboard local (top scores)
 - [x] Boucle complete title→loadout→match→gameover→leaderboard validee en PIE
 
-### Active (v2.0)
+### Validated (v2.0 — 2026-04-05)
 
-- [ ] Vrais meshes armes depuis Fab.com (6 armes : pistolet, fusil, SMG, shotgun, sniper, melee)
-- [ ] DataTable armes : stats editables sans recompiler (damage, fireRate, ammo, range)
-- [ ] DataTable ennemis : HP, damage, speed editables par type
-- [ ] Sons reels au tir par arme (remplacer placeholders)
-- [ ] Sons reels zombies (grognement, attaque, mort)
-- [ ] VFX : muzzle flash, impact sang, explosion ZombieExploder
+- [x] Vrais meshes armes depuis Fab.com (6 armes : pistolet, fusil, SMG, shotgun, sniper, melee)
+- [x] DataTable armes : stats editables sans recompiler (damage, fireRate, ammo, range)
+- [x] DataTable ennemis : HP, damage, speed editables par type
+- [x] Sons reels au tir par arme (remplacer placeholders)
+- [x] Sons reels zombies (grognement, attaque, mort)
+- [x] VFX : muzzle flash, impact sang, explosion ZombieExploder
+- [x] AnimMontages armes (Fire/Reload/Equip) + armed locomotion avec BS_Pistol_Walk_Run
+- [x] HitFlash emissive sur ennemis (feedback visuel de hit)
+- [x] Camera shake au tir et a la reception de degats
+
+### Active (v3.0)
+
+- [ ] Arene retravaillee avec zones distinctes et eclairage atmospherique
+- [ ] Animations de tenue d'arme distinctes par type (pistolet, rifle, shotgun)
+- [ ] Animation "chargeur vide" (arme se bloque, anim specifique)
+- [ ] Animation de rechargement visible en third-person
+- [ ] Posture personnage naturelle en combat (IK mains, transition arme/desarme fluide)
+- [ ] HUD v3 : barre de vie, munitions lisibles, combo dynamique
+- [ ] Menu principal retravaille (background, navigation, presentation)
 
 ### Out of Scope
 
@@ -123,4 +141,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-29 — v1.0 complete, v2.0 started (finition Mode Mercenaires)*
+*Last updated: 2026-04-06 — v2.0 complete, v3.0 started (Polish Visuel & Feel)*

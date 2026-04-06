@@ -240,5 +240,67 @@ Phases executent dans l'ordre numerique : 11 -> 12 -> 13
 | 13. Audio & VFX Niagara | 0/? | Not started | — |
 
 ---
+
+# Roadmap: RevenantOps v3.0 Polish Visuel & Feel
+
+## Overview
+
+A partir d'un mode Mercenaires fonctionnel avec vrais assets (v2.0), v3.0 ameliore le ressenti global du jeu sur trois fronts independants : les animations et la posture du personnage en combat (ABP_Mercenaire), l'arene retravaillee avec zones distinctes et eclairage atmospherique, et le polish visuel de l'interface (HUD + menus). Les phases sont ordonnees pour livrer le feedback de jeu en premier (animations/posture), puis l'environnement de combat (arene), puis l'enveloppe visuelle (UI).
+
+## Phases
+
+- [ ] **Phase 14: Animations & Posture** - Poses de tenue distinctes par type d'arme, animation "chargeur vide", IK mains sur l'arme, transition arme/desarme fluide
+- [ ] **Phase 15: Arene Retravaillee** - 3 zones jouables distinctes, eclairage atmospherique, SpawnPoints repartis intelligemment
+- [ ] **Phase 16: HUD & Menus Polish** - Barre de vie progressive, munitions lisibles, combo mis en evidence, menu principal avec background atmospherique et navigation fluide
+
+## Phase Details
+
+### Phase 14: Animations & Posture
+**Goal**: Le personnage tient son arme de maniere credible et ses animations de combat sont fluides et distinctes par type d'arme
+**Depends on**: Phase 13 (v2.0 complete — montages et ABP_Mercenaire existants)
+**Requirements**: ANIM-01, ANIM-02, ANIM-03, ANIM-04, POST-01, POST-02
+**Success Criteria** (what must be TRUE):
+  1. En PIE, tenir un pistolet produit une pose de bras observablement differente de tenir un fusil d'assaut ou un shotgun
+  2. Quand le chargeur est vide, une animation "slide-lock" ou "bolt-open" se joue et l'arme reste bloquee visuellement jusqu'au rechargement
+  3. L'animation de rechargement est visible sur le personnage en third-person — on voit le geste de changement de chargeur
+  4. Les transitions entre idle, marche, tir et rechargement se font sans saut brusque de pose (aucun "pop" visible)
+  5. Les mains du personnage semblent tenir reellement l'arme — pas de mains flottantes ni de penetration dans le mesh arme
+**Plans**: TBD
+
+### Phase 15: Arene Retravaillee
+**Goal**: L'arene BLACKSITE offre 3 zones jouables avec des caracteristiques distinctes, un eclairage qui cree de la tension, et des points de spawn ennemis couvrant l'ensemble de la map
+**Depends on**: Phase 14
+**Requirements**: MAP-01, MAP-02, MAP-03
+**Success Criteria** (what must be TRUE):
+  1. En se deplacant dans l'arene, le joueur traverse au moins 3 zones visuellement et geometriquement distinctes (ex : cour ouverte, couloir etroit, mezzanine en hauteur)
+  2. L'eclairage de chaque zone cree une ambiance tendue — zones d'ombre, lumieres colorees, contraste fort entre zones sombres et eclairees
+  3. Des zombies emergent de directions variees au cours d'une vague — aucune direction n'est jamais la seule source de menace
+**Plans**: TBD
+
+### Phase 16: HUD & Menus Polish
+**Goal**: L'interface du jeu est lisible, moderne et coherente avec l'univers — la barre de vie communique l'urgence, les munitions sont immediatement lisibles, le combo est mis en evidence, et le menu principal est visuellement attrayant
+**Depends on**: Phase 14
+**Requirements**: HUD-01, HUD-02, HUD-03, MENU-01, MENU-02
+**Success Criteria** (what must be TRUE):
+  1. La barre de vie change de couleur de facon visible selon le niveau de vie (ex : vert → jaune → rouge) — un joueur comprend son etat de sante d'un coup d'oeil
+  2. Les munitions en chargeur et en reserve sont distinguees visuellement (pas deux chiffres identiques cote a cote) — le joueur sait immediatement combien il lui reste
+  3. Quand le multiplicateur de combo monte, il est mis en evidence a l'ecran (agrandissement, flash, couleur vive) — perceptible en combat sans regarder le HUD
+  4. L'ecran titre affiche un background atmospherique en accord avec l'univers (image de l'arene, zombies, palette sombre) — pas un fond noir uni
+  5. Naviguer de l'ecran titre vers le loadout et retour se fait avec un retour visuel sur les boutons (hover, click) et une transition fluide entre ecrans
+**Plans**: TBD
+
+## Progress
+
+**Execution Order:**
+Phases executent dans l'ordre numerique : 14 -> 15 -> 16
+(Phase 16 peut commencer en parallele de Phase 15 — dependance sur Phase 14 uniquement)
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 14. Animations & Posture | 0/? | Not started | — |
+| 15. Arene Retravaillee | 0/? | Not started | — |
+| 16. HUD & Menus Polish | 0/? | Not started | — |
+
+---
 *Roadmap created: 2026-03-22 -- v1.0 Demo Partageable (Mercenaires mode)*
-*Last updated: 2026-03-29 -- v1.0 complete (Phase 10 done), v2.0 phases 11-13 added*
+*Last updated: 2026-04-06 -- v3.0 phases 14-16 added (Polish Visuel & Feel)*

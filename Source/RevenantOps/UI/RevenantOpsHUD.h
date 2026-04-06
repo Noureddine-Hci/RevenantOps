@@ -152,6 +152,11 @@ protected:
   UPROPERTY()
   AEnemyWaveSpawner *CachedWaveSpawner = nullptr;
 
+  // ========== PROGRAMMATIC UI BUILDER ==========
+
+  /** Creates all HUD widgets programmatically when the WBP WidgetTree is empty. */
+  void BuildDefaultUI();
+
   // ========== UPDATE FUNCTIONS ==========
 
   /** Updates health and shield bars */

@@ -23,6 +23,8 @@
 ARevenantOpsCharacter::ARevenantOpsCharacter() {
   PrimaryActorTick.bCanEverTick = true;
 
+  Tags.Add(FName("Player"));
+
   // Collision capsule
   GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
 

@@ -1,6 +1,7 @@
 // Copyright RevenantOps. All Rights Reserved.
 
 #include "RevenantOpsHUD.h"
+#include "Blueprint/WidgetTree.h"
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
 #include "Components/Image.h"
@@ -26,8 +27,76 @@ static void SetCanvasSlot(UWidget* Widget, FVector2D Position, FVector2D Size, F
   }
 }
 
+void URevenantOpsHUD::BuildDefaultUI()
+{
+  if (!WidgetTree) return;
+
+  // Root canvas panel
+  UCanvasPanel* Root = WidgetTree->ConstructWidget<UCanvasPanel>(
+      UCanvasPanel::StaticClass(), FName("RootCanvas"));
+  WidgetTree->RootWidget = Root;
+  if (!Root) return;
+
+  // Typed helpers (C++17 compatible)
+  auto MakeBar = [&](UProgressBar*& Out, FName Name, FVector2D Pos, FVector2D Sz, FAnchors A) {
+    Out = WidgetTree->ConstructWidget<UProgressBar>(UProgressBar::StaticClass(), Name);
+    if (Out) { if (auto* S = Root->AddChildToCanvas(Out)) { S->SetAnchors(A); S->SetPosition(Pos); S->SetSize(Sz); } }
+  };
+  auto MakeText = [&](UTextBlock*& Out, FName Name, FVector2D Pos, FVector2D Sz, FAnchors A) {
+    Out = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), Name);
+    if (Out) { if (auto* S = Root->AddChildToCanvas(Out)) { S->SetAnchors(A); S->SetPosition(Pos); S->SetSize(Sz); } }
+  };
+  auto MakeImg = [&](UImage*& Out, FName Name, FVector2D Pos, FVector2D Sz, FAnchors A) {
+    Out = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), Name);
+    if (Out) { if (auto* S = Root->AddChildToCanvas(Out)) { S->SetAnchors(A); S->SetPosition(Pos); S->SetSize(Sz); } }
+  };
+
+  // ── Progress bars ────────────────────────────────────────────────────────
+  MakeBar(HealthBar,     FName("HealthBar"),     FVector2D(20.f,   20.f),  FVector2D(250.f, 18.f), FAnchors(0.f,  0.f));
+  MakeBar(ShieldBar,     FName("ShieldBar"),     FVector2D(20.f,   42.f),  FVector2D(200.f, 10.f), FAnchors(0.f,  0.f));
+  MakeBar(StaminaBar,    FName("StaminaBar"),    FVector2D(20.f,   56.f),  FVector2D(180.f, 12.f), FAnchors(0.f,  0.f));
+  MakeBar(ComboTimerBar, FName("ComboTimerBar"), FVector2D(-160.f, 116.f), FVector2D(150.f, 10.f), FAnchors(1.f,  0.f));
+  MakeBar(ReloadBar,     FName("ReloadBar"),     FVector2D(-150.f, -55.f), FVector2D(300.f, 14.f), FAnchors(0.5f, 1.f));
+
+  // ── Text blocks ──────────────────────────────────────────────────────────
+  MakeText(TimerText,            FName("TimerText"),            FVector2D(-60.f,   20.f),  FVector2D(120.f, 36.f), FAnchors(0.5f, 0.f));
+  MakeText(ScoreText,            FName("ScoreText"),            FVector2D(-160.f,  20.f),  FVector2D(150.f, 30.f), FAnchors(1.f,  0.f));
+  MakeText(WaveText,             FName("WaveText"),             FVector2D(-160.f,  55.f),  FVector2D(150.f, 24.f), FAnchors(1.f,  0.f));
+  MakeText(ComboText,            FName("ComboText"),            FVector2D(-160.f,  84.f),  FVector2D(150.f, 28.f), FAnchors(1.f,  0.f));
+  MakeText(AmmoCurrentText,      FName("AmmoCurrentText"),      FVector2D(-170.f, -70.f),  FVector2D(120.f, 40.f), FAnchors(1.f,  1.f));
+  MakeText(AmmoReserveText,      FName("AmmoReserveText"),      FVector2D(-80.f,  -40.f),  FVector2D(70.f,  28.f), FAnchors(1.f,  1.f));
+  MakeText(WeaponNameText,       FName("WeaponNameText"),       FVector2D(-220.f, -105.f), FVector2D(200.f, 28.f), FAnchors(1.f,  1.f));
+  MakeText(KillNotificationText, FName("KillNotificationText"), FVector2D(-120.f,  80.f),  FVector2D(240.f, 30.f), FAnchors(0.5f, 0.f));
+
+  // ── Images ───────────────────────────────────────────────────────────────
+  MakeImg(CrosshairImage,       FName("CrosshairImage"),       FVector2D(-12.f, -12.f), FVector2D(24.f, 24.f), FAnchors(0.5f, 0.5f));
+  MakeImg(HitMarkerImage,       FName("HitMarkerImage"),       FVector2D(-16.f, -16.f), FVector2D(32.f, 32.f), FAnchors(0.5f, 0.5f));
+  MakeImg(DamageDirectionImage, FName("DamageDirectionImage"), FVector2D(-32.f, -32.f), FVector2D(64.f, 64.f), FAnchors(0.5f, 0.5f));
+
+  // LowHealthVignette : full-screen stretch
+  LowHealthVignette = WidgetTree->ConstructWidget<UImage>(
+      UImage::StaticClass(), FName("LowHealthVignette"));
+  if (LowHealthVignette) {
+    if (UCanvasPanelSlot* VigSlot = Root->AddChildToCanvas(LowHealthVignette)) {
+      VigSlot->SetAnchors(FAnchors(0.f, 0.f, 1.f, 1.f));
+      VigSlot->SetOffsets(FMargin(0.f));
+    }
+    LowHealthVignette->SetColorAndOpacity(FLinearColor(1.f, 0.f, 0.f, 0.f));
+  }
+
+  // Default tint colours
+  if (ComboText)            ComboText->SetColorAndOpacity(FSlateColor(FLinearColor(1.f, 0.8f, 0.f)));
+  if (AmmoReserveText)      AmmoReserveText->SetColorAndOpacity(FSlateColor(FLinearColor(0.6f, 0.6f, 0.6f)));
+  if (KillNotificationText) KillNotificationText->SetColorAndOpacity(FSlateColor(FLinearColor(1.f, 1.f, 0.f)));
+}
+
 void URevenantOpsHUD::NativeConstruct() {
   Super::NativeConstruct();
+
+  // Build widgets programmatically if the WBP WidgetTree is empty
+  if (!WidgetTree || !WidgetTree->RootWidget) {
+    BuildDefaultUI();
+  }
 
   // --- Positionnement HUD (layout) ---
   // Top-left : HealthBar + StaminaBar

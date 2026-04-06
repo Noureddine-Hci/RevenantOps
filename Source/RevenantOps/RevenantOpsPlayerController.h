@@ -92,6 +92,9 @@ protected:
 	/** Gameplay initialization */
 	virtual void BeginPlay() override;
 
+	/** Called when a local player is assigned — safe point for CreateWidget */
+	virtual void ReceivedPlayer() override;
+
 	/** Input mapping context setup */
 	virtual void SetupInputComponent() override;
 
@@ -138,6 +141,9 @@ protected:
 
 	/** Guard against double loadout confirmation */
 	bool bLoadoutConfirmed = false;
+
+	/** Guard against double UI initialization in ReceivedPlayer */
+	bool bFlowInitialized = false;
 
 public:
 
