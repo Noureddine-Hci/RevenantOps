@@ -17,6 +17,7 @@
 #include "UI/LeaderboardSaveGame.h"
 #include "Gameplay/MercenairesGameState.h"
 #include "WeaponBase.h"
+#include "HealthComponent.h"
 #include "AI/EnemyWaveSpawner.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -202,6 +203,18 @@ void ARevenantOpsPlayerController::StartMercenairesMatch() {
     GS->StartMatch();
   }
 
+  // Bind player death to end match immediately
+  if (ARevenantOpsCharacter *PlayerChar =
+          Cast<ARevenantOpsCharacter>(GetPawn())) {
+    if (UHealthComponent *HC =
+            PlayerChar->FindComponentByClass<UHealthComponent>()) {
+      HC->OnDeath.RemoveDynamic(
+          this, &ARevenantOpsPlayerController::OnPlayerDied);
+      HC->OnDeath.AddDynamic(
+          this, &ARevenantOpsPlayerController::OnPlayerDied);
+    }
+  }
+
   // Démarrer tous les WaveSpawners du level
   TArray<AActor*> Spawners;
   UGameplayStatics::GetAllActorsOfClass(GetWorld(), AEnemyWaveSpawner::StaticClass(), Spawners);
@@ -213,6 +226,21 @@ void ARevenantOpsPlayerController::StartMercenairesMatch() {
       UE_LOG(LogTemp, Warning, TEXT("[PC] Calling StartEncounter on %s"), *S->GetName());
       WS->StartEncounter();
     }
+  }
+}
+
+void ARevenantOpsPlayerController::OnPlayerDied(
+    UHealthComponent *HealthComp, const AController *InstigatedBy,
+    AActor *DamageCauser) {
+  // Disable player input immediately
+  if (APawn *P = GetPawn()) {
+    P->DisableInput(this);
+  }
+
+  // End the match — this will trigger OnMatchEnded via the delegate
+  if (AMercenairesGameState *GS =
+          GetWorld()->GetGameState<AMercenairesGameState>()) {
+    GS->EndMatch();
   }
 }
 

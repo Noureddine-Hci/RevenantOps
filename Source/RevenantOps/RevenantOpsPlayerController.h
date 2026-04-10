@@ -15,6 +15,7 @@ class UGameOverWidget;
 class ULeaderboardWidget;
 class AMercenairesGameState;
 class AWeaponBase;
+class UHealthComponent;
 
 /**
  *  Basic PlayerController class for a third person game
@@ -135,6 +136,10 @@ protected:
 	/** Handler for match end */
 	UFUNCTION()
 	void OnMatchEnded(bool bIsActive);
+
+	/** Handler for player death — ends match immediately */
+	UFUNCTION()
+	void OnPlayerDied(UHealthComponent* HealthComp, const AController* InstigatedBy, AActor* DamageCauser);
 
 	/** Removes all flow widgets from screen */
 	void ClearFlowWidgets();
