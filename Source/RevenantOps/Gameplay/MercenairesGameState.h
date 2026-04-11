@@ -116,7 +116,7 @@ protected:
   /** Maximum combo multiplier */
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mercenaires|Combo",
             meta = (ClampMin = 2, ClampMax = 50))
-  int32 MaxComboMultiplier = 20;
+  int32 MaxComboMultiplier = 10;
 
   // ========== SCORE CONFIG ==========
 

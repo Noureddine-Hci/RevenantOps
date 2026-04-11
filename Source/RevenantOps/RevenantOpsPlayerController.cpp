@@ -258,21 +258,28 @@ void ARevenantOpsPlayerController::ShowGameOverScreen() {
     HUDWidget->RemoveFromParent();
   }
 
+  // Read stats BEFORE creating the widget (GS must be read while still valid)
+  int32 FinalScore = 0;
+  int32 TotalKills = 0;
+  int32 BestCombo  = 0;
+  if (AMercenairesGameState *GS =
+          GetWorld()->GetGameState<AMercenairesGameState>()) {
+    FinalScore = GS->GetCurrentScore();
+    TotalKills = GS->GetTotalKills();
+    BestCombo  = GS->GetBestCombo();
+    ULeaderboardWidget::SaveScoreStatic(this, FinalScore, TotalKills, BestCombo);
+    UE_LOG(LogTemp, Warning, TEXT("[GameOver] Score=%d Kills=%d BestCombo=%d"),
+        FinalScore, TotalKills, BestCombo);
+  } else {
+    UE_LOG(LogTemp, Error, TEXT("[GameOver] GameState null — stats will show 0!"));
+  }
+
   if (GameOverWidgetClass) {
     GameOverWidgetInstance =
         CreateWidget<UGameOverWidget>(this, GameOverWidgetClass);
     if (GameOverWidgetInstance) {
-      // Get match results and persist score
-      if (AMercenairesGameState *GS =
-              GetWorld()->GetGameState<AMercenairesGameState>()) {
-        const int32 FinalScore = GS->GetCurrentScore();
-        const int32 TotalKills = GS->GetTotalKills();
-        const int32 BestCombo  = GS->GetBestCombo();
-
-        ULeaderboardWidget::SaveScoreStatic(this, FinalScore, TotalKills, BestCombo);
-        GameOverWidgetInstance->ShowResults(FinalScore, TotalKills, BestCombo);
-      }
       GameOverWidgetInstance->AddToViewport(10);
+      GameOverWidgetInstance->ShowResults(FinalScore, TotalKills, BestCombo);
       SetShowMouseCursor(true);
       SetInputMode(FInputModeUIOnly());
     }

@@ -62,12 +62,14 @@ void AZombieBase::ApplyEnemyDataRow()
 }
 
 void AZombieBase::Tick(float DeltaTime) {
-  // Super::Tick runs UpdatePerception and UpdateCombat from EnemyBase.
-  // UpdateCombat will try to fire, but EquippedWeapon is null so FireAtPlayer
-  // returns early. This is harmless.
   Super::Tick(DeltaTime);
 
-  // Run melee combat logic after perception has updated
+  // Super returns early if dead, but that only exits EnemyBase::Tick.
+  // Guard here so the corpse doesn't keep meleeing the player.
+  if (HealthComp && HealthComp->IsDead()) {
+    return;
+  }
+
   UpdateZombieCombat(DeltaTime);
 }
 

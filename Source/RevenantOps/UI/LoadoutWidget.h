@@ -51,6 +51,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnLoadoutConfirmed,
  *  Loadout selection screen.
  *  Player picks 2 firearms from available weapons. Melee is always equipped.
  *  Shows weapon stats (damage, fire rate, magazine, reload time).
+ *  Use arrow buttons to cycle through weapons for each slot.
  */
 UCLASS(abstract, Blueprintable)
 class ULoadoutWidget : public UUserWidget {
@@ -123,18 +124,22 @@ protected:
 private:
   void BuildDefaultUI();
   void RefreshWeaponButtons();
+  void CycleSlot(int32 &SlotIndex, int32 OtherIndex, int32 Dir);
+  FString GetWeaponDisplayName(int32 Index) const;
+  FString GetWeaponStatsLine(int32 Index) const;
 
-  UPROPERTY()
-  UVerticalBox* WeaponListBox = nullptr;
+  // Slot display widgets
+  UPROPERTY() UTextBlock* PrimaryNameText    = nullptr;
+  UPROPERTY() UTextBlock* PrimaryStatsText   = nullptr;
+  UPROPERTY() UTextBlock* SecondaryNameText  = nullptr;
+  UPROPERTY() UTextBlock* SecondaryStatsText = nullptr;
+  UPROPERTY() UButton*    ConfirmButton      = nullptr;
 
-  UPROPERTY()
-  UButton* ConfirmButton = nullptr;
-
-  UPROPERTY()
-  TArray<UButton*> WeaponButtons;
-
-  UPROPERTY()
-  UTextBlock* SelectionText = nullptr;
+  // Arrow button callbacks
+  UFUNCTION() void OnPrimaryLeft();
+  UFUNCTION() void OnPrimaryRight();
+  UFUNCTION() void OnSecondaryLeft();
+  UFUNCTION() void OnSecondaryRight();
 
   bool bDefaultUIBuilt = false;
 };

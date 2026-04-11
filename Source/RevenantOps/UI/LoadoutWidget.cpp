@@ -9,6 +9,8 @@
 #include "Components/CanvasPanelSlot.h"
 #include "Components/VerticalBox.h"
 #include "Components/VerticalBoxSlot.h"
+#include "Components/HorizontalBox.h"
+#include "Components/HorizontalBoxSlot.h"
 #include "Blueprint/WidgetTree.h"
 #include "WeaponBase.h"
 
@@ -22,145 +24,243 @@ TSharedRef<SWidget> ULoadoutWidget::RebuildWidget() {
 void ULoadoutWidget::NativeConstruct() {
   Super::NativeConstruct();
 
-  // Auto-select first two weapons if available and not already set by BuildDefaultUI
-  if (AvailableWeapons.Num() >= 2) {
+  if (AvailableWeapons.Num() >= 2 && PrimaryWeaponIndex < 0) {
     PrimaryWeaponIndex   = 0;
     SecondaryWeaponIndex = 1;
-  } else {
-    PrimaryWeaponIndex   = -1;
-    SecondaryWeaponIndex = -1;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+FString ULoadoutWidget::GetWeaponDisplayName(int32 Index) const {
+  if (Index < 0 || Index >= AvailableWeapons.Num()) return TEXT("---");
+  const FWeaponLoadoutInfo &Info = AvailableWeapons[Index];
+  return Info.WeaponName.IsEmpty()
+             ? FString::Printf(TEXT("Arme %d"), Index + 1)
+             : Info.WeaponName.ToString();
+}
+
+FString ULoadoutWidget::GetWeaponStatsLine(int32 Index) const {
+  if (Index < 0 || Index >= AvailableWeapons.Num()) return TEXT("---");
+  const FWeaponLoadoutInfo &Info = AvailableWeapons[Index];
+  return FString::Printf(TEXT("DMG:%.0f  ROF:%.0f  MAG:%d  RLD:%.1fs"),
+                         Info.Damage, Info.FireRate, Info.MagazineSize,
+                         Info.ReloadTime);
+}
+
+void ULoadoutWidget::CycleSlot(int32 &SlotIndex, int32 OtherIndex, int32 Dir) {
+  const int32 N = AvailableWeapons.Num();
+  if (N <= 1) return;
+  int32 Next  = (SlotIndex + Dir + N) % N;
+  int32 Tries = N;
+  while (Next == OtherIndex && --Tries > 0) {
+    Next = (Next + Dir + N) % N;
+  }
+  SlotIndex = Next;
+  RefreshWeaponButtons();
+  BP_OnSelectionChanged((&SlotIndex == &PrimaryWeaponIndex) ? 0 : 1, SlotIndex);
+}
+
+// ---------------------------------------------------------------------------
+// Button arrow callbacks
+// ---------------------------------------------------------------------------
+
+void ULoadoutWidget::OnPrimaryLeft()    { CycleSlot(PrimaryWeaponIndex,   SecondaryWeaponIndex, -1); }
+void ULoadoutWidget::OnPrimaryRight()   { CycleSlot(PrimaryWeaponIndex,   SecondaryWeaponIndex, +1); }
+void ULoadoutWidget::OnSecondaryLeft()  { CycleSlot(SecondaryWeaponIndex, PrimaryWeaponIndex,   -1); }
+void ULoadoutWidget::OnSecondaryRight() { CycleSlot(SecondaryWeaponIndex, PrimaryWeaponIndex,   +1); }
+
+// ---------------------------------------------------------------------------
+// UI refresh
+// ---------------------------------------------------------------------------
+
+void ULoadoutWidget::RefreshWeaponButtons() {
+  if (PrimaryNameText)
+    PrimaryNameText->SetText(FText::FromString(GetWeaponDisplayName(PrimaryWeaponIndex)));
+  if (PrimaryStatsText)
+    PrimaryStatsText->SetText(FText::FromString(GetWeaponStatsLine(PrimaryWeaponIndex)));
+  if (SecondaryNameText)
+    SecondaryNameText->SetText(FText::FromString(GetWeaponDisplayName(SecondaryWeaponIndex)));
+  if (SecondaryStatsText)
+    SecondaryStatsText->SetText(FText::FromString(GetWeaponStatsLine(SecondaryWeaponIndex)));
+}
+
+// ---------------------------------------------------------------------------
+// Build UI
+// ---------------------------------------------------------------------------
+
+static UButton* MakeArrowButton(UWidgetTree* WT, const FString& Label,
+                                 FSlateFontInfo Font) {
+  UButton*    Btn  = WT->ConstructWidget<UButton>();
+  UTextBlock* Text = WT->ConstructWidget<UTextBlock>();
+  Text->SetText(FText::FromString(Label));
+  Text->SetFont(Font);
+  Text->SetColorAndOpacity(FSlateColor(FLinearColor(1.f, 0.8f, 0.2f)));
+  Btn->AddChild(Text);
+
+  FButtonStyle Style = Btn->GetStyle();
+  FSlateColor Transparent(FLinearColor(0, 0, 0, 0));
+  Style.Normal.TintColor  = Transparent;
+  Style.Hovered.TintColor = FSlateColor(FLinearColor(1.f, 0.8f, 0.2f, 0.2f));
+  Style.Pressed.TintColor = FSlateColor(FLinearColor(1.f, 0.8f, 0.2f, 0.4f));
+  Btn->SetStyle(Style);
+  return Btn;
+}
+
+/** Build a selector row:  [←]  WeaponName  [→]  */
+static UHorizontalBox* MakeSlotRow(UWidgetTree *WT, FSlateFontInfo ArrowFont,
+                                    FSlateFontInfo NameFont,
+                                    UTextBlock *&OutNameText,
+                                    UButton *&OutLeft, UButton *&OutRight) {
+  UHorizontalBox *HBox = WT->ConstructWidget<UHorizontalBox>();
+
+  OutLeft = MakeArrowButton(WT, TEXT("  <  "), ArrowFont);
+  UHorizontalBoxSlot *LS = HBox->AddChildToHorizontalBox(OutLeft);
+  LS->SetHorizontalAlignment(EHorizontalAlignment::HAlign_Center);
+  LS->SetVerticalAlignment(EVerticalAlignment::VAlign_Center);
+
+  OutNameText = WT->ConstructWidget<UTextBlock>();
+  OutNameText->SetFont(NameFont);
+  OutNameText->SetJustification(ETextJustify::Center);
+  OutNameText->SetColorAndOpacity(FSlateColor(FLinearColor(1.f, 1.f, 1.f)));
+  UHorizontalBoxSlot *NS = HBox->AddChildToHorizontalBox(OutNameText);
+  NS->SetHorizontalAlignment(EHorizontalAlignment::HAlign_Center);
+  NS->SetVerticalAlignment(EVerticalAlignment::VAlign_Center);
+  NS->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+  NS->SetPadding(FMargin(12, 0));
+
+  OutRight = MakeArrowButton(WT, TEXT("  >  "), ArrowFont);
+  UHorizontalBoxSlot *RS = HBox->AddChildToHorizontalBox(OutRight);
+  RS->SetHorizontalAlignment(EHorizontalAlignment::HAlign_Center);
+  RS->SetVerticalAlignment(EVerticalAlignment::VAlign_Center);
+
+  return HBox;
 }
 
 void ULoadoutWidget::BuildDefaultUI() {
   if (!WidgetTree) return;
   bDefaultUIBuilt = true;
 
-  if (!WidgetTree->RootWidget) {
-    UCanvasPanel* Canvas = WidgetTree->ConstructWidget<UCanvasPanel>();
-    WidgetTree->RootWidget = Canvas;
-  }
+  UCanvasPanel *Canvas = WidgetTree->ConstructWidget<UCanvasPanel>();
+  WidgetTree->RootWidget = Canvas;
 
-  UCanvasPanel* Canvas = Cast<UCanvasPanel>(WidgetTree->RootWidget);
-  if (!Canvas) return;
-
-  // Full-screen dark background
-  UImage* Background = WidgetTree->ConstructWidget<UImage>();
-  Background->SetColorAndOpacity(FLinearColor(0.02f, 0.02f, 0.05f, 0.95f));
-  UCanvasPanelSlot* BgSlot = Canvas->AddChildToCanvas(Background);
+  // Background
+  UImage *Bg = WidgetTree->ConstructWidget<UImage>();
+  Bg->SetColorAndOpacity(FLinearColor(0.02f, 0.02f, 0.05f, 0.95f));
+  UCanvasPanelSlot *BgSlot = Canvas->AddChildToCanvas(Bg);
   BgSlot->SetAnchors(FAnchors(0.f, 0.f, 1.f, 1.f));
-  BgSlot->SetOffsets(FMargin(0.f, 0.f, 0.f, 0.f));
+  BgSlot->SetOffsets(FMargin(0.f));
   BgSlot->SetZOrder(0);
 
-  UVerticalBox* VBox = WidgetTree->ConstructWidget<UVerticalBox>();
-  UCanvasPanelSlot* VBoxSlot = Canvas->AddChildToCanvas(VBox);
-  VBoxSlot->SetAnchors(FAnchors(0.5f, 0.5f, 0.5f, 0.5f));
-  VBoxSlot->SetAlignment(FVector2D(0.5f, 0.5f));
-  VBoxSlot->SetAutoSize(true);
+  // Centered vertical container
+  UVerticalBox *VBox    = WidgetTree->ConstructWidget<UVerticalBox>();
+  UCanvasPanelSlot *VS  = Canvas->AddChildToCanvas(VBox);
+  VS->SetAnchors(FAnchors(0.5f, 0.5f, 0.5f, 0.5f));
+  VS->SetAlignment(FVector2D(0.5f, 0.5f));
+  VS->SetAutoSize(true);
+  VS->SetZOrder(1);
 
-  FSlateFontInfo TitleFont = FCoreStyle::GetDefaultFontStyle("Bold", 32);
-  FSlateFontInfo InfoFont  = FCoreStyle::GetDefaultFontStyle("Regular", 14);
-  FSlateFontInfo BtnFont   = FCoreStyle::GetDefaultFontStyle("Regular", 18);
+  FSlateFontInfo TitleFont  = FCoreStyle::GetDefaultFontStyle("Bold",    32);
+  FSlateFontInfo LabelFont  = FCoreStyle::GetDefaultFontStyle("Bold",    16);
+  FSlateFontInfo ArrowFont  = FCoreStyle::GetDefaultFontStyle("Bold",    22);
+  FSlateFontInfo WeaponFont = FCoreStyle::GetDefaultFontStyle("Regular", 20);
+  FSlateFontInfo StatsFont  = FCoreStyle::GetDefaultFontStyle("Regular", 13);
+  FSlateFontInfo BtnFont    = FCoreStyle::GetDefaultFontStyle("Regular", 18);
+
+  FLinearColor YellowColor(1.f, 0.8f, 0.2f);
+  FLinearColor CyanColor  (0.4f, 0.9f, 1.f);
+
+  auto AddLabel = [&](UVerticalBox *Box, const FString &Str,
+                      FSlateFontInfo Font, FLinearColor Color,
+                      FMargin Pad) {
+    UTextBlock *T = WidgetTree->ConstructWidget<UTextBlock>();
+    T->SetText(FText::FromString(Str));
+    T->SetFont(Font);
+    T->SetColorAndOpacity(FSlateColor(Color));
+    T->SetJustification(ETextJustify::Center);
+    UVerticalBoxSlot *Slot = Box->AddChildToVerticalBox(T);
+    Slot->SetHorizontalAlignment(EHorizontalAlignment::HAlign_Center);
+    Slot->SetPadding(Pad);
+  };
 
   // Title
-  UTextBlock* Title = WidgetTree->ConstructWidget<UTextBlock>();
-  Title->SetText(FText::FromString(TEXT("CHOISISSEZ VOS ARMES")));
-  Title->SetFont(TitleFont);
-  Title->SetColorAndOpacity(FSlateColor(FLinearColor(1.f, 0.8f, 0.2f)));
-  Title->SetJustification(ETextJustify::Center);
-  UVerticalBoxSlot* TitleSlot = VBox->AddChildToVerticalBox(Title);
-  TitleSlot->SetHorizontalAlignment(EHorizontalAlignment::HAlign_Center);
-  TitleSlot->SetPadding(FMargin(0, 0, 0, 20));
+  AddLabel(VBox, TEXT("CHOISISSEZ VOS ARMES"), TitleFont, YellowColor,
+           FMargin(0, 0, 0, 30));
 
-  // Weapon list (informational)
-  WeaponListBox = WidgetTree->ConstructWidget<UVerticalBox>();
-  for (int32 i = 0; i < AvailableWeapons.Num(); ++i) {
-    const FWeaponLoadoutInfo& Info = AvailableWeapons[i];
+  // ─── PRIMAIRE ───
+  AddLabel(VBox, TEXT("PRIMAIRE"), LabelFont, CyanColor, FMargin(0, 0, 0, 6));
 
-    FString NameStr = Info.WeaponName.IsEmpty()
-                          ? FString::Printf(TEXT("Arme %d"), i + 1)
-                          : Info.WeaponName.ToString();
+  UButton *BtnPL = nullptr, *BtnPR = nullptr;
+  UHorizontalBox *PRow = MakeSlotRow(WidgetTree, ArrowFont, WeaponFont,
+                                      PrimaryNameText, BtnPL, BtnPR);
+  BtnPL->OnClicked.AddDynamic(this, &ULoadoutWidget::OnPrimaryLeft);
+  BtnPR->OnClicked.AddDynamic(this, &ULoadoutWidget::OnPrimaryRight);
+  UVerticalBoxSlot *PRSlot = VBox->AddChildToVerticalBox(PRow);
+  PRSlot->SetHorizontalAlignment(EHorizontalAlignment::HAlign_Center);
+  PRSlot->SetPadding(FMargin(0, 0, 0, 4));
 
-    FString Line = FString::Printf(
-        TEXT("%s%s  —  DMG:%.0f  ROF:%.0f  MAG:%d  RLD:%.1fs"),
-        (i == 0) ? TEXT("[P] ") : (i == 1) ? TEXT("[S] ") : TEXT("    "),
-        *NameStr, Info.Damage, Info.FireRate, Info.MagazineSize, Info.ReloadTime);
+  PrimaryStatsText = WidgetTree->ConstructWidget<UTextBlock>();
+  PrimaryStatsText->SetFont(StatsFont);
+  PrimaryStatsText->SetJustification(ETextJustify::Center);
+  PrimaryStatsText->SetColorAndOpacity(FSlateColor(FLinearColor(0.7f, 0.7f, 0.7f)));
+  UVerticalBoxSlot *PSSlot = VBox->AddChildToVerticalBox(PrimaryStatsText);
+  PSSlot->SetHorizontalAlignment(EHorizontalAlignment::HAlign_Center);
+  PSSlot->SetPadding(FMargin(0, 0, 0, 24));
 
-    UTextBlock* Entry = WidgetTree->ConstructWidget<UTextBlock>();
-    Entry->SetText(FText::FromString(Line));
-    Entry->SetFont(InfoFont);
-    Entry->SetJustification(ETextJustify::Center);
+  // ─── SECONDAIRE ───
+  AddLabel(VBox, TEXT("SECONDAIRE"), LabelFont, CyanColor, FMargin(0, 0, 0, 6));
 
-    // Highlight first two (auto-selected)
-    if (i == 0 || i == 1) {
-      Entry->SetColorAndOpacity(FSlateColor(FLinearColor(0.2f, 1.f, 0.2f)));
-    }
+  UButton *BtnSL = nullptr, *BtnSR = nullptr;
+  UHorizontalBox *SRow = MakeSlotRow(WidgetTree, ArrowFont, WeaponFont,
+                                      SecondaryNameText, BtnSL, BtnSR);
+  BtnSL->OnClicked.AddDynamic(this, &ULoadoutWidget::OnSecondaryLeft);
+  BtnSR->OnClicked.AddDynamic(this, &ULoadoutWidget::OnSecondaryRight);
+  UVerticalBoxSlot *SRSlot = VBox->AddChildToVerticalBox(SRow);
+  SRSlot->SetHorizontalAlignment(EHorizontalAlignment::HAlign_Center);
+  SRSlot->SetPadding(FMargin(0, 0, 0, 4));
 
-    UVerticalBoxSlot* EntrySlot = WeaponListBox->AddChildToVerticalBox(Entry);
-    EntrySlot->SetPadding(FMargin(0, 3, 0, 3));
-  }
-  UVerticalBoxSlot* ListSlot = VBox->AddChildToVerticalBox(WeaponListBox);
-  ListSlot->SetHorizontalAlignment(EHorizontalAlignment::HAlign_Center);
-  ListSlot->SetPadding(FMargin(0, 0, 0, 15));
+  SecondaryStatsText = WidgetTree->ConstructWidget<UTextBlock>();
+  SecondaryStatsText->SetFont(StatsFont);
+  SecondaryStatsText->SetJustification(ETextJustify::Center);
+  SecondaryStatsText->SetColorAndOpacity(FSlateColor(FLinearColor(0.7f, 0.7f, 0.7f)));
+  UVerticalBoxSlot *SSSlot = VBox->AddChildToVerticalBox(SecondaryStatsText);
+  SSSlot->SetHorizontalAlignment(EHorizontalAlignment::HAlign_Center);
+  SSSlot->SetPadding(FMargin(0, 0, 0, 32));
 
-  // Auto-select first two weapons
-  if (AvailableWeapons.Num() >= 2) {
-    PrimaryWeaponIndex = 0;
-    SecondaryWeaponIndex = 1;
-  }
-
-  // Selection status text
-  SelectionText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("SelectionText"));
-  FString PriName = (PrimaryWeaponIndex >= 0) ? AvailableWeapons[PrimaryWeaponIndex].WeaponName.ToString() : TEXT("---");
-  FString SecName = (SecondaryWeaponIndex >= 0) ? AvailableWeapons[SecondaryWeaponIndex].WeaponName.ToString() : TEXT("---");
-  SelectionText->SetText(FText::FromString(
-      FString::Printf(TEXT("Primaire: %s | Secondaire: %s"), *PriName, *SecName)));
-  SelectionText->SetFont(InfoFont);
-  SelectionText->SetJustification(ETextJustify::Center);
-  SelectionText->SetColorAndOpacity(FSlateColor(FLinearColor(0.5f, 1.f, 0.5f)));
-  UVerticalBoxSlot* SelSlot = VBox->AddChildToVerticalBox(SelectionText);
-  SelSlot->SetHorizontalAlignment(EHorizontalAlignment::HAlign_Center);
-  SelSlot->SetPadding(FMargin(0, 0, 0, 20));
-
-  // Confirm button
-  ConfirmButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("ConfirmButton"));
-  UTextBlock* ConfirmText = WidgetTree->ConstructWidget<UTextBlock>();
+  // ─── CONFIRMER ───
+  ConfirmButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(),
+                                                       TEXT("ConfirmButton"));
+  UTextBlock *ConfirmText = WidgetTree->ConstructWidget<UTextBlock>();
   ConfirmText->SetText(FText::FromString(TEXT("CONFIRMER")));
   ConfirmText->SetFont(BtnFont);
   ConfirmText->SetJustification(ETextJustify::Center);
   ConfirmButton->AddChild(ConfirmText);
   ConfirmButton->OnClicked.AddDynamic(this, &ULoadoutWidget::ConfirmLoadout);
-  UVerticalBoxSlot* ConfSlot = VBox->AddChildToVerticalBox(ConfirmButton);
+  UVerticalBoxSlot *ConfSlot = VBox->AddChildToVerticalBox(ConfirmButton);
   ConfSlot->SetHorizontalAlignment(EHorizontalAlignment::HAlign_Center);
+
+  // Auto-select first two weapons
+  if (AvailableWeapons.Num() >= 2) {
+    PrimaryWeaponIndex   = 0;
+    SecondaryWeaponIndex = 1;
+  }
+  RefreshWeaponButtons();
 }
 
-void ULoadoutWidget::RefreshWeaponButtons() {
-  if (SelectionText) {
-    FString PriName = (PrimaryWeaponIndex >= 0 && PrimaryWeaponIndex < AvailableWeapons.Num())
-                          ? AvailableWeapons[PrimaryWeaponIndex].WeaponName.ToString()
-                          : TEXT("---");
-    FString SecName = (SecondaryWeaponIndex >= 0 && SecondaryWeaponIndex < AvailableWeapons.Num())
-                          ? AvailableWeapons[SecondaryWeaponIndex].WeaponName.ToString()
-                          : TEXT("---");
-    SelectionText->SetText(FText::FromString(
-        FString::Printf(TEXT("Primaire: %s | Secondaire: %s"), *PriName, *SecName)));
-  }
-}
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
 
 void ULoadoutWidget::SelectWeapon(int32 WeaponIndex, int32 SlotIndex) {
-  if (WeaponIndex < 0 || WeaponIndex >= AvailableWeapons.Num()) {
-    return;
-  }
+  if (WeaponIndex < 0 || WeaponIndex >= AvailableWeapons.Num()) return;
 
   if (SlotIndex == 0) {
-    if (WeaponIndex == SecondaryWeaponIndex) {
-      SecondaryWeaponIndex = -1;
-    }
+    if (WeaponIndex == SecondaryWeaponIndex) SecondaryWeaponIndex = -1;
     PrimaryWeaponIndex = WeaponIndex;
   } else if (SlotIndex == 1) {
-    if (WeaponIndex == PrimaryWeaponIndex) {
-      PrimaryWeaponIndex = -1;
-    }
+    if (WeaponIndex == PrimaryWeaponIndex) PrimaryWeaponIndex = -1;
     SecondaryWeaponIndex = WeaponIndex;
   }
 
@@ -176,14 +276,12 @@ void ULoadoutWidget::ConfirmLoadout() {
     Primary   = AvailableWeapons[PrimaryWeaponIndex].WeaponClass;
     Secondary = AvailableWeapons[SecondaryWeaponIndex].WeaponClass;
   } else if (AvailableWeapons.Num() >= 2) {
-    // Auto-pick first two weapons (fallback if selection indices are stale)
     Primary   = AvailableWeapons[0].WeaponClass;
     Secondary = AvailableWeapons[1].WeaponClass;
   } else if (AvailableWeapons.Num() == 1) {
     Primary   = AvailableWeapons[0].WeaponClass;
     Secondary = AvailableWeapons[0].WeaponClass;
   }
-  // else: Primary/Secondary = nullptr — match starts without weapons (demo fallback)
 
   OnLoadoutConfirmed.Broadcast(Primary, Secondary);
   BP_OnLoadoutConfirmed();
@@ -208,57 +306,25 @@ void ULoadoutWidget::PopulateFromClasses(
   AvailableWeapons.Empty();
 
   for (const TSubclassOf<AWeaponBase> &WeapClass : WeaponClasses) {
-    if (!WeapClass) {
-      continue;
-    }
-
+    if (!WeapClass) continue;
     const AWeaponBase *CDO = WeapClass->GetDefaultObject<AWeaponBase>();
-    if (!CDO) {
-      continue;
-    }
+    if (!CDO) continue;
 
     FWeaponLoadoutInfo Info;
-    Info.WeaponClass = WeapClass;
-    Info.WeaponName = CDO->GetWeaponName();
-    Info.Damage = CDO->GetBaseDamage();
-    Info.FireRate = CDO->GetFireRate();
+    Info.WeaponClass  = WeapClass;
+    Info.WeaponName   = CDO->GetWeaponName();
+    Info.Damage       = CDO->GetBaseDamage();
+    Info.FireRate     = CDO->GetFireRate();
     Info.MagazineSize = CDO->GetMagazineSize();
-    Info.ReloadTime = CDO->GetReloadTime();
-    Info.WeaponIcon = nullptr;
-
+    Info.ReloadTime   = CDO->GetReloadTime();
+    Info.WeaponIcon   = nullptr;
     AvailableWeapons.Add(Info);
   }
 
-  // Auto-select first two weapons — NativeConstruct runs before PopulateFromClasses
-  // so indices are -1 at that point; fix them here.
   if (AvailableWeapons.Num() >= 2 && PrimaryWeaponIndex < 0) {
     PrimaryWeaponIndex   = 0;
     SecondaryWeaponIndex = 1;
   }
 
-  // Rebuild the weapon list UI (BuildDefaultUI ran when AvailableWeapons was empty)
-  if (WeaponListBox) {
-    WeaponListBox->ClearChildren();
-    FSlateFontInfo InfoFont = FCoreStyle::GetDefaultFontStyle("Regular", 14);
-    for (int32 i = 0; i < AvailableWeapons.Num(); ++i) {
-      const FWeaponLoadoutInfo &Info = AvailableWeapons[i];
-      FString NameStr = Info.WeaponName.IsEmpty()
-                            ? FString::Printf(TEXT("Arme %d"), i + 1)
-                            : Info.WeaponName.ToString();
-      FString Line = FString::Printf(
-          TEXT("%s%s  —  DMG:%.0f  ROF:%.0f  MAG:%d  RLD:%.1fs"),
-          (i == PrimaryWeaponIndex) ? TEXT("[P] ") : (i == SecondaryWeaponIndex) ? TEXT("[S] ") : TEXT("    "),
-          *NameStr, Info.Damage, Info.FireRate, Info.MagazineSize, Info.ReloadTime);
-      UTextBlock *Entry = NewObject<UTextBlock>(WeaponListBox);
-      Entry->SetText(FText::FromString(Line));
-      Entry->SetFont(InfoFont);
-      Entry->SetJustification(ETextJustify::Center);
-      if (i == PrimaryWeaponIndex || i == SecondaryWeaponIndex) {
-        Entry->SetColorAndOpacity(FSlateColor(FLinearColor(0.2f, 1.f, 0.2f)));
-      }
-      UVerticalBoxSlot *EntrySlot = WeaponListBox->AddChildToVerticalBox(Entry);
-      EntrySlot->SetPadding(FMargin(0, 3, 0, 3));
-    }
-  }
   RefreshWeaponButtons();
 }
