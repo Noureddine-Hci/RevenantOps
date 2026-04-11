@@ -70,7 +70,7 @@ void UGameOverWidget::BuildDefaultUI() {
 
   // Title "GAME OVER"
   UTextBlock* Title = WidgetTree->ConstructWidget<UTextBlock>();
-  Title->SetText(FText::FromString(TEXT("GAME OVER")));
+  Title->SetText(FText::FromString(TEXT("VOUS ÊTES MORT")));
   Title->SetFont(LargeFont);
   Title->SetColorAndOpacity(FSlateColor(FLinearColor(1.f, 0.2f, 0.2f)));
   Title->SetJustification(ETextJustify::Center);

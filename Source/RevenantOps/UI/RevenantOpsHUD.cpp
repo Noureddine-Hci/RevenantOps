@@ -84,6 +84,22 @@ void URevenantOpsHUD::BuildDefaultUI()
     LowHealthVignette->SetColorAndOpacity(FLinearColor(1.f, 0.f, 0.f, 0.f));
   }
 
+  // Font sizes
+  auto SetFontSize = [](UTextBlock* T, int32 Size) {
+    if (!T) return;
+    FSlateFontInfo F = T->GetFont();
+    F.Size = Size;
+    T->SetFont(F);
+  };
+  SetFontSize(TimerText,            28);
+  SetFontSize(ScoreText,            22);
+  SetFontSize(WaveText,             16);
+  SetFontSize(ComboText,            32); // gros et visible
+  SetFontSize(AmmoCurrentText,      36);
+  SetFontSize(AmmoReserveText,      18);
+  SetFontSize(WeaponNameText,       16);
+  SetFontSize(KillNotificationText, 20);
+
   // Default tint colours
   if (ComboText)            ComboText->SetColorAndOpacity(FSlateColor(FLinearColor(1.f, 0.8f, 0.f)));
   if (AmmoReserveText)      AmmoReserveText->SetColorAndOpacity(FSlateColor(FLinearColor(0.6f, 0.6f, 0.6f)));
@@ -132,6 +148,52 @@ void URevenantOpsHUD::NativeConstruct() {
       // Find health component on character
       CachedHealthComp =
           CachedCharacter->FindComponentByClass<UHealthComponent>();
+    }
+  }
+
+  // Create any combo widgets missing from the WBP (BindWidgetOptional won't create them)
+  if (!ComboText || !ComboTimerBar)
+  {
+    if (UCanvasPanel* Root = Cast<UCanvasPanel>(WidgetTree->RootWidget))
+    {
+      auto SetFontSize = [](UTextBlock* T, int32 Size) {
+        if (!T) return;
+        FSlateFontInfo F = T->GetFont();
+        F.Size = Size;
+        T->SetFont(F);
+      };
+
+      if (!ComboText)
+      {
+        ComboText = WidgetTree->ConstructWidget<UTextBlock>(
+            UTextBlock::StaticClass(), FName("ComboText"));
+        if (ComboText)
+        {
+          if (UCanvasPanelSlot* S = Root->AddChildToCanvas(ComboText))
+          {
+            S->SetAnchors(FAnchors(1.f, 0.f));
+            S->SetPosition(FVector2D(-160.f, 84.f));
+            S->SetSize(FVector2D(150.f, 36.f));
+          }
+          SetFontSize(ComboText, 32);
+          ComboText->SetColorAndOpacity(FSlateColor(FLinearColor(1.f, 0.8f, 0.f)));
+        }
+      }
+
+      if (!ComboTimerBar)
+      {
+        ComboTimerBar = WidgetTree->ConstructWidget<UProgressBar>(
+            UProgressBar::StaticClass(), FName("ComboTimerBar"));
+        if (ComboTimerBar)
+        {
+          if (UCanvasPanelSlot* S = Root->AddChildToCanvas(ComboTimerBar))
+          {
+            S->SetAnchors(FAnchors(1.f, 0.f));
+            S->SetPosition(FVector2D(-160.f, 124.f));
+            S->SetSize(FVector2D(150.f, 10.f));
+          }
+        }
+      }
     }
   }
 

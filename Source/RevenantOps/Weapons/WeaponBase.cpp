@@ -19,6 +19,7 @@
 #include "RevenantOpsPlayerController.h"
 #include "UI/RevenantOpsHUD.h"
 #include "CameraShakes.h"
+#include "DrawDebugHelpers.h"
 
 AWeaponBase::AWeaponBase() {
   PrimaryActorTick.bCanEverTick = true;
@@ -332,9 +333,23 @@ void AWeaponBase::HitscanTrace(const FVector &TraceStart,
   const bool bHit = GetWorld()->LineTraceSingleByChannel(
       HitResult, TraceStart, TraceEnd, ECC_Visibility, QueryParams);
 
+  // Debug: draw trace line (green = hit, red = miss)
+  DrawDebugLine(GetWorld(), TraceStart, bHit ? HitResult.ImpactPoint : TraceEnd,
+      bHit ? FColor::Green : FColor::Red, false, 1.0f, 0, 1.f);
+  if (bHit) {
+    DrawDebugSphere(GetWorld(), HitResult.ImpactPoint, 10.f, 8, FColor::Yellow, false, 1.0f);
+  }
+
+  UE_LOG(LogTemp, Warning, TEXT("[HitscanTrace] bHit=%d TraceStart=%s Dir=%s Range=%.0f"),
+      bHit, *TraceStart.ToString(), *TraceDirection.ToString(), MaxRange);
+
   if (bHit) {
     const float HitDistance = FVector::Dist(TraceStart, HitResult.ImpactPoint);
     float Damage = CalculateDamage(HitDistance);
+
+    UE_LOG(LogTemp, Warning, TEXT("[HitscanTrace] HIT: %s (Bone: %s) Dist=%.0f Damage=%.1f"),
+        *HitResult.GetActor()->GetName(), *HitResult.BoneName.ToString(),
+        HitDistance, Damage);
 
     // Check for headshot (bone name convention)
     if (HitResult.BoneName == FName("head") ||

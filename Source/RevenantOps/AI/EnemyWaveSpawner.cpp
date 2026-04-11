@@ -6,7 +6,6 @@
 #include "GameFramework/Character.h"
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
-#include "Gameplay/MercenairesGameState.h"
 
 AEnemyWaveSpawner::AEnemyWaveSpawner() {
   PrimaryActorTick.bCanEverTick = false;
@@ -211,14 +210,10 @@ FTransform AEnemyWaveSpawner::GetRandomSpawnTransform() const {
   const FVector PlayerLoc = Player ? Player->GetActorLocation() : GetActorLocation();
 
   if (SpawnPoints.Num() > 0) {
-    // Collect valid spawn points (within 2000u of player)
     TArray<int32> ValidIndices;
     for (int32 i = 0; i < SpawnPoints.Num(); ++i) {
       if (SpawnPoints[i]) {
-        const float Dist = FVector::Dist(SpawnPoints[i]->GetActorLocation(), PlayerLoc);
-        if (Dist <= 2000.f) {
-          ValidIndices.Add(i);
-        }
+        ValidIndices.Add(i);
       }
     }
 
@@ -251,11 +246,6 @@ void AEnemyWaveSpawner::OnEnemyDied(AEnemyBase *Enemy,
                                       AController *KilledBy) {
   AliveEnemies.Remove(Enemy);
   ++TotalKilled;
-
-  // Register kill in GameState for score/combo tracking
-  if (AMercenairesGameState *GS = GetWorld()->GetGameState<AMercenairesGameState>()) {
-    GS->RegisterKill(Enemy);
-  }
 
   // Check if wave is cleared
   if (AliveEnemies.Num() <= 0 && bIsActive) {
