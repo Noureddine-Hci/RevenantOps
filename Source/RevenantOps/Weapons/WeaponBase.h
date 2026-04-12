@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Engine/DataTable.h"
+#include "Engine/Texture2D.h"
 #include "WeaponBase.generated.h"
 
 class USkeletalMeshComponent;
@@ -97,6 +98,10 @@ protected:
   /** Category */
   UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Identity")
   EWeaponCategory WeaponCategory = EWeaponCategory::AssaultRifle;
+
+  /** Icone affichee dans l'inventaire (optionnel) */
+  UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Identity")
+  UTexture2D* WeaponIcon = nullptr;
 
   /** DataTable row handle — set in BP Defaults to {DT_WeaponStats, "RowName"} */
   UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Identity")
@@ -408,6 +413,10 @@ public:
   /** Gets weapon display name */
   UFUNCTION(BlueprintCallable, Category = "Weapon")
   FText GetWeaponName() const { return WeaponName; }
+
+  /** Gets weapon icon texture (for inventory) */
+  UFUNCTION(BlueprintCallable, Category = "Weapon")
+  UTexture2D* GetWeaponIcon() const { return WeaponIcon; }
 
   /** Gets base damage */
   UFUNCTION(BlueprintCallable, Category = "Weapon")

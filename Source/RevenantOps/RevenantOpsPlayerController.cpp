@@ -15,6 +15,8 @@
 #include "UI/GameOverWidget.h"
 #include "UI/LeaderboardWidget.h"
 #include "UI/LeaderboardSaveGame.h"
+#include "UI/InventoryWidget.h"
+#include "Gameplay/InventoryItem.h"
 #include "Gameplay/MercenairesGameState.h"
 #include "WeaponBase.h"
 #include "HealthComponent.h"
@@ -71,6 +73,10 @@ void ARevenantOpsPlayerController::ReceivedPlayer()
 void ARevenantOpsPlayerController::SetupInputComponent()
 {
 	Super::SetupInputComponent();
+
+	// Inventory toggle — Tab key (works alongside Enhanced Input)
+	InputComponent->BindKey(EKeys::Tab, IE_Pressed, this,
+	                        &ARevenantOpsPlayerController::ToggleInventory);
 
 	// only add IMCs for local player controllers
 	if (IsLocalPlayerController())
@@ -317,5 +323,81 @@ void ARevenantOpsPlayerController::ClearFlowWidgets() {
   if (LeaderboardWidgetInstance) {
     LeaderboardWidgetInstance->RemoveFromParent();
     LeaderboardWidgetInstance = nullptr;
+  }
+}
+
+// =============================================================================
+// INVENTORY
+// =============================================================================
+
+void ARevenantOpsPlayerController::ToggleInventory() {
+  UE_LOG(LogRevenantOps, Warning, TEXT("[Inventory] ToggleInventory called — bInventoryOpen=%d WidgetClass=%s"),
+    bInventoryOpen, InventoryWidgetClass ? *InventoryWidgetClass->GetName() : TEXT("NULL"));
+
+  if (bInventoryOpen) {
+    // Close inventory
+    if (InventoryWidgetInstance) {
+      InventoryWidgetInstance->RemoveFromParent();
+      InventoryWidgetInstance = nullptr;
+    }
+    bInventoryOpen = false;
+
+    // Restore time and input
+    GetWorldSettings()->TimeDilation = 1.f;
+    SetShowMouseCursor(false);
+    SetInputMode(FInputModeGameOnly());
+
+  } else {
+    // Open inventory
+    if (!InventoryWidgetClass) {
+      UE_LOG(LogRevenantOps, Warning, TEXT("InventoryWidgetClass not set on PlayerController!"));
+      return;
+    }
+
+    InventoryWidgetInstance = CreateWidget<UInventoryWidget>(this, InventoryWidgetClass);
+    if (!InventoryWidgetInstance) return;
+
+    // Feed current inventory items
+    if (ARevenantOpsCharacter* Char = Cast<ARevenantOpsCharacter>(GetPawn())) {
+      InventoryWidgetInstance->RefreshSlots(Char->GetInventoryItems());
+    }
+
+    // Bind use delegate
+    InventoryWidgetInstance->OnItemUsed.AddDynamic(
+        this, &ARevenantOpsPlayerController::OnInventoryItemUsed);
+    InventoryWidgetInstance->OnClosed.AddDynamic(
+        this, &ARevenantOpsPlayerController::ToggleInventory);
+
+    InventoryWidgetInstance->AddToViewport(15);
+    bInventoryOpen = true;
+
+    // Slow time and block all game input (movement, fire, etc.)
+    GetWorldSettings()->TimeDilation = 0.3f;
+    SetShowMouseCursor(true);
+    FInputModeUIOnly Mode;
+    Mode.SetWidgetToFocus(InventoryWidgetInstance->TakeWidget());
+    SetInputMode(Mode);
+  }
+}
+
+void ARevenantOpsPlayerController::OnInventoryItemUsed(int32 SlotIndex) {
+  if (ARevenantOpsCharacter* Char = Cast<ARevenantOpsCharacter>(GetPawn())) {
+    // Check if it's a time bonus before consuming
+    const TArray<FInventoryItem>& Items = Char->GetInventoryItems();
+    if (Items.IsValidIndex(SlotIndex) && Items[SlotIndex].Type == EInventoryItemType::TimeBonus) {
+      const float Bonus = Items[SlotIndex].TimeBonusSeconds;
+      Char->UseInventoryItem(SlotIndex); // clears the slot
+      // Apply time bonus to game state
+      if (AMercenairesGameState* GS = GetWorld()->GetGameState<AMercenairesGameState>()) {
+        GS->AddBonusTime(Bonus);
+      }
+    } else {
+      Char->UseInventoryItem(SlotIndex);
+    }
+
+    // Refresh inventory display
+    if (InventoryWidgetInstance) {
+      InventoryWidgetInstance->RefreshSlots(Char->GetInventoryItems());
+    }
   }
 }

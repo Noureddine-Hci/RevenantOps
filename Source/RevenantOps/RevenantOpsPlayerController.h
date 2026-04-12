@@ -13,6 +13,7 @@ class UTitleScreenWidget;
 class ULoadoutWidget;
 class UGameOverWidget;
 class ULeaderboardWidget;
+class UInventoryWidget;
 class AMercenairesGameState;
 class AWeaponBase;
 class UHealthComponent;
@@ -90,6 +91,17 @@ protected:
 	UPROPERTY()
 	TObjectPtr<ULeaderboardWidget> LeaderboardWidgetInstance;
 
+	// ========== INVENTORY ==========
+
+	/** Inventory widget class (assign WBP_Inventory in BP) */
+	UPROPERTY(EditAnywhere, Category = "UI|Inventory")
+	TSubclassOf<UInventoryWidget> InventoryWidgetClass;
+
+	UPROPERTY()
+	TObjectPtr<UInventoryWidget> InventoryWidgetInstance;
+
+	bool bInventoryOpen = false;
+
 	/** Gameplay initialization */
 	virtual void BeginPlay() override;
 
@@ -143,6 +155,14 @@ protected:
 
 	/** Removes all flow widgets from screen */
 	void ClearFlowWidgets();
+
+	/** Opens or closes the RE5-style inventory */
+	UFUNCTION(BlueprintCallable, Category = "UI|Inventory")
+	void ToggleInventory();
+
+	/** Handler when player uses an item in the inventory */
+	UFUNCTION()
+	void OnInventoryItemUsed(int32 SlotIndex);
 
 	/** Guard against double loadout confirmation */
 	bool bLoadoutConfirmed = false;

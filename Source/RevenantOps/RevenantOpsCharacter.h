@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "Logging/LogMacros.h"
+#include "Gameplay/InventoryItem.h"
 #include "RevenantOpsCharacter.generated.h"
 
 class USpringArmComponent;
@@ -253,6 +254,12 @@ protected:
   UPROPERTY()
   UHealthComponent *HealthComp = nullptr;
 
+  // ========== INVENTORY (RE5-style, 9 slots) ==========
+
+  /** 9-slot inventory shared between items and weapons */
+  UPROPERTY(BlueprintReadOnly, Category = "Inventory")
+  TArray<FInventoryItem> Inventory;
+
 public:
   ARevenantOpsCharacter();
 
@@ -341,6 +348,18 @@ public:
   /** Returns the currently equipped weapon */
   UFUNCTION(BlueprintCallable, Category = "Weapon")
   AWeaponBase *GetCurrentWeapon() const { return CurrentWeapon; }
+
+  /** Returns a copy of the 9-slot inventory */
+  UFUNCTION(BlueprintCallable, Category = "Inventory")
+  TArray<FInventoryItem> GetInventoryItems() const { return Inventory; }
+
+  /** Adds an item to the first empty slot; returns false if inventory is full */
+  UFUNCTION(BlueprintCallable, Category = "Inventory")
+  bool AddItemToInventory(const FInventoryItem& Item);
+
+  /** Uses item at SlotIndex (applies heal/time bonus, removes consumable) */
+  UFUNCTION(BlueprintCallable, Category = "Inventory")
+  void UseInventoryItem(int32 SlotIndex);
 
 public:
   FORCEINLINE class USpringArmComponent *GetCameraBoom() const {

@@ -98,6 +98,10 @@ void ARevenantOpsCharacter::BeginPlay() {
         this, &ARevenantOpsCharacter::OnDamageReceived);
   }
 
+  // Initialize inventory — 9 empty slots
+  Inventory.SetNum(9);
+  for (FInventoryItem& Slot : Inventory) { Slot = FInventoryItem(); }
+
   // Spawn weapons from loadout
   SpawnDefaultWeapons();
 }
@@ -599,6 +603,61 @@ void ARevenantOpsCharacter::SpawnDefaultWeapons() {
     bIsArmed = true;
     EquipWeapon(0);
   }
+
+  // Sync weapon slots into RE5 inventory (slots 0 and 1)
+  for (int32 i = 0; i < WeaponInventory.Num() && i < 2; ++i) {
+    if (!WeaponInventory[i]) continue;
+    FInventoryItem& Slot = Inventory[i];
+    Slot.Type        = EInventoryItemType::Weapon;
+    Slot.DisplayName = WeaponInventory[i]->GetWeaponName();
+    Slot.Description = FText::FromString(TEXT("Arme equipee"));
+    Slot.Quantity    = 1;
+    Slot.WeaponClass = WeaponInventory[i]->GetClass();
+    Slot.ItemIcon    = WeaponInventory[i]->GetWeaponIcon();
+  }
+}
+
+bool ARevenantOpsCharacter::AddItemToInventory(const FInventoryItem& Item) {
+  for (FInventoryItem& Slot : Inventory) {
+    if (Slot.IsEmpty()) {
+      Slot = Item;
+      return true;
+    }
+  }
+  return false; // Inventory full
+}
+
+void ARevenantOpsCharacter::UseInventoryItem(int32 SlotIndex) {
+  if (!Inventory.IsValidIndex(SlotIndex)) return;
+  FInventoryItem& Item = Inventory[SlotIndex];
+  if (Item.IsEmpty()) return;
+
+  switch (Item.Type) {
+    case EInventoryItemType::Health:
+      if (HealthComp) {
+        HealthComp->Heal(Item.HealAmount);
+      }
+      Item = FInventoryItem(); // consume
+      break;
+
+    case EInventoryItemType::TimeBonus:
+      // Time bonus applied by PlayerController via delegate
+      // Item stays — controller will read TimeBonusSeconds and clear it
+      break;
+
+    case EInventoryItemType::Weapon:
+      // Equip weapon if it matches a slot in WeaponInventory
+      for (int32 i = 0; i < WeaponInventory.Num(); ++i) {
+        if (WeaponInventory[i] && WeaponInventory[i]->GetClass() == Item.WeaponClass) {
+          EquipWeapon(i);
+          break;
+        }
+      }
+      break;
+
+    default:
+      break;
+  }
 }
 
 void ARevenantOpsCharacter::EquipWeapon(int32 Index) {
@@ -689,11 +748,9 @@ void ARevenantOpsCharacter::AimPressed() {
 void ARevenantOpsCharacter::AimReleased() {
   bIsAiming = false;
 
-  // Restore free rotation (only if not firing)
-  if (!CurrentWeapon || !CurrentWeapon->CanFire()) {
-    GetCharacterMovement()->bOrientRotationToMovement = true;
-    bUseControllerRotationYaw = false;
-  }
+  // Always restore free rotation when releasing aim
+  GetCharacterMovement()->bOrientRotationToMovement = true;
+  bUseControllerRotationYaw = false;
 
   if (CurrentWeapon) {
     CurrentWeapon->StopADS();
