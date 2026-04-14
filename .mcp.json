@@ -1,5 +1,9 @@
 {
   "mcpServers": {
+    "blender": {
+      "command": "python",
+      "args": ["-m", "blmcp"]
+    },
     "unreal-mcpython": {
       "command": "C:/Users/Noureddine/.local/bin/uv.exe",
       "args": [
