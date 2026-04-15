@@ -13,8 +13,10 @@ class UTitleScreenWidget;
 class ULoadoutWidget;
 class UGameOverWidget;
 class ULeaderboardWidget;
+class UInventoryWidget;
 class AMercenairesGameState;
 class AWeaponBase;
+class UHealthComponent;
 
 /**
  *  Basic PlayerController class for a third person game
@@ -89,6 +91,17 @@ protected:
 	UPROPERTY()
 	TObjectPtr<ULeaderboardWidget> LeaderboardWidgetInstance;
 
+	// ========== INVENTORY ==========
+
+	/** Inventory widget class (assign WBP_Inventory in BP) */
+	UPROPERTY(EditAnywhere, Category = "UI|Inventory")
+	TSubclassOf<UInventoryWidget> InventoryWidgetClass;
+
+	UPROPERTY()
+	TObjectPtr<UInventoryWidget> InventoryWidgetInstance;
+
+	bool bInventoryOpen = false;
+
 	/** Gameplay initialization */
 	virtual void BeginPlay() override;
 
@@ -136,8 +149,20 @@ protected:
 	UFUNCTION()
 	void OnMatchEnded(bool bIsActive);
 
+	/** Handler for player death — ends match immediately */
+	UFUNCTION()
+	void OnPlayerDied(UHealthComponent* HealthComp, const AController* InstigatedBy, AActor* DamageCauser);
+
 	/** Removes all flow widgets from screen */
 	void ClearFlowWidgets();
+
+	/** Opens or closes the RE5-style inventory */
+	UFUNCTION(BlueprintCallable, Category = "UI|Inventory")
+	void ToggleInventory();
+
+	/** Handler when player uses an item in the inventory */
+	UFUNCTION()
+	void OnInventoryItemUsed(int32 SlotIndex);
 
 	/** Guard against double loadout confirmation */
 	bool bLoadoutConfirmed = false;

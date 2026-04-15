@@ -195,6 +195,29 @@ with unreal.ScopedEditorTransaction('...') as _:
 abp.add_node_asset_override(None, anim_asset)
 ```
 
+## Etat Phase 17 — Inventaire RE5 + Viseur CS (COMPLETE 2026-04-13)
+- `FInventoryItem` struct : type, DisplayName, Description, Quantity, WeaponClass, HealAmount, TimeBonusSeconds, ItemIcon
+- `UInventoryWidget` : 9 slots 3x3, navigation ZQSD/flèches, Tab ouvre/ferme, E utilise
+  - `RebuildWidget` avec guard `IsDesignTime()` — évite corruption WBP dans l'éditeur
+  - `FInputModeUIOnly` quand ouvert (bloque tir + mouvement)
+  - Time dilation 0.3x quand inventaire ouvert
+- `WeaponBase` : champ `WeaponIcon` (UTexture2D*) visible dans Details → Weapon|Identity
+- `RevenantOpsCharacter` : `Inventory[9]`, `AddItemToInventory`, `UseInventoryItem`
+  - Slots 0-1 auto-remplis avec les armes du loadout via `SpawnDefaultWeapons`
+- `RevenantOpsPlayerController` : `ToggleInventory()` sur Tab, `OnInventoryItemUsed`, `bInventoryOpen`
+- Viseur CS : 4 traits `CrosshairTop/Bottom/Left/Right` (UImage brush solide)
+  - S'écartent dynamiquement selon `Weapon->GetCurrentSpread()`
+  - Se resserrent en ADS, interpolation fluide (`CrosshairInterpSpeed`)
+  - Créés dans `NativeConstruct` si le WBP a déjà un RootWidget
+- Icônes importées : AK74, M92F, SHOTGUN, VZ61 dans `Content/Mercenaires/UI/Icons/`
+- Dernier commit : fc27952
+
+### PATTERNS IMPORTANTS — Live Coding
+- **Changements structurels** (nouvelles classes, nouveaux UPROPERTY) → Live Coding boucle → **redémarrer UE5**
+- **WBP corrompu** ("Impossible de charger WidgetTree") → supprimer + recréer le WBP
+- `RebuildWidget` modifie le WidgetTree en éditeur → toujours ajouter `if (!IsDesignTime())`
+- `NativeConstruct` est appelé APRÈS que Slate est construit → pas adapté pour créer le RootWidget
+
 ## Etat Phase 14 — Demo Polish / Combat Feel (EN COURS 2026-04-04)
 
 ### C++ FAIT (compile VS, PAS commit)
@@ -273,11 +296,11 @@ UCS_WeaponFire::UCS_WeaponFire(const FObjectInitializer &ObjInit) : Super(ObjIni
 feat(16): demo jouable — HUD programmatique + ReceivedPlayer fix + WaveSpawner + animations
 ```
 
-## PROCHAINE ETAPE
-1. Ctrl+Alt+F11 (Live Coding) dans UE5
-2. PIE : Title Screen → Loadout → Gameplay (sprint sans crash, zombies, HUD)
-3. Si OK → commit feat(16)
-4. Phase 17 (à définir) : polish audio, animations armed upper body (LBB), etc.
+## PROCHAINE ETAPE (Jilani — branche J)
+1. Tester en PIE : Tab → inventaire s'ouvre, ZQSD navigue, E utilise
+2. Tester viseur : 4 traits visibles au centre, s'écartent en tirant, se resserrent en ADS
+3. Assigner WeaponIcon dans BP_SMG, BP_Shotgun, BP_Sniper (BP_Pistol + BP_AssaultRifle déjà faits)
+4. À décider : Phase 18 (sons Kenney, animations upper body armed, polish arena)
 
 ---
 

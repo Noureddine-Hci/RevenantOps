@@ -69,7 +69,33 @@ void URevenantOpsHUD::BuildDefaultUI()
   MakeText(KillNotificationText, FName("KillNotificationText"), FVector2D(-120.f,  80.f),  FVector2D(240.f, 30.f), FAnchors(0.5f, 0.f));
 
   // ── Images ───────────────────────────────────────────────────────────────
-  MakeImg(CrosshairImage,       FName("CrosshairImage"),       FVector2D(-12.f, -12.f), FVector2D(24.f, 24.f), FAnchors(0.5f, 0.5f));
+  // Ancien CrosshairImage masqué — remplacé par les 4 traits
+  MakeImg(CrosshairImage,       FName("CrosshairImage"),       FVector2D(0.f, 0.f), FVector2D(1.f, 1.f), FAnchors(0.5f, 0.5f));
+  if (CrosshairImage) CrosshairImage->SetVisibility(ESlateVisibility::Collapsed);
+
+  // 4 traits du viseur (positions initiales au repos, gap=4)
+  // Trait haut   : largeur=thickness, hauteur=length, au-dessus du centre
+  MakeImg(CrosshairTop,    FName("CrosshairTop"),    FVector2D(-1.f, -(4.f + 10.f)), FVector2D(2.f, 10.f), FAnchors(0.5f, 0.5f));
+  // Trait bas
+  MakeImg(CrosshairBottom, FName("CrosshairBottom"), FVector2D(-1.f,   4.f),          FVector2D(2.f, 10.f), FAnchors(0.5f, 0.5f));
+  // Trait gauche : largeur=length, hauteur=thickness
+  MakeImg(CrosshairLeft,   FName("CrosshairLeft"),   FVector2D(-(4.f + 10.f), -1.f), FVector2D(10.f, 2.f), FAnchors(0.5f, 0.5f));
+  // Trait droit
+  MakeImg(CrosshairRight,  FName("CrosshairRight"),  FVector2D(4.f,          -1.f),  FVector2D(10.f, 2.f), FAnchors(0.5f, 0.5f));
+
+  // Brush solide blanc — sans ca les UImage sont invisibles
+  FSlateBrush WhiteBrush;
+  WhiteBrush.DrawAs = ESlateBrushDrawType::Box;
+  WhiteBrush.TintColor = FSlateColor(FLinearColor::White);
+
+  const FLinearColor LineColor(1.f, 1.f, 1.f, 0.9f);
+  for (UImage* Line : {CrosshairTop, CrosshairBottom, CrosshairLeft, CrosshairRight}) {
+    if (Line) {
+      Line->SetBrush(WhiteBrush);
+      Line->SetColorAndOpacity(LineColor);
+    }
+  }
+
   MakeImg(HitMarkerImage,       FName("HitMarkerImage"),       FVector2D(-16.f, -16.f), FVector2D(32.f, 32.f), FAnchors(0.5f, 0.5f));
   MakeImg(DamageDirectionImage, FName("DamageDirectionImage"), FVector2D(-32.f, -32.f), FVector2D(64.f, 64.f), FAnchors(0.5f, 0.5f));
 
@@ -83,6 +109,22 @@ void URevenantOpsHUD::BuildDefaultUI()
     }
     LowHealthVignette->SetColorAndOpacity(FLinearColor(1.f, 0.f, 0.f, 0.f));
   }
+
+  // Font sizes
+  auto SetFontSize = [](UTextBlock* T, int32 Size) {
+    if (!T) return;
+    FSlateFontInfo F = T->GetFont();
+    F.Size = Size;
+    T->SetFont(F);
+  };
+  SetFontSize(TimerText,            28);
+  SetFontSize(ScoreText,            22);
+  SetFontSize(WaveText,             16);
+  SetFontSize(ComboText,            32); // gros et visible
+  SetFontSize(AmmoCurrentText,      36);
+  SetFontSize(AmmoReserveText,      18);
+  SetFontSize(WeaponNameText,       16);
+  SetFontSize(KillNotificationText, 20);
 
   // Default tint colours
   if (ComboText)            ComboText->SetColorAndOpacity(FSlateColor(FLinearColor(1.f, 0.8f, 0.f)));
@@ -133,6 +175,83 @@ void URevenantOpsHUD::NativeConstruct() {
       CachedHealthComp =
           CachedCharacter->FindComponentByClass<UHealthComponent>();
     }
+  }
+
+  // Create any combo widgets missing from the WBP (BindWidgetOptional won't create them)
+  if (!ComboText || !ComboTimerBar)
+  {
+    if (UCanvasPanel* Root = Cast<UCanvasPanel>(WidgetTree->RootWidget))
+    {
+      auto SetFontSize = [](UTextBlock* T, int32 Size) {
+        if (!T) return;
+        FSlateFontInfo F = T->GetFont();
+        F.Size = Size;
+        T->SetFont(F);
+      };
+
+      if (!ComboText)
+      {
+        ComboText = WidgetTree->ConstructWidget<UTextBlock>(
+            UTextBlock::StaticClass(), FName("ComboText"));
+        if (ComboText)
+        {
+          if (UCanvasPanelSlot* S = Root->AddChildToCanvas(ComboText))
+          {
+            S->SetAnchors(FAnchors(1.f, 0.f));
+            S->SetPosition(FVector2D(-160.f, 84.f));
+            S->SetSize(FVector2D(150.f, 36.f));
+          }
+          SetFontSize(ComboText, 32);
+          ComboText->SetColorAndOpacity(FSlateColor(FLinearColor(1.f, 0.8f, 0.f)));
+        }
+      }
+
+      if (!ComboTimerBar)
+      {
+        ComboTimerBar = WidgetTree->ConstructWidget<UProgressBar>(
+            UProgressBar::StaticClass(), FName("ComboTimerBar"));
+        if (ComboTimerBar)
+        {
+          if (UCanvasPanelSlot* S = Root->AddChildToCanvas(ComboTimerBar))
+          {
+            S->SetAnchors(FAnchors(1.f, 0.f));
+            S->SetPosition(FVector2D(-160.f, 124.f));
+            S->SetSize(FVector2D(150.f, 10.f));
+          }
+        }
+      }
+    }
+  }
+
+  // Créer les 4 traits du viseur sur le canvas existant
+  if (UCanvasPanel* Root = Cast<UCanvasPanel>(WidgetTree ? WidgetTree->RootWidget : nullptr)) {
+    FSlateBrush WhiteBrush;
+    WhiteBrush.DrawAs = ESlateBrushDrawType::Box;
+    WhiteBrush.TintColor = FSlateColor(FLinearColor::White);
+    const FLinearColor LineColor(1.f, 1.f, 1.f, 0.9f);
+
+    auto MakeLine = [&](UImage*& Out, FName Name, FVector2D Pos, FVector2D Size) {
+      if (Out) return; // déjà créé par BuildDefaultUI
+      Out = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), Name);
+      if (!Out) return;
+      Out->SetBrush(WhiteBrush);
+      Out->SetColorAndOpacity(LineColor);
+      if (UCanvasPanelSlot* S = Root->AddChildToCanvas(Out)) {
+        S->SetAnchors(FAnchors(0.5f, 0.5f));
+        S->SetPosition(Pos);
+        S->SetSize(Size);
+        S->SetAlignment(FVector2D(0.5f, 0.5f));
+      }
+    };
+
+    const float G = CrosshairGapMin;
+    const float L = CrosshairLineLength;
+    const float T = CrosshairLineThickness;
+    MakeLine(CrosshairTop,    FName("CrosshairTop"),    FVector2D(0.f, -(G + L * 0.5f)), FVector2D(T, L));
+    MakeLine(CrosshairBottom, FName("CrosshairBottom"), FVector2D(0.f,   G + L * 0.5f),  FVector2D(T, L));
+    MakeLine(CrosshairLeft,   FName("CrosshairLeft"),   FVector2D(-(G + L * 0.5f), 0.f), FVector2D(L, T));
+    MakeLine(CrosshairRight,  FName("CrosshairRight"),  FVector2D(  G + L * 0.5f,  0.f), FVector2D(L, T));
+    CrosshairCurrentGap = G;
   }
 
   // Initialize hit marker as hidden
@@ -259,32 +378,55 @@ void URevenantOpsHUD::UpdateAmmoDisplay() {
 // =============================================================================
 
 void URevenantOpsHUD::UpdateCrosshair() {
-  if (!CrosshairImage || !CachedCharacter) {
-    return;
-  }
+  if (!CachedCharacter) return;
+  if (!CrosshairTop || !CrosshairBottom || !CrosshairLeft || !CrosshairRight) return;
 
-  AWeaponBase *Weapon = CachedCharacter->GetCurrentWeapon();
-  float SpreadAlpha = 0.f;
+  AWeaponBase* Weapon = CachedCharacter->GetCurrentWeapon();
 
+  // Calcul du gap cible selon la dispersion
+  float TargetGap = CrosshairGapMin;
   if (Weapon) {
-    // Map weapon spread to crosshair size
-    const float CurrentSpread = Weapon->GetCurrentSpread();
-    SpreadAlpha = FMath::GetMappedRangeValueClamped(
-        FVector2D(0.f, 10.f), FVector2D(0.f, 1.f), CurrentSpread);
+    const float SpreadAlpha = FMath::GetMappedRangeValueClamped(
+        FVector2D(0.f, 10.f), FVector2D(0.f, 1.f), Weapon->GetCurrentSpread());
+    TargetGap = FMath::Lerp(CrosshairGapMin, CrosshairGapMax, SpreadAlpha);
   }
 
-  const float TargetSize =
-      FMath::Lerp(CrosshairBaseSize, CrosshairMaxSize, SpreadAlpha);
-
-  // Scale the crosshair image
-  CrosshairImage->SetDesiredSizeOverride(FVector2D(TargetSize, TargetSize));
-
-  // Tint red if over an enemy (optional - can check via line trace)
+  // Réduire davantage en ADS
   if (CachedCharacter->IsAiming()) {
-    CrosshairImage->SetColorAndOpacity(FLinearColor(1.f, 1.f, 1.f, 0.8f));
-  } else {
-    CrosshairImage->SetColorAndOpacity(FLinearColor(1.f, 1.f, 1.f, 0.5f));
+    TargetGap = CrosshairGapMin * 0.5f;
   }
+
+  // Interpolation fluide (style CS : réactif mais pas instantané)
+  const float DeltaTime = GetWorld()->GetDeltaSeconds();
+  CrosshairCurrentGap = FMath::FInterpTo(CrosshairCurrentGap, TargetGap,
+                                          DeltaTime, CrosshairInterpSpeed);
+
+  const float G = CrosshairCurrentGap;
+  const float L = CrosshairLineLength;
+  const float T = CrosshairLineThickness;
+
+  // Repositionner chaque trait via son canvas slot
+  auto MoveSlot = [](UImage* Img, FVector2D Pos, FVector2D Size) {
+    if (!Img) return;
+    if (UCanvasPanelSlot* S = Cast<UCanvasPanelSlot>(Img->Slot)) {
+      S->SetPosition(Pos);
+      S->SetSize(Size);
+      S->SetAlignment(FVector2D(0.5f, 0.5f));
+    }
+  };
+
+  MoveSlot(CrosshairTop,    FVector2D(0.f, -(G + L * 0.5f)), FVector2D(T, L));
+  MoveSlot(CrosshairBottom, FVector2D(0.f,   G + L * 0.5f),  FVector2D(T, L));
+  MoveSlot(CrosshairLeft,   FVector2D(-(G + L * 0.5f), 0.f), FVector2D(L, T));
+  MoveSlot(CrosshairRight,  FVector2D(  G + L * 0.5f,  0.f), FVector2D(L, T));
+
+  // Opacité : légèrement réduite en ADS (le viseur disparaît presque)
+  const float Alpha = CachedCharacter->IsAiming() ? 0.4f : 0.9f;
+  const FLinearColor Color(1.f, 1.f, 1.f, Alpha);
+  CrosshairTop->SetColorAndOpacity(Color);
+  CrosshairBottom->SetColorAndOpacity(Color);
+  CrosshairLeft->SetColorAndOpacity(Color);
+  CrosshairRight->SetColorAndOpacity(Color);
 }
 
 // =============================================================================

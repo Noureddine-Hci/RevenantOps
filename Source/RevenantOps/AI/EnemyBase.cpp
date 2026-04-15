@@ -10,6 +10,9 @@
 #include "AIController.h"
 #include "TimerManager.h"
 #include "WeaponBase.h"
+#include "Gameplay/MercenairesGameState.h"
+#include "RevenantOpsPlayerController.h"
+#include "UI/RevenantOpsHUD.h"
 
 AEnemyBase::AEnemyBase() {
   PrimaryActorTick.bCanEverTick = true;
@@ -43,6 +46,17 @@ AEnemyBase::AEnemyBase() {
 
 void AEnemyBase::BeginPlay() {
   Super::BeginPlay();
+
+  // Force capsule and mesh to block Visibility traces (weapon hitscan)
+  GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+  GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
+  GetMesh()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+  GetMesh()->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
+
+  UE_LOG(LogTemp, Warning, TEXT("[EnemyBase] %s BeginPlay — Capsule collision=%d, Visibility response=%d"),
+      *GetName(),
+      (int32)GetCapsuleComponent()->GetCollisionEnabled(),
+      (int32)GetCapsuleComponent()->GetCollisionResponseToChannel(ECC_Visibility));
 
   // Bind health events
   if (HealthComp) {
@@ -499,6 +513,25 @@ void AEnemyBase::HandleDeath(UHealthComponent *HealthComponent,
   // Play death sound
   if (DeathSound) {
     UGameplayStatics::PlaySoundAtLocation(this, DeathSound, GetActorLocation());
+  }
+
+  // Register kill in GameState (score + combo) and show kill notification
+  if (AMercenairesGameState *GS =
+          GetWorld()->GetGameState<AMercenairesGameState>()) {
+    // Snapshot combo BEFORE RegisterKill increments it
+    const int32 ComboAtKill  = GS->GetComboMultiplier();
+    const int32 Points       = GetKillPoints() * ComboAtKill;
+    GS->RegisterKill(this);
+
+    // Show "+points  EnemyName" on HUD
+    if (APlayerController *PC = GetWorld()->GetFirstPlayerController()) {
+      if (ARevenantOpsPlayerController *ROPC =
+              Cast<ARevenantOpsPlayerController>(PC)) {
+        if (URevenantOpsHUD *HUD = ROPC->GetHUDWidget()) {
+          HUD->ShowKillNotification(EnemyName.ToString(), Points);
+        }
+      }
+    }
   }
 
   // Broadcast death

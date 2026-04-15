@@ -45,6 +45,9 @@ void UHealthComponent::HandleTakeAnyDamage(AActor *DamagedActor, float Damage,
                                             const UDamageType *DamageType,
                                             AController *InstigatedBy,
                                             AActor *DamageCauser) {
+  UE_LOG(LogTemp, Warning, TEXT("[HealthComp] %s TakeAnyDamage: %.1f (Dead=%d Invuln=%d)"),
+      *GetOwner()->GetName(), Damage, bIsDead, bIsInvulnerable);
+
   if (bIsDead || bIsInvulnerable || Damage <= 0.f) {
     return;
   }
