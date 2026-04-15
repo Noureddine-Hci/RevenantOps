@@ -5,6 +5,56 @@
 - Developpeurs : Noureddine Houichi + Jilani (depuis 2026-04-06)
 - Langue de communication : **francais**
 
+---
+
+## AUTO-INVOCATION RULES — RÈGLES IMPÉRATIVES POUR CLAUDE
+
+**Les devs ne connaissent pas par cœur les skills/agents disponibles. C'est à TOI, Claude, de détecter les patterns et d'invoquer les bons outils AUTOMATIQUEMENT. Jamais attendre que le dev tape `/gate-check` — invoque de toi-même.**
+
+### Règle d'or
+Avant de répondre à une demande, **scan la demande** pour détecter un pattern ci-dessous. Si match → invoque l'outil SANS demander. Annonce brièvement ce que tu fais (« Je lance /gate-check 17 avant de confirmer »).
+
+### Skills à auto-invoquer
+
+| Pattern dans la demande du dev | Skill à invoquer |
+|---|---|
+| "phase X terminée", "on peut passer à la suite", "c'est fini", "on valide la phase" | `gate-check [phase]` |
+| "je teste en PIE", "lance le jeu", "je vais faire un test", "avant de merger" | `smoke-check` |
+| "on attaque la phase X", "prochaine phase", "planifie la suite", "qu'est-ce qu'on fait après" | `sprint-plan [phase]` |
+| "combat feel", "polish combat", "camera shake + X", "tir + VFX + son", problème qui touche plusieurs systèmes gameplay | `team-combat` (lance plusieurs agents en parallèle) |
+| "équilibré ?", "trop fort", "DataTable", "DT_WeaponStats", "balance" | `balance-check` |
+| "review mon code", "j'ai fini de coder", "avant de committer", nouveau C++ écrit | `code-review [fichier]` |
+| "bug", "ça crash", "ça marche pas", "problème avec", "erreur" | `bug-triage` |
+| "ça lag", "FPS bas", "c'est lent", "optimiser", "perf" | `perf-profile` |
+
+### Agents à auto-déléguer (via Task)
+
+| Pattern | Agent |
+|---|---|
+| Question C++ UE5, architecture générale, plugin, Build.cs | `unreal-specialist` |
+| Problème Blueprint, graph spaghetti, BP/C++ boundary, review BP | `ue-blueprint-specialist` |
+| HUD, inventaire, widgets, WBP, crosshair, Slate | `ue-umg-specialist` |
+| GAS, abilities, gameplay effects, attribute sets, tags | `ue-gas-specialist` |
+
+### Règles de lancement parallèle
+
+Quand une tâche touche **plusieurs domaines** (C++ + BP + UI + VFX), **lance les agents en parallèle** dans un seul message (pas séquentiel) :
+- Exemple : "Ajoute un système de réchargement visuel" → lancer `unreal-specialist` (C++), `ue-umg-specialist` (HUD bar), `ue-blueprint-specialist` (BP weapon) EN PARALLÈLE
+
+### Format d'annonce (court, pas de blabla)
+
+Avant d'invoquer :
+> « Pattern détecté : [X]. Je lance `/[skill]` pour [raison]. »
+
+Puis tu exécutes. Tu ne demandes PAS la permission pour des skills/agents — tu les utilises comme tes propres outils.
+
+### Exceptions — NE PAS auto-invoquer si :
+- La demande est triviale (ex: "c'est quoi UE5 ?")
+- Le dev est clairement en mode conversation/brainstorm
+- On est en plein milieu d'une autre tâche déjà lancée
+
+---
+
 ## Conventions C++
 - Unreal Engine 5.7 — toujours utiliser les API a jour (pas de deprecated)
 - `SetCrouchedHalfHeight()` au lieu de `CrouchedHalfHeight`
