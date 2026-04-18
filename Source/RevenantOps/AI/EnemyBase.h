@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "Animation/AnimSequenceBase.h"
 #include "EnemyBase.generated.h"
 
 class UHealthComponent;
@@ -207,6 +208,20 @@ protected:
 
   /** Duration of the hit flash in seconds */
   static constexpr float HitFlashDuration = 0.15f;
+
+  // ========== ANIMATIONS ==========
+
+  /** Animation jouée à la mort (AnimSequence — si null → ragdoll immédiat) */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Animation")
+  UAnimSequenceBase* DeathAnim = nullptr;
+
+  /** Animation jouée quand l'ennemi reçoit des dégâts */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Animation")
+  UAnimSequenceBase* HitReactAnim = nullptr;
+
+  /** Animation jouée quand l'ennemi attaque (zombies) */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Animation")
+  UAnimSequenceBase* AttackAnim = nullptr;
 
   // ========== AUDIO ==========
 

@@ -13,6 +13,7 @@ class URevenantOpsHUD;
 class UTitleScreenWidget;
 class ULevelSelectWidget;
 class UCharacterSelectWidget;
+class UOptionsWidget;
 class ULoadoutWidget;
 class UGameOverWidget;
 class ULeaderboardWidget;
@@ -74,6 +75,14 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "UI|Mercenaires")
 	TSubclassOf<UCharacterSelectWidget> CharacterSelectWidgetClass;
 
+	/** Options widget class */
+	UPROPERTY(EditAnywhere, Category = "UI|Mercenaires")
+	TSubclassOf<UOptionsWidget> OptionsWidgetClass;
+
+	/** Key rebind entries shown in the Options menu — configure in BP */
+	UPROPERTY(EditAnywhere, Category = "UI|Mercenaires")
+	TArray<FKeyRebindEntry> AvailableRebinds;
+
 	/** Loadout selection widget class */
 	UPROPERTY(EditAnywhere, Category = "UI|Mercenaires")
 	TSubclassOf<ULoadoutWidget> LoadoutWidgetClass;
@@ -100,6 +109,9 @@ protected:
 
 	UPROPERTY()
 	TObjectPtr<UTitleScreenWidget> TitleScreenWidget;
+
+	UPROPERTY()
+	TObjectPtr<UOptionsWidget> OptionsWidgetInstance;
 
 	UPROPERTY()
 	TObjectPtr<ULevelSelectWidget> LevelSelectWidgetInstance;
@@ -147,6 +159,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Mercenaires|Flow")
 	void ShowTitleScreen();
 
+	/** Shows the options screen */
+	UFUNCTION(BlueprintCallable, Category = "Mercenaires|Flow")
+	void ShowOptionsScreen();
+
 	/** Shows the level selection screen */
 	UFUNCTION(BlueprintCallable, Category = "Mercenaires|Flow")
 	void ShowLevelSelectScreen();
@@ -172,6 +188,10 @@ public:
 	void ShowLeaderboard();
 
 protected:
+
+	/** Handler for back from options */
+	UFUNCTION()
+	void OnOptionsBack();
 
 	/** Handler for level chosen */
 	UFUNCTION()

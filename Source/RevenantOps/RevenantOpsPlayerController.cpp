@@ -13,6 +13,7 @@
 #include "UI/TitleScreenWidget.h"
 #include "UI/LevelSelectWidget.h"
 #include "UI/CharacterSelectWidget.h"
+#include "UI/OptionsWidget.h"
 #include "UI/LoadoutWidget.h"
 #include "UI/GameOverWidget.h"
 #include "UI/LeaderboardWidget.h"
@@ -125,6 +126,26 @@ void ARevenantOpsPlayerController::ShowTitleScreen() {
       SetInputMode(FInputModeUIOnly());
     }
   }
+}
+
+void ARevenantOpsPlayerController::ShowOptionsScreen() {
+  ClearFlowWidgets();
+
+  if (!OptionsWidgetClass) return;
+
+  OptionsWidgetInstance = CreateWidget<UOptionsWidget>(this, OptionsWidgetClass);
+  if (OptionsWidgetInstance) {
+    OptionsWidgetInstance->PopulateBindings(AvailableRebinds);
+    OptionsWidgetInstance->OnBackClicked.AddDynamic(
+        this, &ARevenantOpsPlayerController::OnOptionsBack);
+    OptionsWidgetInstance->AddToViewport(10);
+    SetShowMouseCursor(true);
+    SetInputMode(FInputModeUIOnly());
+  }
+}
+
+void ARevenantOpsPlayerController::OnOptionsBack() {
+  ShowTitleScreen();
 }
 
 void ARevenantOpsPlayerController::ShowLevelSelectScreen() {
@@ -401,6 +422,10 @@ void ARevenantOpsPlayerController::ClearFlowWidgets() {
   if (TitleScreenWidget) {
     TitleScreenWidget->RemoveFromParent();
     TitleScreenWidget = nullptr;
+  }
+  if (OptionsWidgetInstance) {
+    OptionsWidgetInstance->RemoveFromParent();
+    OptionsWidgetInstance = nullptr;
   }
   if (LevelSelectWidgetInstance) {
     LevelSelectWidgetInstance->RemoveFromParent();
