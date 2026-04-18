@@ -11,15 +11,20 @@
 #include "Widgets/Input/SVirtualJoystick.h"
 #include "UI/RevenantOpsHUD.h"
 #include "UI/TitleScreenWidget.h"
+#include "UI/LevelSelectWidget.h"
+#include "UI/CharacterSelectWidget.h"
 #include "UI/LoadoutWidget.h"
 #include "UI/GameOverWidget.h"
 #include "UI/LeaderboardWidget.h"
 #include "UI/LeaderboardSaveGame.h"
+#include "UI/InventoryWidget.h"
+#include "Gameplay/InventoryItem.h"
 #include "Gameplay/MercenairesGameState.h"
 #include "WeaponBase.h"
 #include "HealthComponent.h"
 #include "AI/EnemyWaveSpawner.h"
 #include "Kismet/GameplayStatics.h"
+#include "Gameplay/RevenantOpsGameInstance.h"
 
 void ARevenantOpsPlayerController::BeginPlay()
 {
@@ -72,6 +77,10 @@ void ARevenantOpsPlayerController::SetupInputComponent()
 {
 	Super::SetupInputComponent();
 
+	// Inventory toggle — Tab key (works alongside Enhanced Input)
+	InputComponent->BindKey(EKeys::Tab, IE_Pressed, this,
+	                        &ARevenantOpsPlayerController::ToggleInventory);
+
 	// only add IMCs for local player controllers
 	if (IsLocalPlayerController())
 	{
@@ -116,6 +125,88 @@ void ARevenantOpsPlayerController::ShowTitleScreen() {
       SetInputMode(FInputModeUIOnly());
     }
   }
+}
+
+void ARevenantOpsPlayerController::ShowLevelSelectScreen() {
+  ClearFlowWidgets();
+
+  // Fallback si aucun niveau configuré dans le BP
+  if (AvailableLevels.IsEmpty()) {
+    FLevelInfo DefaultLevel;
+    DefaultLevel.DisplayName = FText::FromString(TEXT("The Compound"));
+    DefaultLevel.MapName     = FName(TEXT("Lvl_ThirdPerson"));
+    AvailableLevels.Add(DefaultLevel);
+  }
+
+  if (!LevelSelectWidgetClass) {
+    // Pas de widget configuré → sauter directement à CharacterSelect
+    ShowCharacterSelectScreen();
+    return;
+  }
+
+  LevelSelectWidgetInstance = CreateWidget<ULevelSelectWidget>(this, LevelSelectWidgetClass);
+  if (LevelSelectWidgetInstance) {
+    LevelSelectWidgetInstance->PopulateLevels(AvailableLevels);
+    LevelSelectWidgetInstance->OnLevelChosen.AddDynamic(
+        this, &ARevenantOpsPlayerController::OnLevelChosen);
+    LevelSelectWidgetInstance->OnBackClicked.AddDynamic(
+        this, &ARevenantOpsPlayerController::OnLevelSelectBack);
+    LevelSelectWidgetInstance->AddToViewport(10);
+    SetShowMouseCursor(true);
+    SetInputMode(FInputModeUIOnly());
+  }
+}
+
+void ARevenantOpsPlayerController::OnLevelChosen(FLevelInfo LevelInfo) {
+  // Stocker le niveau choisi (GameInstance) puis aller à CharacterSelect
+  if (URevenantOpsGameInstance* GI = Cast<URevenantOpsGameInstance>(GetGameInstance())) {
+    GI->PendingLevel = LevelInfo;
+  }
+  ShowCharacterSelectScreen();
+}
+
+void ARevenantOpsPlayerController::OnLevelSelectBack() {
+  ShowTitleScreen();
+}
+
+void ARevenantOpsPlayerController::ShowCharacterSelectScreen() {
+  ClearFlowWidgets();
+
+  // Fallback si aucun personnage configuré dans le BP
+  if (AvailableCharacters.IsEmpty()) {
+    FCharacterInfo DefaultChar;
+    DefaultChar.DisplayName = FText::FromString(TEXT("Mercenaire"));
+    AvailableCharacters.Add(DefaultChar);
+  }
+
+  if (!CharacterSelectWidgetClass) {
+    // Pas de widget configuré → sauter directement au Loadout
+    ShowLoadoutScreen();
+    return;
+  }
+
+  CharacterSelectWidgetInstance = CreateWidget<UCharacterSelectWidget>(this, CharacterSelectWidgetClass);
+  if (CharacterSelectWidgetInstance) {
+    CharacterSelectWidgetInstance->PopulateCharacters(AvailableCharacters);
+    CharacterSelectWidgetInstance->OnCharacterChosen.AddDynamic(
+        this, &ARevenantOpsPlayerController::OnCharacterChosen);
+    CharacterSelectWidgetInstance->OnBackClicked.AddDynamic(
+        this, &ARevenantOpsPlayerController::OnCharacterSelectBack);
+    CharacterSelectWidgetInstance->AddToViewport(10);
+    SetShowMouseCursor(true);
+    SetInputMode(FInputModeUIOnly());
+  }
+}
+
+void ARevenantOpsPlayerController::OnCharacterChosen(FCharacterInfo CharacterInfo) {
+  if (URevenantOpsGameInstance* GI = Cast<URevenantOpsGameInstance>(GetGameInstance())) {
+    GI->PendingCharacter = CharacterInfo;
+  }
+  ShowLoadoutScreen();
+}
+
+void ARevenantOpsPlayerController::OnCharacterSelectBack() {
+  ShowLevelSelectScreen();
 }
 
 void ARevenantOpsPlayerController::ShowLoadoutScreen() {
@@ -186,6 +277,11 @@ void ARevenantOpsPlayerController::StartMercenairesMatch() {
   }
   if (HUDWidget && !HUDWidget->IsInViewport()) {
     HUDWidget->AddToViewport(0);
+  }
+
+  // Re-activer l'input du pawn (DisableInput peut avoir été appelé lors d'une mort précédente)
+  if (APawn* P = GetPawn()) {
+    P->EnableInput(this);
   }
 
   // Switch to game input
@@ -306,6 +402,14 @@ void ARevenantOpsPlayerController::ClearFlowWidgets() {
     TitleScreenWidget->RemoveFromParent();
     TitleScreenWidget = nullptr;
   }
+  if (LevelSelectWidgetInstance) {
+    LevelSelectWidgetInstance->RemoveFromParent();
+    LevelSelectWidgetInstance = nullptr;
+  }
+  if (CharacterSelectWidgetInstance) {
+    CharacterSelectWidgetInstance->RemoveFromParent();
+    CharacterSelectWidgetInstance = nullptr;
+  }
   if (LoadoutWidgetInstance) {
     LoadoutWidgetInstance->RemoveFromParent();
     LoadoutWidgetInstance = nullptr;
@@ -317,5 +421,81 @@ void ARevenantOpsPlayerController::ClearFlowWidgets() {
   if (LeaderboardWidgetInstance) {
     LeaderboardWidgetInstance->RemoveFromParent();
     LeaderboardWidgetInstance = nullptr;
+  }
+}
+
+// =============================================================================
+// INVENTORY
+// =============================================================================
+
+void ARevenantOpsPlayerController::ToggleInventory() {
+  UE_LOG(LogRevenantOps, Warning, TEXT("[Inventory] ToggleInventory called — bInventoryOpen=%d WidgetClass=%s"),
+    bInventoryOpen, InventoryWidgetClass ? *InventoryWidgetClass->GetName() : TEXT("NULL"));
+
+  if (bInventoryOpen) {
+    // Close inventory
+    if (InventoryWidgetInstance) {
+      InventoryWidgetInstance->RemoveFromParent();
+      InventoryWidgetInstance = nullptr;
+    }
+    bInventoryOpen = false;
+
+    // Restore time and input
+    GetWorldSettings()->TimeDilation = 1.f;
+    SetShowMouseCursor(false);
+    SetInputMode(FInputModeGameOnly());
+
+  } else {
+    // Open inventory
+    if (!InventoryWidgetClass) {
+      UE_LOG(LogRevenantOps, Warning, TEXT("InventoryWidgetClass not set on PlayerController!"));
+      return;
+    }
+
+    InventoryWidgetInstance = CreateWidget<UInventoryWidget>(this, InventoryWidgetClass);
+    if (!InventoryWidgetInstance) return;
+
+    // Feed current inventory items
+    if (ARevenantOpsCharacter* Char = Cast<ARevenantOpsCharacter>(GetPawn())) {
+      InventoryWidgetInstance->RefreshSlots(Char->GetInventoryItems());
+    }
+
+    // Bind use delegate
+    InventoryWidgetInstance->OnItemUsed.AddDynamic(
+        this, &ARevenantOpsPlayerController::OnInventoryItemUsed);
+    InventoryWidgetInstance->OnClosed.AddDynamic(
+        this, &ARevenantOpsPlayerController::ToggleInventory);
+
+    InventoryWidgetInstance->AddToViewport(15);
+    bInventoryOpen = true;
+
+    // Slow time and block all game input (movement, fire, etc.)
+    GetWorldSettings()->TimeDilation = 0.3f;
+    SetShowMouseCursor(true);
+    FInputModeUIOnly Mode;
+    Mode.SetWidgetToFocus(InventoryWidgetInstance->TakeWidget());
+    SetInputMode(Mode);
+  }
+}
+
+void ARevenantOpsPlayerController::OnInventoryItemUsed(int32 SlotIndex) {
+  if (ARevenantOpsCharacter* Char = Cast<ARevenantOpsCharacter>(GetPawn())) {
+    // Check if it's a time bonus before consuming
+    const TArray<FInventoryItem>& Items = Char->GetInventoryItems();
+    if (Items.IsValidIndex(SlotIndex) && Items[SlotIndex].Type == EInventoryItemType::TimeBonus) {
+      const float Bonus = Items[SlotIndex].TimeBonusSeconds;
+      Char->UseInventoryItem(SlotIndex); // clears the slot
+      // Apply time bonus to game state
+      if (AMercenairesGameState* GS = GetWorld()->GetGameState<AMercenairesGameState>()) {
+        GS->AddBonusTime(Bonus);
+      }
+    } else {
+      Char->UseInventoryItem(SlotIndex);
+    }
+
+    // Refresh inventory display
+    if (InventoryWidgetInstance) {
+      InventoryWidgetInstance->RefreshSlots(Char->GetInventoryItems());
+    }
   }
 }

@@ -10,6 +10,8 @@
 class UProgressBar;
 class UTextBlock;
 class UImage;
+class UBorder;
+class UTexture2D;
 class ARevenantOpsCharacter;
 class AWeaponBase;
 class UHealthComponent;
@@ -57,9 +59,15 @@ protected:
   UPROPERTY(meta = (BindWidgetOptional))
   UTextBlock *WeaponNameText;
 
-  /** Crosshair image */
+  /** Crosshair image (legacy — remplace par les 4 traits ci-dessous) */
   UPROPERTY(meta = (BindWidgetOptional))
   UImage *CrosshairImage;
+
+  // 4 traits du viseur style CS
+  UPROPERTY() UImage *CrosshairTop    = nullptr;
+  UPROPERTY() UImage *CrosshairBottom = nullptr;
+  UPROPERTY() UImage *CrosshairLeft   = nullptr;
+  UPROPERTY() UImage *CrosshairRight  = nullptr;
 
   /** Hit marker image (flash on hit) */
   UPROPERTY(meta = (BindWidgetOptional))
@@ -115,15 +123,37 @@ protected:
             meta = (ClampMin = 0.05, ClampMax = 1.0))
   float HitMarkerDuration = 0.15f;
 
-  /** Crosshair base size (pixels) */
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HUD|Config",
-            meta = (ClampMin = 1, ClampMax = 100))
-  float CrosshairBaseSize = 20.f;
+  /** Longueur de chaque trait du viseur (pixels) */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HUD|Crosshair",
+            meta = (ClampMin = 2, ClampMax = 40))
+  float CrosshairLineLength = 10.f;
 
-  /** Crosshair max spread size (pixels) */
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HUD|Config",
-            meta = (ClampMin = 1, ClampMax = 200))
-  float CrosshairMaxSize = 60.f;
+  /** Epaisseur de chaque trait (pixels) */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HUD|Crosshair",
+            meta = (ClampMin = 1, ClampMax = 8))
+  float CrosshairLineThickness = 2.f;
+
+  /** Ecartement minimum entre les traits (au repos) */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HUD|Crosshair",
+            meta = (ClampMin = 0, ClampMax = 30))
+  float CrosshairGapMin = 4.f;
+
+  /** Ecartement maximum (dispersion max) */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HUD|Crosshair",
+            meta = (ClampMin = 10, ClampMax = 80))
+  float CrosshairGapMax = 36.f;
+
+  /** Vitesse d'interpolation du viseur (plus haut = plus réactif) */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HUD|Crosshair",
+            meta = (ClampMin = 1, ClampMax = 30))
+  float CrosshairInterpSpeed = 12.f;
+
+  // Gap courant interpolé
+  float CrosshairCurrentGap = 4.f;
+
+  // Deprecated — garde pour BindWidgetOptional
+  float CrosshairBaseSize = 20.f;
+  float CrosshairMaxSize  = 60.f;
 
   // ========== INTERNAL STATE ==========
 
@@ -192,6 +222,13 @@ protected:
   /** Updates kill notification fade */
   void UpdateKillNotification(float DeltaTime);
 
+  // ========== PICKUP PROMPT RE5 ==========
+
+  /** Conteneur du popup — HitTestInvisible, ne bloque jamais l'input */
+  UPROPERTY() UBorder*    PickupPromptBG   = nullptr;
+  UPROPERTY() UImage*     PickupPromptIcon = nullptr;
+  UPROPERTY() UTextBlock* PickupPromptName = nullptr;
+
 public:
   /** Shows the hit marker (call from weapon hit event) */
   UFUNCTION(BlueprintCallable, Category = "HUD")
@@ -204,4 +241,10 @@ public:
   /** Shows kill notification popup */
   UFUNCTION(BlueprintCallable, Category = "HUD")
   void ShowKillNotification(const FString &EnemyName, int32 Points);
+
+  /** Affiche le popup RE5 (icone + [E] Prendre + nom) — HitTestInvisible */
+  void ShowPickupPrompt(UTexture2D* Icon, const FText& Name, int32 Qty);
+
+  /** Cache le popup RE5 */
+  void HidePickupPrompt();
 };

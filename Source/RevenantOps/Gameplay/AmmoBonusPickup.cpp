@@ -3,7 +3,6 @@
 #include "AmmoBonusPickup.h"
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
-#include "GameFramework/Character.h"
 #include "RevenantOpsCharacter.h"
 #include "WeaponBase.h"
 
@@ -25,8 +24,8 @@ AAmmoBonusPickup::AAmmoBonusPickup() {
 void AAmmoBonusPickup::BeginPlay() {
   Super::BeginPlay();
   InitialZ = GetActorLocation().Z;
-  CollisionSphere->OnComponentBeginOverlap.AddDynamic(
-      this, &AAmmoBonusPickup::OnOverlapBegin);
+  CollisionSphere->OnComponentBeginOverlap.AddDynamic(this, &AAmmoBonusPickup::OnOverlapBegin);
+  CollisionSphere->OnComponentEndOverlap.AddDynamic(this, &AAmmoBonusPickup::OnOverlapEnd);
 }
 
 void AAmmoBonusPickup::Tick(float DeltaTime) {
@@ -48,16 +47,36 @@ void AAmmoBonusPickup::OnOverlapBegin(
     UPrimitiveComponent *OverlappedComp, AActor *OtherActor,
     UPrimitiveComponent *OtherComp, int32 OtherBodyIndex, bool bFromSweep,
     const FHitResult &SweepResult) {
-  ARevenantOpsCharacter *Player =
-      Cast<ARevenantOpsCharacter>(OtherActor);
-  if (!Player) {
-    return;
-  }
+  ARevenantOpsCharacter *Player = Cast<ARevenantOpsCharacter>(OtherActor);
+  if (!Player) return;
 
-  AWeaponBase *Weapon = Player->GetCurrentWeapon();
+  PendingPlayer = Player;
+  Player->SetPendingPickup(this);
+  Player->ShowPickupPrompt(ItemIcon, DisplayName, AmmoAmount);
+}
+
+void AAmmoBonusPickup::OnOverlapEnd(
+    UPrimitiveComponent *OverlappedComp, AActor *OtherActor,
+    UPrimitiveComponent *OtherComp, int32 OtherBodyIndex) {
+  ARevenantOpsCharacter *Player = Cast<ARevenantOpsCharacter>(OtherActor);
+  if (!Player || Player != PendingPlayer) return;
+
+  PendingPlayer = nullptr;
+  Player->SetPendingPickup(nullptr);
+  Player->HidePickupPrompt();
+}
+
+void AAmmoBonusPickup::TryPickup(ARevenantOpsCharacter* Player) {
+  if (!Player) return;
+
+  AWeaponBase* Weapon = Player->GetCurrentWeapon();
   if (Weapon) {
     Weapon->AddReserveAmmo(AmmoAmount);
   }
+
+  PendingPlayer = nullptr;
+  Player->SetPendingPickup(nullptr);
+  Player->HidePickupPrompt();
 
   BP_OnPickedUp(Player, AmmoAmount);
   HidePickup();

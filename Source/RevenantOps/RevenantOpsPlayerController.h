@@ -4,15 +4,19 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
+#include "UI/MenuTypes.h"
 #include "RevenantOpsPlayerController.generated.h"
 
 class UInputMappingContext;
 class UUserWidget;
 class URevenantOpsHUD;
 class UTitleScreenWidget;
+class ULevelSelectWidget;
+class UCharacterSelectWidget;
 class ULoadoutWidget;
 class UGameOverWidget;
 class ULeaderboardWidget;
+class UInventoryWidget;
 class AMercenairesGameState;
 class AWeaponBase;
 class UHealthComponent;
@@ -62,6 +66,14 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "UI|Mercenaires")
 	TSubclassOf<UTitleScreenWidget> TitleScreenClass;
 
+	/** Level selection widget class */
+	UPROPERTY(EditAnywhere, Category = "UI|Mercenaires")
+	TSubclassOf<ULevelSelectWidget> LevelSelectWidgetClass;
+
+	/** Character selection widget class */
+	UPROPERTY(EditAnywhere, Category = "UI|Mercenaires")
+	TSubclassOf<UCharacterSelectWidget> CharacterSelectWidgetClass;
+
 	/** Loadout selection widget class */
 	UPROPERTY(EditAnywhere, Category = "UI|Mercenaires")
 	TSubclassOf<ULoadoutWidget> LoadoutWidgetClass;
@@ -78,8 +90,22 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "UI|Mercenaires")
 	TArray<TSubclassOf<AWeaponBase>> AvailableWeaponClasses;
 
+	/** Levels available for selection — configure in BP */
+	UPROPERTY(EditAnywhere, Category = "UI|Mercenaires")
+	TArray<FLevelInfo> AvailableLevels;
+
+	/** Characters available for selection — configure in BP */
+	UPROPERTY(EditAnywhere, Category = "UI|Mercenaires")
+	TArray<FCharacterInfo> AvailableCharacters;
+
 	UPROPERTY()
 	TObjectPtr<UTitleScreenWidget> TitleScreenWidget;
+
+	UPROPERTY()
+	TObjectPtr<ULevelSelectWidget> LevelSelectWidgetInstance;
+
+	UPROPERTY()
+	TObjectPtr<UCharacterSelectWidget> CharacterSelectWidgetInstance;
 
 	UPROPERTY()
 	TObjectPtr<ULoadoutWidget> LoadoutWidgetInstance;
@@ -89,6 +115,17 @@ protected:
 
 	UPROPERTY()
 	TObjectPtr<ULeaderboardWidget> LeaderboardWidgetInstance;
+
+	// ========== INVENTORY ==========
+
+	/** Inventory widget class (assign WBP_Inventory in BP) */
+	UPROPERTY(EditAnywhere, Category = "UI|Inventory")
+	TSubclassOf<UInventoryWidget> InventoryWidgetClass;
+
+	UPROPERTY()
+	TObjectPtr<UInventoryWidget> InventoryWidgetInstance;
+
+	bool bInventoryOpen = false;
 
 	/** Gameplay initialization */
 	virtual void BeginPlay() override;
@@ -110,6 +147,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Mercenaires|Flow")
 	void ShowTitleScreen();
 
+	/** Shows the level selection screen */
+	UFUNCTION(BlueprintCallable, Category = "Mercenaires|Flow")
+	void ShowLevelSelectScreen();
+
+	/** Shows the character selection screen */
+	UFUNCTION(BlueprintCallable, Category = "Mercenaires|Flow")
+	void ShowCharacterSelectScreen();
+
 	/** Shows the loadout selection screen */
 	UFUNCTION(BlueprintCallable, Category = "Mercenaires|Flow")
 	void ShowLoadoutScreen();
@@ -128,6 +173,22 @@ public:
 
 protected:
 
+	/** Handler for level chosen */
+	UFUNCTION()
+	void OnLevelChosen(FLevelInfo LevelInfo);
+
+	/** Handler for character chosen */
+	UFUNCTION()
+	void OnCharacterChosen(FCharacterInfo CharacterInfo);
+
+	/** Handler for back from level select */
+	UFUNCTION()
+	void OnLevelSelectBack();
+
+	/** Handler for back from character select */
+	UFUNCTION()
+	void OnCharacterSelectBack();
+
 	/** Handler for loadout confirmation */
 	UFUNCTION()
 	void OnLoadoutConfirmed(TSubclassOf<AWeaponBase> Primary,
@@ -143,6 +204,14 @@ protected:
 
 	/** Removes all flow widgets from screen */
 	void ClearFlowWidgets();
+
+	/** Opens or closes the RE5-style inventory */
+	UFUNCTION(BlueprintCallable, Category = "UI|Inventory")
+	void ToggleInventory();
+
+	/** Handler when player uses an item in the inventory */
+	UFUNCTION()
+	void OnInventoryItemUsed(int32 SlotIndex);
 
 	/** Guard against double loadout confirmation */
 	bool bLoadoutConfirmed = false;

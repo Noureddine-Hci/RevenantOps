@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "Logging/LogMacros.h"
+#include "Gameplay/InventoryItem.h"
 #include "RevenantOpsCharacter.generated.h"
 
 class USpringArmComponent;
@@ -13,6 +14,7 @@ class UInputAction;
 class UAnimMontage;
 class AWeaponBase;
 class UHealthComponent;
+class AAmmoBonusPickup;
 struct FInputActionValue;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
@@ -83,6 +85,11 @@ protected:
   UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input",
             meta = (AllowPrivateAccess = "true"))
   UInputAction *SwitchWeaponAction;
+
+  /** Interact / Ramasser (touche E) */
+  UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input",
+            meta = (AllowPrivateAccess = "true"))
+  UInputAction *InteractAction;
 
   // ========== MOVEMENT SPEEDS ==========
 
@@ -253,6 +260,15 @@ protected:
   UPROPERTY()
   UHealthComponent *HealthComp = nullptr;
 
+  /** Pickup dans la zone d'interaction — raw ptr (pas UPROPERTY = pas de CDO crash) */
+  AAmmoBonusPickup *PendingPickup = nullptr;
+
+  // ========== INVENTORY (RE5-style, 9 slots) ==========
+
+  /** 9-slot inventory shared between items and weapons */
+  UPROPERTY(BlueprintReadOnly, Category = "Inventory")
+  TArray<FInventoryItem> Inventory;
+
 public:
   ARevenantOpsCharacter();
 
@@ -276,6 +292,7 @@ protected:
   void AimReleased();
   void ReloadPressed();
   void SwitchWeaponPressed();
+  void InteractPressed();
 
   // ========== LOCOMOTION LOGIC ==========
 
@@ -342,7 +359,28 @@ public:
   UFUNCTION(BlueprintCallable, Category = "Weapon")
   AWeaponBase *GetCurrentWeapon() const { return CurrentWeapon; }
 
+  /** Returns a copy of the 9-slot inventory */
+  UFUNCTION(BlueprintCallable, Category = "Inventory")
+  TArray<FInventoryItem> GetInventoryItems() const { return Inventory; }
+
+  /** Adds an item to the first empty slot; returns false if inventory is full */
+  UFUNCTION(BlueprintCallable, Category = "Inventory")
+  bool AddItemToInventory(const FInventoryItem& Item);
+
+  /** Uses item at SlotIndex (applies heal/time bonus, removes consumable) */
+  UFUNCTION(BlueprintCallable, Category = "Inventory")
+  void UseInventoryItem(int32 SlotIndex);
+
 public:
+  /** Enregistre le pickup actif (appelé par AAmmoBonusPickup) */
+  void SetPendingPickup(AAmmoBonusPickup* Pickup) { PendingPickup = Pickup; }
+
+  /** Affiche le popup RE5 sur le HUD (icone + [E] + nom) */
+  void ShowPickupPrompt(UTexture2D* Icon, const FText& Name, int32 Qty);
+
+  /** Cache le popup RE5 */
+  void HidePickupPrompt();
+
   FORCEINLINE class USpringArmComponent *GetCameraBoom() const {
     return CameraBoom;
   }

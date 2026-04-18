@@ -4,9 +4,15 @@
 #include "Blueprint/WidgetTree.h"
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
+#include "Components/Border.h"
+#include "Components/HorizontalBox.h"
+#include "Components/HorizontalBoxSlot.h"
 #include "Components/Image.h"
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
+#include "Components/VerticalBox.h"
+#include "Components/VerticalBoxSlot.h"
+#include "Styling/CoreStyle.h"
 #include "HealthComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "MercenairesGameState.h"
@@ -69,7 +75,33 @@ void URevenantOpsHUD::BuildDefaultUI()
   MakeText(KillNotificationText, FName("KillNotificationText"), FVector2D(-120.f,  80.f),  FVector2D(240.f, 30.f), FAnchors(0.5f, 0.f));
 
   // ── Images ───────────────────────────────────────────────────────────────
-  MakeImg(CrosshairImage,       FName("CrosshairImage"),       FVector2D(-12.f, -12.f), FVector2D(24.f, 24.f), FAnchors(0.5f, 0.5f));
+  // Ancien CrosshairImage masqué — remplacé par les 4 traits
+  MakeImg(CrosshairImage,       FName("CrosshairImage"),       FVector2D(0.f, 0.f), FVector2D(1.f, 1.f), FAnchors(0.5f, 0.5f));
+  if (CrosshairImage) CrosshairImage->SetVisibility(ESlateVisibility::Collapsed);
+
+  // 4 traits du viseur (positions initiales au repos, gap=4)
+  // Trait haut   : largeur=thickness, hauteur=length, au-dessus du centre
+  MakeImg(CrosshairTop,    FName("CrosshairTop"),    FVector2D(-1.f, -(4.f + 10.f)), FVector2D(2.f, 10.f), FAnchors(0.5f, 0.5f));
+  // Trait bas
+  MakeImg(CrosshairBottom, FName("CrosshairBottom"), FVector2D(-1.f,   4.f),          FVector2D(2.f, 10.f), FAnchors(0.5f, 0.5f));
+  // Trait gauche : largeur=length, hauteur=thickness
+  MakeImg(CrosshairLeft,   FName("CrosshairLeft"),   FVector2D(-(4.f + 10.f), -1.f), FVector2D(10.f, 2.f), FAnchors(0.5f, 0.5f));
+  // Trait droit
+  MakeImg(CrosshairRight,  FName("CrosshairRight"),  FVector2D(4.f,          -1.f),  FVector2D(10.f, 2.f), FAnchors(0.5f, 0.5f));
+
+  // Brush solide blanc — sans ca les UImage sont invisibles
+  FSlateBrush WhiteBrush;
+  WhiteBrush.DrawAs = ESlateBrushDrawType::Box;
+  WhiteBrush.TintColor = FSlateColor(FLinearColor::White);
+
+  const FLinearColor LineColor(1.f, 1.f, 1.f, 0.9f);
+  for (UImage* Line : {CrosshairTop, CrosshairBottom, CrosshairLeft, CrosshairRight}) {
+    if (Line) {
+      Line->SetBrush(WhiteBrush);
+      Line->SetColorAndOpacity(LineColor);
+    }
+  }
+
   MakeImg(HitMarkerImage,       FName("HitMarkerImage"),       FVector2D(-16.f, -16.f), FVector2D(32.f, 32.f), FAnchors(0.5f, 0.5f));
   MakeImg(DamageDirectionImage, FName("DamageDirectionImage"), FVector2D(-32.f, -32.f), FVector2D(64.f, 64.f), FAnchors(0.5f, 0.5f));
 
@@ -104,6 +136,66 @@ void URevenantOpsHUD::BuildDefaultUI()
   if (ComboText)            ComboText->SetColorAndOpacity(FSlateColor(FLinearColor(1.f, 0.8f, 0.f)));
   if (AmmoReserveText)      AmmoReserveText->SetColorAndOpacity(FSlateColor(FLinearColor(0.6f, 0.6f, 0.6f)));
   if (KillNotificationText) KillNotificationText->SetColorAndOpacity(FSlateColor(FLinearColor(1.f, 1.f, 0.f)));
+
+  // ── Popup RE5 pickup ─────────────────────────────────────────────────────
+  // Positionné en bas au centre, HitTestInvisible = ne bloque JAMAIS l'input
+  PickupPromptBG = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), FName("PickupPromptBG"));
+  if (PickupPromptBG && Root)
+  {
+    if (UCanvasPanelSlot* S = Root->AddChildToCanvas(PickupPromptBG))
+    {
+      S->SetAnchors(FAnchors(0.5f, 1.f));
+      S->SetAlignment(FVector2D(0.5f, 1.f));
+      S->SetPosition(FVector2D(0.f, -120.f));
+      S->SetAutoSize(true);
+      S->SetZOrder(5);
+    }
+    PickupPromptBG->SetBrushColor(FLinearColor(0.f, 0.f, 0.f, 0.78f));
+    PickupPromptBG->SetPadding(FMargin(14.f, 10.f));
+    PickupPromptBG->SetVisibility(ESlateVisibility::Collapsed);
+
+    // Layout horizontal : [icone] [colonne texte]
+    UHorizontalBox* HBox = WidgetTree->ConstructWidget<UHorizontalBox>();
+    PickupPromptBG->SetContent(HBox);
+    if (HBox)
+    {
+      PickupPromptIcon = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), FName("PickupPromptIcon"));
+      if (PickupPromptIcon)
+      {
+        if (UHorizontalBoxSlot* HS = HBox->AddChildToHorizontalBox(PickupPromptIcon))
+        {
+          HS->SetVerticalAlignment(VAlign_Center);
+          HS->SetPadding(FMargin(0.f, 0.f, 12.f, 0.f));
+        }
+        PickupPromptIcon->SetDesiredSizeOverride(FVector2D(48.f, 48.f));
+      }
+
+      UVerticalBox* VBox = WidgetTree->ConstructWidget<UVerticalBox>();
+      if (VBox && HBox->AddChildToHorizontalBox(VBox))
+      {
+        // "[E] Prendre" en jaune
+        UTextBlock* KeyHint = WidgetTree->ConstructWidget<UTextBlock>();
+        if (KeyHint)
+        {
+          KeyHint->SetText(FText::FromString(TEXT("[E]  Prendre")));
+          FSlateFontInfo F = FCoreStyle::GetDefaultFontStyle("Bold", 16);
+          KeyHint->SetFont(F);
+          KeyHint->SetColorAndOpacity(FSlateColor(FLinearColor(1.f, 0.88f, 0.2f)));
+          VBox->AddChildToVerticalBox(KeyHint);
+        }
+
+        // Nom de l'objet en blanc
+        PickupPromptName = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), FName("PickupPromptName"));
+        if (PickupPromptName)
+        {
+          FSlateFontInfo F = FCoreStyle::GetDefaultFontStyle("Regular", 13);
+          PickupPromptName->SetFont(F);
+          PickupPromptName->SetColorAndOpacity(FSlateColor(FLinearColor::White));
+          VBox->AddChildToVerticalBox(PickupPromptName);
+        }
+      }
+    }
+  }
 }
 
 void URevenantOpsHUD::NativeConstruct() {
@@ -197,6 +289,37 @@ void URevenantOpsHUD::NativeConstruct() {
     }
   }
 
+  // Créer les 4 traits du viseur sur le canvas existant
+  if (UCanvasPanel* Root = Cast<UCanvasPanel>(WidgetTree ? WidgetTree->RootWidget : nullptr)) {
+    FSlateBrush WhiteBrush;
+    WhiteBrush.DrawAs = ESlateBrushDrawType::Box;
+    WhiteBrush.TintColor = FSlateColor(FLinearColor::White);
+    const FLinearColor LineColor(1.f, 1.f, 1.f, 0.9f);
+
+    auto MakeLine = [&](UImage*& Out, FName Name, FVector2D Pos, FVector2D Size) {
+      if (Out) return; // déjà créé par BuildDefaultUI
+      Out = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), Name);
+      if (!Out) return;
+      Out->SetBrush(WhiteBrush);
+      Out->SetColorAndOpacity(LineColor);
+      if (UCanvasPanelSlot* S = Root->AddChildToCanvas(Out)) {
+        S->SetAnchors(FAnchors(0.5f, 0.5f));
+        S->SetPosition(Pos);
+        S->SetSize(Size);
+        S->SetAlignment(FVector2D(0.5f, 0.5f));
+      }
+    };
+
+    const float G = CrosshairGapMin;
+    const float L = CrosshairLineLength;
+    const float T = CrosshairLineThickness;
+    MakeLine(CrosshairTop,    FName("CrosshairTop"),    FVector2D(0.f, -(G + L * 0.5f)), FVector2D(T, L));
+    MakeLine(CrosshairBottom, FName("CrosshairBottom"), FVector2D(0.f,   G + L * 0.5f),  FVector2D(T, L));
+    MakeLine(CrosshairLeft,   FName("CrosshairLeft"),   FVector2D(-(G + L * 0.5f), 0.f), FVector2D(L, T));
+    MakeLine(CrosshairRight,  FName("CrosshairRight"),  FVector2D(  G + L * 0.5f,  0.f), FVector2D(L, T));
+    CrosshairCurrentGap = G;
+  }
+
   // Initialize hit marker as hidden
   if (HitMarkerImage) {
     HitMarkerImage->SetOpacity(0.f);
@@ -222,6 +345,69 @@ void URevenantOpsHUD::NativeConstruct() {
   }
   if (KillNotificationText) {
     KillNotificationText->SetVisibility(ESlateVisibility::Collapsed);
+  }
+
+  // Créer le popup RE5 si pas déjà fait par BuildDefaultUI
+  if (!PickupPromptBG)
+  {
+    UCanvasPanel* Root = Cast<UCanvasPanel>(WidgetTree ? WidgetTree->RootWidget : nullptr);
+    if (Root && WidgetTree)
+    {
+      PickupPromptBG = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), FName("PickupPromptBG"));
+      if (PickupPromptBG)
+      {
+        if (UCanvasPanelSlot* S = Root->AddChildToCanvas(PickupPromptBG))
+        {
+          S->SetAnchors(FAnchors(0.5f, 1.f, 0.5f, 1.f));
+          S->SetAlignment(FVector2D(0.5f, 1.f));
+          S->SetPosition(FVector2D(0.f, -120.f));
+          S->SetAutoSize(true);
+        }
+        PickupPromptBG->SetBrushColor(FLinearColor(0.f, 0.f, 0.f, 0.78f));
+        PickupPromptBG->SetPadding(FMargin(14.f, 10.f));
+        PickupPromptBG->SetVisibility(ESlateVisibility::Collapsed);
+
+        UHorizontalBox* HBox = WidgetTree->ConstructWidget<UHorizontalBox>();
+        PickupPromptBG->SetContent(HBox);
+
+        // Icone 48x48
+        PickupPromptIcon = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), FName("PickupPromptIcon"));
+        if (PickupPromptIcon)
+        {
+          if (UHorizontalBoxSlot* HS = Cast<UHorizontalBoxSlot>(HBox->AddChild(PickupPromptIcon)))
+          {
+            HS->SetPadding(FMargin(0.f, 0.f, 14.f, 0.f));
+            HS->SetVerticalAlignment(VAlign_Center);
+          }
+          FSlateBrush IconBrush;
+          IconBrush.ImageSize = FVector2D(48.f, 48.f);
+          PickupPromptIcon->SetBrush(IconBrush);
+        }
+
+        // Textes : "[E]  Prendre" + nom
+        UVerticalBox* VBox = WidgetTree->ConstructWidget<UVerticalBox>();
+        if (UHorizontalBoxSlot* HS = Cast<UHorizontalBoxSlot>(HBox->AddChild(VBox)))
+          HS->SetVerticalAlignment(VAlign_Center);
+
+        UTextBlock* PressLabel = WidgetTree->ConstructWidget<UTextBlock>();
+        PressLabel->SetText(FText::FromString(TEXT("[E]  Prendre")));
+        FSlateFontInfo PF = PressLabel->GetFont();
+        PF.Size = 17;
+        PressLabel->SetFont(PF);
+        PressLabel->SetColorAndOpacity(FSlateColor(FLinearColor(1.f, 0.95f, 0.3f)));
+        VBox->AddChildToVerticalBox(PressLabel);
+
+        PickupPromptName = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), FName("PickupPromptName"));
+        if (PickupPromptName)
+        {
+          FSlateFontInfo NF = PickupPromptName->GetFont();
+          NF.Size = 14;
+          PickupPromptName->SetFont(NF);
+          PickupPromptName->SetColorAndOpacity(FSlateColor(FLinearColor::White));
+          VBox->AddChildToVerticalBox(PickupPromptName);
+        }
+      }
+    }
   }
 }
 
@@ -321,32 +507,55 @@ void URevenantOpsHUD::UpdateAmmoDisplay() {
 // =============================================================================
 
 void URevenantOpsHUD::UpdateCrosshair() {
-  if (!CrosshairImage || !CachedCharacter) {
-    return;
-  }
+  if (!CachedCharacter) return;
+  if (!CrosshairTop || !CrosshairBottom || !CrosshairLeft || !CrosshairRight) return;
 
-  AWeaponBase *Weapon = CachedCharacter->GetCurrentWeapon();
-  float SpreadAlpha = 0.f;
+  AWeaponBase* Weapon = CachedCharacter->GetCurrentWeapon();
 
+  // Calcul du gap cible selon la dispersion
+  float TargetGap = CrosshairGapMin;
   if (Weapon) {
-    // Map weapon spread to crosshair size
-    const float CurrentSpread = Weapon->GetCurrentSpread();
-    SpreadAlpha = FMath::GetMappedRangeValueClamped(
-        FVector2D(0.f, 10.f), FVector2D(0.f, 1.f), CurrentSpread);
+    const float SpreadAlpha = FMath::GetMappedRangeValueClamped(
+        FVector2D(0.f, 10.f), FVector2D(0.f, 1.f), Weapon->GetCurrentSpread());
+    TargetGap = FMath::Lerp(CrosshairGapMin, CrosshairGapMax, SpreadAlpha);
   }
 
-  const float TargetSize =
-      FMath::Lerp(CrosshairBaseSize, CrosshairMaxSize, SpreadAlpha);
-
-  // Scale the crosshair image
-  CrosshairImage->SetDesiredSizeOverride(FVector2D(TargetSize, TargetSize));
-
-  // Tint red if over an enemy (optional - can check via line trace)
+  // Réduire davantage en ADS
   if (CachedCharacter->IsAiming()) {
-    CrosshairImage->SetColorAndOpacity(FLinearColor(1.f, 1.f, 1.f, 0.8f));
-  } else {
-    CrosshairImage->SetColorAndOpacity(FLinearColor(1.f, 1.f, 1.f, 0.5f));
+    TargetGap = CrosshairGapMin * 0.5f;
   }
+
+  // Interpolation fluide (style CS : réactif mais pas instantané)
+  const float DeltaTime = GetWorld()->GetDeltaSeconds();
+  CrosshairCurrentGap = FMath::FInterpTo(CrosshairCurrentGap, TargetGap,
+                                          DeltaTime, CrosshairInterpSpeed);
+
+  const float G = CrosshairCurrentGap;
+  const float L = CrosshairLineLength;
+  const float T = CrosshairLineThickness;
+
+  // Repositionner chaque trait via son canvas slot
+  auto MoveSlot = [](UImage* Img, FVector2D Pos, FVector2D Size) {
+    if (!Img) return;
+    if (UCanvasPanelSlot* S = Cast<UCanvasPanelSlot>(Img->Slot)) {
+      S->SetPosition(Pos);
+      S->SetSize(Size);
+      S->SetAlignment(FVector2D(0.5f, 0.5f));
+    }
+  };
+
+  MoveSlot(CrosshairTop,    FVector2D(0.f, -(G + L * 0.5f)), FVector2D(T, L));
+  MoveSlot(CrosshairBottom, FVector2D(0.f,   G + L * 0.5f),  FVector2D(T, L));
+  MoveSlot(CrosshairLeft,   FVector2D(-(G + L * 0.5f), 0.f), FVector2D(L, T));
+  MoveSlot(CrosshairRight,  FVector2D(  G + L * 0.5f,  0.f), FVector2D(L, T));
+
+  // Opacité : légèrement réduite en ADS (le viseur disparaît presque)
+  const float Alpha = CachedCharacter->IsAiming() ? 0.4f : 0.9f;
+  const FLinearColor Color(1.f, 1.f, 1.f, Alpha);
+  CrosshairTop->SetColorAndOpacity(Color);
+  CrosshairBottom->SetColorAndOpacity(Color);
+  CrosshairLeft->SetColorAndOpacity(Color);
+  CrosshairRight->SetColorAndOpacity(Color);
 }
 
 // =============================================================================
@@ -575,4 +784,42 @@ void URevenantOpsHUD::UpdateMercenairesDisplay() {
       ComboTimerBar->SetVisibility(ESlateVisibility::Collapsed);
     }
   }
+}
+
+// =============================================================================
+// PICKUP PROMPT RE5
+// =============================================================================
+
+void URevenantOpsHUD::ShowPickupPrompt(UTexture2D* Icon, const FText& Name, int32 Qty)
+{
+  if (!PickupPromptBG) return;
+
+  if (PickupPromptIcon)
+  {
+    if (Icon)
+    {
+      PickupPromptIcon->SetBrushFromTexture(Icon, true);
+      PickupPromptIcon->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+    }
+    else
+    {
+      PickupPromptIcon->SetVisibility(ESlateVisibility::Collapsed);
+    }
+  }
+
+  if (PickupPromptName)
+  {
+    FString Str = Name.ToString();
+    if (Qty > 1) Str += FString::Printf(TEXT("  x%d"), Qty);
+    PickupPromptName->SetText(FText::FromString(Str));
+  }
+
+  // HitTestInvisible = visible à l'écran mais ne capte JAMAIS le clavier/souris
+  PickupPromptBG->SetVisibility(ESlateVisibility::HitTestInvisible);
+}
+
+void URevenantOpsHUD::HidePickupPrompt()
+{
+  if (PickupPromptBG)
+    PickupPromptBG->SetVisibility(ESlateVisibility::Collapsed);
 }
