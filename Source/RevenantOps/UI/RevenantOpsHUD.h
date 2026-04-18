@@ -10,6 +10,8 @@
 class UProgressBar;
 class UTextBlock;
 class UImage;
+class UBorder;
+class UTexture2D;
 class ARevenantOpsCharacter;
 class AWeaponBase;
 class UHealthComponent;
@@ -220,6 +222,13 @@ protected:
   /** Updates kill notification fade */
   void UpdateKillNotification(float DeltaTime);
 
+  // ========== PICKUP PROMPT RE5 ==========
+
+  /** Conteneur du popup — HitTestInvisible, ne bloque jamais l'input */
+  UPROPERTY() UBorder*    PickupPromptBG   = nullptr;
+  UPROPERTY() UImage*     PickupPromptIcon = nullptr;
+  UPROPERTY() UTextBlock* PickupPromptName = nullptr;
+
 public:
   /** Shows the hit marker (call from weapon hit event) */
   UFUNCTION(BlueprintCallable, Category = "HUD")
@@ -232,4 +241,10 @@ public:
   /** Shows kill notification popup */
   UFUNCTION(BlueprintCallable, Category = "HUD")
   void ShowKillNotification(const FString &EnemyName, int32 Points);
+
+  /** Affiche le popup RE5 (icone + [E] Prendre + nom) — HitTestInvisible */
+  void ShowPickupPrompt(UTexture2D* Icon, const FText& Name, int32 Qty);
+
+  /** Cache le popup RE5 */
+  void HidePickupPrompt();
 };

@@ -8,6 +8,8 @@
 
 class USphereComponent;
 class UStaticMeshComponent;
+class UTexture2D;
+class ARevenantOpsCharacter;
 
 /**
  *  Ammo pickup for the arena.
@@ -34,6 +36,17 @@ protected:
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AmmoPickup",
             meta = (ClampMin = 1, ClampMax = 999))
   int32 AmmoAmount = 30;
+
+  /** Nom affiché dans le popup (ex: "Munitions") */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AmmoPickup")
+  FText DisplayName = FText::FromString("Munitions");
+
+  /** Icone affichée dans le popup */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AmmoPickup")
+  UTexture2D* ItemIcon = nullptr;
+
+  /** Joueur en zone — raw ptr sans UPROPERTY pour éviter CDO crash */
+  ARevenantOpsCharacter* PendingPlayer = nullptr;
 
   /** Bob and rotate like other pickups */
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AmmoPickup|Visual")
@@ -64,8 +77,16 @@ protected:
                       UPrimitiveComponent *OtherComp, int32 OtherBodyIndex,
                       bool bFromSweep, const FHitResult &SweepResult);
 
+  UFUNCTION()
+  void OnOverlapEnd(UPrimitiveComponent *OverlappedComp, AActor *OtherActor,
+                    UPrimitiveComponent *OtherComp, int32 OtherBodyIndex);
+
   void HidePickup();
   void RespawnPickup();
+
+public:
+  /** Appelé par le personnage quand il appuie sur E */
+  void TryPickup(ARevenantOpsCharacter* Player);
 
   UFUNCTION(BlueprintImplementableEvent, Category = "AmmoPickup",
             meta = (DisplayName = "On Ammo Picked Up"))

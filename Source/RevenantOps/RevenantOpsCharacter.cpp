@@ -19,6 +19,7 @@
 #include "CameraShakes.h"
 #include "RevenantOpsPlayerController.h"
 #include "UI/RevenantOpsHUD.h"
+#include "Gameplay/AmmoBonusPickup.h"
 
 ARevenantOpsCharacter::ARevenantOpsCharacter() {
   PrimaryActorTick.bCanEverTick = true;
@@ -196,6 +197,11 @@ void ARevenantOpsCharacter::SetupPlayerInputComponent(
     if (SwitchWeaponAction) {
       EIC->BindAction(SwitchWeaponAction, ETriggerEvent::Started, this,
                       &ARevenantOpsCharacter::SwitchWeaponPressed);
+    }
+
+    if (InteractAction) {
+      EIC->BindAction(InteractAction, ETriggerEvent::Started, this,
+                      &ARevenantOpsCharacter::InteractPressed);
     }
 
   } else {
@@ -770,6 +776,32 @@ void ARevenantOpsCharacter::SwitchWeaponPressed() {
 
   const int32 NextIndex = (CurrentWeaponIndex + 1) % WeaponInventory.Num();
   EquipWeapon(NextIndex);
+}
+
+// =============================================================================
+// INTERACT / PICKUP
+// =============================================================================
+
+void ARevenantOpsCharacter::InteractPressed() {
+  if (PendingPickup) {
+    PendingPickup->TryPickup(this);
+  }
+}
+
+void ARevenantOpsCharacter::ShowPickupPrompt(UTexture2D* Icon, const FText& Name, int32 Qty) {
+  if (ARevenantOpsPlayerController* ROPC = Cast<ARevenantOpsPlayerController>(GetController())) {
+    if (URevenantOpsHUD* HUD = ROPC->GetHUDWidget()) {
+      HUD->ShowPickupPrompt(Icon, Name, Qty);
+    }
+  }
+}
+
+void ARevenantOpsCharacter::HidePickupPrompt() {
+  if (ARevenantOpsPlayerController* ROPC = Cast<ARevenantOpsPlayerController>(GetController())) {
+    if (URevenantOpsHUD* HUD = ROPC->GetHUDWidget()) {
+      HUD->HidePickupPrompt();
+    }
+  }
 }
 
 // =============================================================================

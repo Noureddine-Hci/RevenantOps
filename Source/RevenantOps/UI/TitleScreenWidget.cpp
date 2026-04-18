@@ -109,7 +109,7 @@ void UTitleScreenWidget::OnPlayClicked() {
   if (ARevenantOpsPlayerController* PC =
           Cast<ARevenantOpsPlayerController>(GetOwningPlayer()))
   {
-    PC->ShowLoadoutScreen();
+    PC->ShowLevelSelectScreen();
   }
 }
 

@@ -4,9 +4,15 @@
 #include "Blueprint/WidgetTree.h"
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
+#include "Components/Border.h"
+#include "Components/HorizontalBox.h"
+#include "Components/HorizontalBoxSlot.h"
 #include "Components/Image.h"
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
+#include "Components/VerticalBox.h"
+#include "Components/VerticalBoxSlot.h"
+#include "Styling/CoreStyle.h"
 #include "HealthComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "MercenairesGameState.h"
@@ -130,6 +136,66 @@ void URevenantOpsHUD::BuildDefaultUI()
   if (ComboText)            ComboText->SetColorAndOpacity(FSlateColor(FLinearColor(1.f, 0.8f, 0.f)));
   if (AmmoReserveText)      AmmoReserveText->SetColorAndOpacity(FSlateColor(FLinearColor(0.6f, 0.6f, 0.6f)));
   if (KillNotificationText) KillNotificationText->SetColorAndOpacity(FSlateColor(FLinearColor(1.f, 1.f, 0.f)));
+
+  // ── Popup RE5 pickup ─────────────────────────────────────────────────────
+  // Positionné en bas au centre, HitTestInvisible = ne bloque JAMAIS l'input
+  PickupPromptBG = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), FName("PickupPromptBG"));
+  if (PickupPromptBG && Root)
+  {
+    if (UCanvasPanelSlot* S = Root->AddChildToCanvas(PickupPromptBG))
+    {
+      S->SetAnchors(FAnchors(0.5f, 1.f));
+      S->SetAlignment(FVector2D(0.5f, 1.f));
+      S->SetPosition(FVector2D(0.f, -120.f));
+      S->SetAutoSize(true);
+      S->SetZOrder(5);
+    }
+    PickupPromptBG->SetBrushColor(FLinearColor(0.f, 0.f, 0.f, 0.78f));
+    PickupPromptBG->SetPadding(FMargin(14.f, 10.f));
+    PickupPromptBG->SetVisibility(ESlateVisibility::Collapsed);
+
+    // Layout horizontal : [icone] [colonne texte]
+    UHorizontalBox* HBox = WidgetTree->ConstructWidget<UHorizontalBox>();
+    PickupPromptBG->SetContent(HBox);
+    if (HBox)
+    {
+      PickupPromptIcon = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), FName("PickupPromptIcon"));
+      if (PickupPromptIcon)
+      {
+        if (UHorizontalBoxSlot* HS = HBox->AddChildToHorizontalBox(PickupPromptIcon))
+        {
+          HS->SetVerticalAlignment(VAlign_Center);
+          HS->SetPadding(FMargin(0.f, 0.f, 12.f, 0.f));
+        }
+        PickupPromptIcon->SetDesiredSizeOverride(FVector2D(48.f, 48.f));
+      }
+
+      UVerticalBox* VBox = WidgetTree->ConstructWidget<UVerticalBox>();
+      if (VBox && HBox->AddChildToHorizontalBox(VBox))
+      {
+        // "[E] Prendre" en jaune
+        UTextBlock* KeyHint = WidgetTree->ConstructWidget<UTextBlock>();
+        if (KeyHint)
+        {
+          KeyHint->SetText(FText::FromString(TEXT("[E]  Prendre")));
+          FSlateFontInfo F = FCoreStyle::GetDefaultFontStyle("Bold", 16);
+          KeyHint->SetFont(F);
+          KeyHint->SetColorAndOpacity(FSlateColor(FLinearColor(1.f, 0.88f, 0.2f)));
+          VBox->AddChildToVerticalBox(KeyHint);
+        }
+
+        // Nom de l'objet en blanc
+        PickupPromptName = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), FName("PickupPromptName"));
+        if (PickupPromptName)
+        {
+          FSlateFontInfo F = FCoreStyle::GetDefaultFontStyle("Regular", 13);
+          PickupPromptName->SetFont(F);
+          PickupPromptName->SetColorAndOpacity(FSlateColor(FLinearColor::White));
+          VBox->AddChildToVerticalBox(PickupPromptName);
+        }
+      }
+    }
+  }
 }
 
 void URevenantOpsHUD::NativeConstruct() {
@@ -279,6 +345,69 @@ void URevenantOpsHUD::NativeConstruct() {
   }
   if (KillNotificationText) {
     KillNotificationText->SetVisibility(ESlateVisibility::Collapsed);
+  }
+
+  // Créer le popup RE5 si pas déjà fait par BuildDefaultUI
+  if (!PickupPromptBG)
+  {
+    UCanvasPanel* Root = Cast<UCanvasPanel>(WidgetTree ? WidgetTree->RootWidget : nullptr);
+    if (Root && WidgetTree)
+    {
+      PickupPromptBG = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), FName("PickupPromptBG"));
+      if (PickupPromptBG)
+      {
+        if (UCanvasPanelSlot* S = Root->AddChildToCanvas(PickupPromptBG))
+        {
+          S->SetAnchors(FAnchors(0.5f, 1.f, 0.5f, 1.f));
+          S->SetAlignment(FVector2D(0.5f, 1.f));
+          S->SetPosition(FVector2D(0.f, -120.f));
+          S->SetAutoSize(true);
+        }
+        PickupPromptBG->SetBrushColor(FLinearColor(0.f, 0.f, 0.f, 0.78f));
+        PickupPromptBG->SetPadding(FMargin(14.f, 10.f));
+        PickupPromptBG->SetVisibility(ESlateVisibility::Collapsed);
+
+        UHorizontalBox* HBox = WidgetTree->ConstructWidget<UHorizontalBox>();
+        PickupPromptBG->SetContent(HBox);
+
+        // Icone 48x48
+        PickupPromptIcon = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), FName("PickupPromptIcon"));
+        if (PickupPromptIcon)
+        {
+          if (UHorizontalBoxSlot* HS = Cast<UHorizontalBoxSlot>(HBox->AddChild(PickupPromptIcon)))
+          {
+            HS->SetPadding(FMargin(0.f, 0.f, 14.f, 0.f));
+            HS->SetVerticalAlignment(VAlign_Center);
+          }
+          FSlateBrush IconBrush;
+          IconBrush.ImageSize = FVector2D(48.f, 48.f);
+          PickupPromptIcon->SetBrush(IconBrush);
+        }
+
+        // Textes : "[E]  Prendre" + nom
+        UVerticalBox* VBox = WidgetTree->ConstructWidget<UVerticalBox>();
+        if (UHorizontalBoxSlot* HS = Cast<UHorizontalBoxSlot>(HBox->AddChild(VBox)))
+          HS->SetVerticalAlignment(VAlign_Center);
+
+        UTextBlock* PressLabel = WidgetTree->ConstructWidget<UTextBlock>();
+        PressLabel->SetText(FText::FromString(TEXT("[E]  Prendre")));
+        FSlateFontInfo PF = PressLabel->GetFont();
+        PF.Size = 17;
+        PressLabel->SetFont(PF);
+        PressLabel->SetColorAndOpacity(FSlateColor(FLinearColor(1.f, 0.95f, 0.3f)));
+        VBox->AddChildToVerticalBox(PressLabel);
+
+        PickupPromptName = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), FName("PickupPromptName"));
+        if (PickupPromptName)
+        {
+          FSlateFontInfo NF = PickupPromptName->GetFont();
+          NF.Size = 14;
+          PickupPromptName->SetFont(NF);
+          PickupPromptName->SetColorAndOpacity(FSlateColor(FLinearColor::White));
+          VBox->AddChildToVerticalBox(PickupPromptName);
+        }
+      }
+    }
   }
 }
 
@@ -655,4 +784,42 @@ void URevenantOpsHUD::UpdateMercenairesDisplay() {
       ComboTimerBar->SetVisibility(ESlateVisibility::Collapsed);
     }
   }
+}
+
+// =============================================================================
+// PICKUP PROMPT RE5
+// =============================================================================
+
+void URevenantOpsHUD::ShowPickupPrompt(UTexture2D* Icon, const FText& Name, int32 Qty)
+{
+  if (!PickupPromptBG) return;
+
+  if (PickupPromptIcon)
+  {
+    if (Icon)
+    {
+      PickupPromptIcon->SetBrushFromTexture(Icon, true);
+      PickupPromptIcon->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+    }
+    else
+    {
+      PickupPromptIcon->SetVisibility(ESlateVisibility::Collapsed);
+    }
+  }
+
+  if (PickupPromptName)
+  {
+    FString Str = Name.ToString();
+    if (Qty > 1) Str += FString::Printf(TEXT("  x%d"), Qty);
+    PickupPromptName->SetText(FText::FromString(Str));
+  }
+
+  // HitTestInvisible = visible à l'écran mais ne capte JAMAIS le clavier/souris
+  PickupPromptBG->SetVisibility(ESlateVisibility::HitTestInvisible);
+}
+
+void URevenantOpsHUD::HidePickupPrompt()
+{
+  if (PickupPromptBG)
+    PickupPromptBG->SetVisibility(ESlateVisibility::Collapsed);
 }

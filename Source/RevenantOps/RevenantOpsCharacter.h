@@ -14,6 +14,7 @@ class UInputAction;
 class UAnimMontage;
 class AWeaponBase;
 class UHealthComponent;
+class AAmmoBonusPickup;
 struct FInputActionValue;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
@@ -84,6 +85,11 @@ protected:
   UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input",
             meta = (AllowPrivateAccess = "true"))
   UInputAction *SwitchWeaponAction;
+
+  /** Interact / Ramasser (touche E) */
+  UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input",
+            meta = (AllowPrivateAccess = "true"))
+  UInputAction *InteractAction;
 
   // ========== MOVEMENT SPEEDS ==========
 
@@ -254,6 +260,9 @@ protected:
   UPROPERTY()
   UHealthComponent *HealthComp = nullptr;
 
+  /** Pickup dans la zone d'interaction — raw ptr (pas UPROPERTY = pas de CDO crash) */
+  AAmmoBonusPickup *PendingPickup = nullptr;
+
   // ========== INVENTORY (RE5-style, 9 slots) ==========
 
   /** 9-slot inventory shared between items and weapons */
@@ -283,6 +292,7 @@ protected:
   void AimReleased();
   void ReloadPressed();
   void SwitchWeaponPressed();
+  void InteractPressed();
 
   // ========== LOCOMOTION LOGIC ==========
 
@@ -362,6 +372,15 @@ public:
   void UseInventoryItem(int32 SlotIndex);
 
 public:
+  /** Enregistre le pickup actif (appelé par AAmmoBonusPickup) */
+  void SetPendingPickup(AAmmoBonusPickup* Pickup) { PendingPickup = Pickup; }
+
+  /** Affiche le popup RE5 sur le HUD (icone + [E] + nom) */
+  void ShowPickupPrompt(UTexture2D* Icon, const FText& Name, int32 Qty);
+
+  /** Cache le popup RE5 */
+  void HidePickupPrompt();
+
   FORCEINLINE class USpringArmComponent *GetCameraBoom() const {
     return CameraBoom;
   }

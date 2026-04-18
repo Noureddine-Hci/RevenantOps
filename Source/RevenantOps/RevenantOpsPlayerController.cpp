@@ -11,6 +11,8 @@
 #include "Widgets/Input/SVirtualJoystick.h"
 #include "UI/RevenantOpsHUD.h"
 #include "UI/TitleScreenWidget.h"
+#include "UI/LevelSelectWidget.h"
+#include "UI/CharacterSelectWidget.h"
 #include "UI/LoadoutWidget.h"
 #include "UI/GameOverWidget.h"
 #include "UI/LeaderboardWidget.h"
@@ -22,6 +24,7 @@
 #include "HealthComponent.h"
 #include "AI/EnemyWaveSpawner.h"
 #include "Kismet/GameplayStatics.h"
+#include "Gameplay/RevenantOpsGameInstance.h"
 
 void ARevenantOpsPlayerController::BeginPlay()
 {
@@ -124,6 +127,88 @@ void ARevenantOpsPlayerController::ShowTitleScreen() {
   }
 }
 
+void ARevenantOpsPlayerController::ShowLevelSelectScreen() {
+  ClearFlowWidgets();
+
+  // Fallback si aucun niveau configuré dans le BP
+  if (AvailableLevels.IsEmpty()) {
+    FLevelInfo DefaultLevel;
+    DefaultLevel.DisplayName = FText::FromString(TEXT("The Compound"));
+    DefaultLevel.MapName     = FName(TEXT("Lvl_ThirdPerson"));
+    AvailableLevels.Add(DefaultLevel);
+  }
+
+  if (!LevelSelectWidgetClass) {
+    // Pas de widget configuré → sauter directement à CharacterSelect
+    ShowCharacterSelectScreen();
+    return;
+  }
+
+  LevelSelectWidgetInstance = CreateWidget<ULevelSelectWidget>(this, LevelSelectWidgetClass);
+  if (LevelSelectWidgetInstance) {
+    LevelSelectWidgetInstance->PopulateLevels(AvailableLevels);
+    LevelSelectWidgetInstance->OnLevelChosen.AddDynamic(
+        this, &ARevenantOpsPlayerController::OnLevelChosen);
+    LevelSelectWidgetInstance->OnBackClicked.AddDynamic(
+        this, &ARevenantOpsPlayerController::OnLevelSelectBack);
+    LevelSelectWidgetInstance->AddToViewport(10);
+    SetShowMouseCursor(true);
+    SetInputMode(FInputModeUIOnly());
+  }
+}
+
+void ARevenantOpsPlayerController::OnLevelChosen(FLevelInfo LevelInfo) {
+  // Stocker le niveau choisi (GameInstance) puis aller à CharacterSelect
+  if (URevenantOpsGameInstance* GI = Cast<URevenantOpsGameInstance>(GetGameInstance())) {
+    GI->PendingLevel = LevelInfo;
+  }
+  ShowCharacterSelectScreen();
+}
+
+void ARevenantOpsPlayerController::OnLevelSelectBack() {
+  ShowTitleScreen();
+}
+
+void ARevenantOpsPlayerController::ShowCharacterSelectScreen() {
+  ClearFlowWidgets();
+
+  // Fallback si aucun personnage configuré dans le BP
+  if (AvailableCharacters.IsEmpty()) {
+    FCharacterInfo DefaultChar;
+    DefaultChar.DisplayName = FText::FromString(TEXT("Mercenaire"));
+    AvailableCharacters.Add(DefaultChar);
+  }
+
+  if (!CharacterSelectWidgetClass) {
+    // Pas de widget configuré → sauter directement au Loadout
+    ShowLoadoutScreen();
+    return;
+  }
+
+  CharacterSelectWidgetInstance = CreateWidget<UCharacterSelectWidget>(this, CharacterSelectWidgetClass);
+  if (CharacterSelectWidgetInstance) {
+    CharacterSelectWidgetInstance->PopulateCharacters(AvailableCharacters);
+    CharacterSelectWidgetInstance->OnCharacterChosen.AddDynamic(
+        this, &ARevenantOpsPlayerController::OnCharacterChosen);
+    CharacterSelectWidgetInstance->OnBackClicked.AddDynamic(
+        this, &ARevenantOpsPlayerController::OnCharacterSelectBack);
+    CharacterSelectWidgetInstance->AddToViewport(10);
+    SetShowMouseCursor(true);
+    SetInputMode(FInputModeUIOnly());
+  }
+}
+
+void ARevenantOpsPlayerController::OnCharacterChosen(FCharacterInfo CharacterInfo) {
+  if (URevenantOpsGameInstance* GI = Cast<URevenantOpsGameInstance>(GetGameInstance())) {
+    GI->PendingCharacter = CharacterInfo;
+  }
+  ShowLoadoutScreen();
+}
+
+void ARevenantOpsPlayerController::OnCharacterSelectBack() {
+  ShowLevelSelectScreen();
+}
+
 void ARevenantOpsPlayerController::ShowLoadoutScreen() {
   ClearFlowWidgets();
   bLoadoutConfirmed = false;
@@ -192,6 +277,11 @@ void ARevenantOpsPlayerController::StartMercenairesMatch() {
   }
   if (HUDWidget && !HUDWidget->IsInViewport()) {
     HUDWidget->AddToViewport(0);
+  }
+
+  // Re-activer l'input du pawn (DisableInput peut avoir été appelé lors d'une mort précédente)
+  if (APawn* P = GetPawn()) {
+    P->EnableInput(this);
   }
 
   // Switch to game input
@@ -311,6 +401,14 @@ void ARevenantOpsPlayerController::ClearFlowWidgets() {
   if (TitleScreenWidget) {
     TitleScreenWidget->RemoveFromParent();
     TitleScreenWidget = nullptr;
+  }
+  if (LevelSelectWidgetInstance) {
+    LevelSelectWidgetInstance->RemoveFromParent();
+    LevelSelectWidgetInstance = nullptr;
+  }
+  if (CharacterSelectWidgetInstance) {
+    CharacterSelectWidgetInstance->RemoveFromParent();
+    CharacterSelectWidgetInstance = nullptr;
   }
   if (LoadoutWidgetInstance) {
     LoadoutWidgetInstance->RemoveFromParent();
