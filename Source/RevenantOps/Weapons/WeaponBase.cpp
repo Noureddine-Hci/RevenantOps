@@ -158,12 +158,20 @@ void AWeaponBase::StartReload() {
   ReloadStartTime = GetWorld()->GetTimeSeconds();
 
   // Play reload montage on character
+  UE_LOG(LogTemp, Warning, TEXT("StartReload: ReloadMontage=%s OwnerPawn=%s"),
+    ReloadMontage ? *ReloadMontage->GetName() : TEXT("NULL"),
+    OwnerPawn ? *OwnerPawn->GetName() : TEXT("NULL"));
   if (ReloadMontage && OwnerPawn) {
     if (ACharacter *Character = Cast<ACharacter>(OwnerPawn)) {
       if (UAnimInstance *AnimInstance =
               Character->GetMesh()->GetAnimInstance()) {
-        AnimInstance->Montage_Play(ReloadMontage);
+        float Result = AnimInstance->Montage_Play(ReloadMontage);
+        UE_LOG(LogTemp, Warning, TEXT("Montage_Play result: %f"), Result);
+      } else {
+        UE_LOG(LogTemp, Warning, TEXT("StartReload: AnimInstance is NULL"));
       }
+    } else {
+      UE_LOG(LogTemp, Warning, TEXT("StartReload: Cast to ACharacter failed"));
     }
   }
 

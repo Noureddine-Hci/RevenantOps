@@ -179,9 +179,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Mercenaires|Flow")
 	void StartMercenairesMatch();
 
-	/** Shows the game over screen */
+	/** Shows the game over screen.
+	 *  @param bVictory true = toutes les vagues complétées, false = mort */
 	UFUNCTION(BlueprintCallable, Category = "Mercenaires|Flow")
-	void ShowGameOverScreen();
+	void ShowGameOverScreen(bool bVictory = false);
 
 	/** Shows the leaderboard */
 	UFUNCTION(BlueprintCallable, Category = "Mercenaires|Flow")
@@ -217,6 +218,10 @@ protected:
 	/** Handler for match end */
 	UFUNCTION()
 	void OnMatchEnded(bool bIsActive);
+
+	/** Handler quand toutes les vagues sont terminées — victoire */
+	UFUNCTION()
+	void OnAllWavesCompleted();
 
 	/** Handler for player death — ends match immediately */
 	UFUNCTION()

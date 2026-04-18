@@ -438,6 +438,10 @@ public:
   UFUNCTION(BlueprintCallable, Category = "Weapon")
   EWeaponState GetCurrentState() const { return CurrentState; }
 
+  /** Returns the equip montage (used by character to play on weapon switch) */
+  UFUNCTION(BlueprintCallable, Category = "Weapon")
+  UAnimMontage* GetEquipMontage() const { return EquipMontage; }
+
   /** Returns reload progress (0..1). Valid only when state == Reloading. */
   UFUNCTION(BlueprintCallable, Category = "Weapon")
   float GetReloadProgress() const;

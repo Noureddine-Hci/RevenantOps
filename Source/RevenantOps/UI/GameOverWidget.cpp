@@ -68,13 +68,13 @@ void UGameOverWidget::BuildDefaultUI() {
   FSlateFontInfo MedFont   = FCoreStyle::GetDefaultFontStyle("Regular", 22);
   FSlateFontInfo BtnFont   = FCoreStyle::GetDefaultFontStyle("Regular", 20);
 
-  // Title "GAME OVER"
-  UTextBlock* Title = WidgetTree->ConstructWidget<UTextBlock>();
-  Title->SetText(FText::FromString(TEXT("VOUS ÊTES MORT")));
-  Title->SetFont(LargeFont);
-  Title->SetColorAndOpacity(FSlateColor(FLinearColor(1.f, 0.2f, 0.2f)));
-  Title->SetJustification(ETextJustify::Center);
-  UVerticalBoxSlot* TitleSlot = VBox->AddChildToVerticalBox(Title);
+  // Title (mis à jour selon victoire/défaite dans ShowResults)
+  TitleText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("TitleText"));
+  TitleText->SetText(FText::FromString(TEXT("VOUS ÊTES MORT")));
+  TitleText->SetFont(LargeFont);
+  TitleText->SetColorAndOpacity(FSlateColor(FLinearColor(1.f, 0.2f, 0.2f)));
+  TitleText->SetJustification(ETextJustify::Center);
+  UVerticalBoxSlot* TitleSlot = VBox->AddChildToVerticalBox(TitleText);
   TitleSlot->SetHorizontalAlignment(EHorizontalAlignment::HAlign_Center);
   TitleSlot->SetPadding(FMargin(0, 0, 0, 30));
 
@@ -139,7 +139,18 @@ void UGameOverWidget::BuildDefaultUI() {
 }
 
 void UGameOverWidget::ShowResults(int32 FinalScore, int32 TotalKills,
-                                   int32 BestCombo) {
+                                   int32 BestCombo, bool bVictory) {
+  // Titre et couleur selon victoire ou défaite
+  if (TitleText) {
+    if (bVictory) {
+      TitleText->SetText(FText::FromString(TEXT("MISSION ACCOMPLIE")));
+      TitleText->SetColorAndOpacity(FSlateColor(FLinearColor(0.2f, 1.f, 0.2f)));
+    } else {
+      TitleText->SetText(FText::FromString(TEXT("VOUS ÊTES MORT")));
+      TitleText->SetColorAndOpacity(FSlateColor(FLinearColor(1.f, 0.2f, 0.2f)));
+    }
+  }
+
   if (FinalScoreText) {
     FinalScoreText->SetText(
         FText::FromString(FString::Printf(TEXT("Score: %d"), FinalScore)));

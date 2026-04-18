@@ -119,6 +119,12 @@ protected:
   UPROPERTY(BlueprintReadOnly, Category = "Spawner|State")
   int32 TotalKilled = 0;
 
+  /** Total enemies to kill in the current wave (all entries combined) */
+  int32 WaveEnemyTotal = 0;
+
+  /** Enemies killed so far in the current wave */
+  int32 WaveEnemyKilled = 0;
+
   /** Timer handles for delayed spawns */
   TArray<FTimerHandle> SpawnTimers;
 

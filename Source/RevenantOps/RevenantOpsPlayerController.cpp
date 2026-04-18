@@ -341,6 +341,10 @@ void ARevenantOpsPlayerController::StartMercenairesMatch() {
     if (AEnemyWaveSpawner* WS = Cast<AEnemyWaveSpawner>(S))
     {
       UE_LOG(LogTemp, Warning, TEXT("[PC] Calling StartEncounter on %s"), *S->GetName());
+
+      // Quand toutes les vagues sont terminées → fin de match (victoire)
+      WS->OnAllWavesCompleted.AddDynamic(this, &ARevenantOpsPlayerController::OnAllWavesCompleted);
+
       WS->StartEncounter();
     }
   }
@@ -361,15 +365,31 @@ void ARevenantOpsPlayerController::OnPlayerDied(
   }
 }
 
+void ARevenantOpsPlayerController::OnAllWavesCompleted()
+{
+  // Désactiver l'input joueur
+  if (APawn* P = GetPawn())
+  {
+    P->DisableInput(this);
+  }
+
+  // Terminer le match en victoire (bypass OnMatchEnded → direct ShowGameOverScreen)
+  if (AMercenairesGameState* GS = GetWorld()->GetGameState<AMercenairesGameState>())
+  {
+    GS->EndMatch();
+  }
+  ShowGameOverScreen(true); // victoire
+}
+
 void ARevenantOpsPlayerController::OnMatchEnded(bool bIsActive) {
   if (bIsActive) {
     return;
   }
 
-  ShowGameOverScreen();
+  ShowGameOverScreen(false); // mort
 }
 
-void ARevenantOpsPlayerController::ShowGameOverScreen() {
+void ARevenantOpsPlayerController::ShowGameOverScreen(bool bVictory) {
   // Hide HUD
   if (HUDWidget) {
     HUDWidget->RemoveFromParent();
@@ -396,7 +416,7 @@ void ARevenantOpsPlayerController::ShowGameOverScreen() {
         CreateWidget<UGameOverWidget>(this, GameOverWidgetClass);
     if (GameOverWidgetInstance) {
       GameOverWidgetInstance->AddToViewport(10);
-      GameOverWidgetInstance->ShowResults(FinalScore, TotalKills, BestCombo);
+      GameOverWidgetInstance->ShowResults(FinalScore, TotalKills, BestCombo, bVictory);
       SetShowMouseCursor(true);
       SetInputMode(FInputModeUIOnly());
     }

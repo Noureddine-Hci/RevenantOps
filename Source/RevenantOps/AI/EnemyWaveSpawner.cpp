@@ -142,6 +142,12 @@ void AEnemyWaveSpawner::StartNextWave() {
       bInfiniteMode ? CurrentWaveIndex % Waves.Num() : CurrentWaveIndex;
   const FEnemyWave &CurrentWave = Waves[WaveIdx];
 
+  // Reset per-wave kill counters
+  WaveEnemyKilled = 0;
+  WaveEnemyTotal = 0;
+  for (const FWaveEnemyEntry& E : CurrentWave.Enemies)
+    WaveEnemyTotal += E.Count;
+
   // Broadcast wave start
   OnWaveStarted.Broadcast(CurrentWaveIndex + 1, Waves.Num());
   BP_OnWaveStarted(CurrentWaveIndex + 1);
@@ -246,10 +252,10 @@ void AEnemyWaveSpawner::OnEnemyDied(AEnemyBase *Enemy,
                                       AController *KilledBy) {
   AliveEnemies.Remove(Enemy);
   ++TotalKilled;
+  ++WaveEnemyKilled;
 
-  // Check if wave is cleared
-  if (AliveEnemies.Num() <= 0 && bIsActive) {
-    // All enemies in this wave are dead
+  // Wave is cleared only when ALL enemies of the wave are dead
+  if (WaveEnemyKilled >= WaveEnemyTotal && bIsActive) {
     const int32 WaveIdx =
         bInfiniteMode ? CurrentWaveIndex % Waves.Num() : CurrentWaveIndex;
 

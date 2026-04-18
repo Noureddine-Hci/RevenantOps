@@ -117,6 +117,7 @@ void ARevenantOpsCharacter::Tick(float DeltaTime) {
   UpdateMovementSpeed(DeltaTime);
   UpdateStamina(DeltaTime);
   UpdateCameraFOV(DeltaTime);
+  UpdateAnimationValues();
 
   // Auto-end slide if speed drops too low
   if (bIsSliding) {
@@ -666,6 +667,32 @@ void ARevenantOpsCharacter::UseInventoryItem(int32 SlotIndex) {
   }
 }
 
+void ARevenantOpsCharacter::UpdateAnimationValues()
+{
+  if (!GetController()) return;
+
+  // --- Aim Pitch / Yaw (control rotation relative to actor) ---
+  const FRotator ControlRot = GetControlRotation();
+  const FRotator ActorRot   = GetActorRotation();
+  FRotator Delta = (ControlRot - ActorRot).GetNormalized();
+
+  // Pitch: UE stores pitch inverted for controllers — negate for natural up/down
+  AimPitch = FMath::ClampAngle(-Delta.Pitch, -90.f, 90.f);
+  AimYaw   = FMath::ClampAngle( Delta.Yaw,  -180.f, 180.f);
+
+  // --- Movement Direction (velocity relative to actor forward) ---
+  const FVector Velocity = GetVelocity();
+  if (Velocity.SizeSquared2D() > 1.f)
+  {
+    const FVector LocalVel = ActorRot.UnrotateVector(Velocity);
+    MovementDirection = FMath::RadiansToDegrees(FMath::Atan2(LocalVel.Y, LocalVel.X));
+  }
+  else
+  {
+    MovementDirection = 0.f;
+  }
+}
+
 void ARevenantOpsCharacter::EquipWeapon(int32 Index) {
   if (!WeaponInventory.IsValidIndex(Index)) {
     return;
@@ -688,6 +715,12 @@ void ARevenantOpsCharacter::EquipWeapon(int32 Index) {
     CurrentWeapon->SetActorHiddenInGame(false);
     CurrentWeapon->SetActorTickEnabled(true);
     AttachWeaponToSocket(CurrentWeapon);
+
+    // Play equip montage if assigned on the weapon
+    if (UAnimMontage* EqMontage = CurrentWeapon->GetEquipMontage())
+    {
+      PlayAnimMontage(EqMontage);
+    }
   }
 }
 

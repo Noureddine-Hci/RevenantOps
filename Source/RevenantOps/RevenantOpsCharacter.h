@@ -256,6 +256,18 @@ protected:
   UPROPERTY(BlueprintReadOnly, Category = "Animation")
   bool bIsArmed = false;
 
+  /** Aim pitch delta (control vs actor), clamped [-90, 90] — used by AimOffset in ABP */
+  UPROPERTY(BlueprintReadOnly, Category = "Animation")
+  float AimPitch = 0.f;
+
+  /** Aim yaw delta (control vs actor), clamped [-180, 180] — used by AimOffset in ABP */
+  UPROPERTY(BlueprintReadOnly, Category = "Animation")
+  float AimYaw = 0.f;
+
+  /** Movement direction relative to actor (degrees, -180 to 180) — used by armed blendspace */
+  UPROPERTY(BlueprintReadOnly, Category = "Animation")
+  float MovementDirection = 0.f;
+
   /** Cached health component for damage feedback */
   UPROPERTY()
   UHealthComponent *HealthComp = nullptr;
@@ -299,6 +311,8 @@ protected:
   void UpdateMovementSpeed(float DeltaTime);
   void UpdateStamina(float DeltaTime);
   void UpdateCameraFOV(float DeltaTime);
+  /** Updates AimPitch, AimYaw, MovementDirection each tick for ABP */
+  void UpdateAnimationValues();
   bool ConsumeStamina(float Amount);
   void StartSlide();
   void EndSlide();

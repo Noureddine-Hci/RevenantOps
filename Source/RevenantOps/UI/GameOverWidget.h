@@ -21,11 +21,15 @@ public:
   virtual TSharedRef<SWidget> RebuildWidget() override;
   virtual void NativeConstruct() override;
 
-  /** Populates the screen with match results */
+  /** Populates the screen with match results.
+   *  @param bVictory  true = toutes les vagues complétées, false = mort */
   UFUNCTION(BlueprintCallable, Category = "UI|GameOver")
-  void ShowResults(int32 FinalScore, int32 TotalKills, int32 BestCombo);
+  void ShowResults(int32 FinalScore, int32 TotalKills, int32 BestCombo, bool bVictory = false);
 
 protected:
+  UPROPERTY(meta = (BindWidgetOptional))
+  UTextBlock *TitleText;
+
   UPROPERTY(meta = (BindWidgetOptional))
   UTextBlock *FinalScoreText;
 
