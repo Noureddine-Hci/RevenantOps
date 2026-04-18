@@ -200,7 +200,7 @@ void ARevenantOpsCharacter::SetupPlayerInputComponent(
     }
 
     if (InteractAction) {
-      EIC->BindAction(InteractAction, ETriggerEvent::Started, this,
+      EIC->BindAction(InteractAction, ETriggerEvent::Triggered, this,
                       &ARevenantOpsCharacter::InteractPressed);
     }
 

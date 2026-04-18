@@ -31,6 +31,10 @@ void UTitleScreenWidget::NativeConstruct() {
   if (QuitButton) {
     QuitButton->OnClicked.AddDynamic(this, &UTitleScreenWidget::OnQuitClicked);
   }
+
+  if (OptionsButton) {
+    OptionsButton->OnClicked.AddDynamic(this, &UTitleScreenWidget::OnOptionsClicked);
+  }
 }
 
 void UTitleScreenWidget::BuildDefaultUI() {
@@ -92,6 +96,17 @@ void UTitleScreenWidget::BuildDefaultUI() {
   PlaySlot->SetHorizontalAlignment(EHorizontalAlignment::HAlign_Center);
   PlaySlot->SetPadding(FMargin(0, 0, 0, 15));
 
+  // Options Button
+  OptionsButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("OptionsButton"));
+  UTextBlock* OptionsText = WidgetTree->ConstructWidget<UTextBlock>();
+  OptionsText->SetText(FText::FromString(TEXT("OPTIONS")));
+  OptionsText->SetFont(BtnFont);
+  OptionsText->SetJustification(ETextJustify::Center);
+  OptionsButton->AddChild(OptionsText);
+  UVerticalBoxSlot* OptionsSlot = VBox->AddChildToVerticalBox(OptionsButton);
+  OptionsSlot->SetHorizontalAlignment(EHorizontalAlignment::HAlign_Center);
+  OptionsSlot->SetPadding(FMargin(0, 0, 0, 15));
+
   // Quit Button
   QuitButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("QuitButton"));
   UTextBlock* QuitText = WidgetTree->ConstructWidget<UTextBlock>();
@@ -110,6 +125,14 @@ void UTitleScreenWidget::OnPlayClicked() {
           Cast<ARevenantOpsPlayerController>(GetOwningPlayer()))
   {
     PC->ShowLevelSelectScreen();
+  }
+}
+
+void UTitleScreenWidget::OnOptionsClicked() {
+  if (ARevenantOpsPlayerController* PC =
+          Cast<ARevenantOpsPlayerController>(GetOwningPlayer()))
+  {
+    PC->ShowOptionsScreen();
   }
 }
 

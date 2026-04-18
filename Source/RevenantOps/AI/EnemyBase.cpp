@@ -22,7 +22,7 @@ AEnemyBase::AEnemyBase() {
 
   // Don't rotate with controller
   bUseControllerRotationYaw = false;
-  GetCharacterMovement()->bUseControllerDesiredRotation = true;
+  GetCharacterMovement()->bUseControllerDesiredRotation = false;
   GetCharacterMovement()->bOrientRotationToMovement = true;
   GetCharacterMovement()->RotationRate = FRotator(0.f, 360.f, 0.f);
 
@@ -91,6 +91,17 @@ void AEnemyBase::Tick(float DeltaTime) {
 
   UpdatePerception(DeltaTime);
   UpdateCombat(DeltaTime);
+
+  // Forcer la rotation vers la direction de déplacement
+  if (!bIsDead)
+  {
+    FVector Vel = GetVelocity();
+    Vel.Z = 0.f;
+    if (!Vel.IsNearlyZero(1.f))
+    {
+      SetActorRotation(FRotator(0.f, Vel.Rotation().Yaw, 0.f));
+    }
+  }
 
   // Hit flash decay
   if (HitFlashTimer > 0.f) {
@@ -501,7 +512,7 @@ void AEnemyBase::HandleDeath(UHealthComponent *HealthComponent,
   // Disable collision
   GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-  // Enable ragdoll
+  // Ragdoll immédiat — toujours
   GetMesh()->SetSimulatePhysics(true);
   GetMesh()->SetCollisionProfileName(TEXT("Ragdoll"));
 
@@ -569,6 +580,15 @@ void AEnemyBase::HandleDamage(UHealthComponent *HealthComponent, float Health,
 
   // Trigger hit flash
   HitFlashTimer = HitFlashDuration;
+
+  // Hit react via slot — retourne automatiquement à la locomotion
+  if (HitReactAnim && !bIsDead)
+  {
+    if (UAnimInstance* AI = GetMesh()->GetAnimInstance())
+    {
+      AI->PlaySlotAnimationAsDynamicMontage(HitReactAnim, FName("DefaultSlot"), 0.05f, 0.1f, 1.f);
+    }
+  }
 
   // Play hit sound
   if (HitSound) {

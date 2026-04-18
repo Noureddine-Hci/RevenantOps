@@ -8,6 +8,7 @@
 
 class UButton;
 class UTextBlock;
+class ARevenantOpsPlayerController;
 
 /**
  *  Title screen widget.
@@ -29,11 +30,17 @@ protected:
   UPROPERTY(meta = (BindWidgetOptional))
   UButton *QuitButton;
 
+  UPROPERTY(meta = (BindWidgetOptional))
+  UButton *OptionsButton;
+
   UFUNCTION()
   void OnPlayClicked();
 
   UFUNCTION()
   void OnQuitClicked();
+
+  UFUNCTION()
+  void OnOptionsClicked();
 
   /** BP hook for transition effects before starting */
   UFUNCTION(BlueprintImplementableEvent, Category = "UI",

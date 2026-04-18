@@ -109,6 +109,15 @@ void AZombieBase::PerformMeleeAttack() {
                                            GetActorLocation());
   }
 
+  // Animation d'attaque via slot — retourne automatiquement à la locomotion
+  if (AttackAnim)
+  {
+    if (UAnimInstance* AI = GetMesh()->GetAnimInstance())
+    {
+      AI->PlaySlotAnimationAsDynamicMontage(AttackAnim, FName("DefaultSlot"), 0.1f, 0.1f, 1.f);
+    }
+  }
+
   // Apply melee damage to the player
   UGameplayStatics::ApplyDamage(TargetPlayer, MeleeDamage, GetController(),
                                 this, nullptr);
