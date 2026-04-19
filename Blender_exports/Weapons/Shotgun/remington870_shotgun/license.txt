@@ -1,0 +1,11 @@
+Model Information:
+* title:	Remington870 Shotgun
+* source:	https://sketchfab.com/3d-models/remington870-shotgun-a4852997660a43839c30e36dfca5a3e7
+* author:	Trip (https://sketchfab.com/Triptonic)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Remington870 Shotgun" (https://sketchfab.com/3d-models/remington870-shotgun-a4852997660a43839c30e36dfca5a3e7) by Trip (https://sketchfab.com/Triptonic) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

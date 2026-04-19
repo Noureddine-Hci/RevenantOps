@@ -1,0 +1,11 @@
+Model Information:
+* title:	HK MP5-Submachine Gun
+* source:	https://sketchfab.com/3d-models/hk-mp5-submachine-gun-2c33b8da855b46ff90ba89665f607816
+* author:	CastleBravo (https://sketchfab.com/BravoCastle)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "HK MP5-Submachine Gun" (https://sketchfab.com/3d-models/hk-mp5-submachine-gun-2c33b8da855b46ff90ba89665f607816) by CastleBravo (https://sketchfab.com/BravoCastle) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
