@@ -14,9 +14,102 @@
 #include "Components/ScrollBoxSlot.h"
 #include "Blueprint/WidgetTree.h"
 #include "EnhancedInputSubsystems.h"
-#include "UserSettings/EnhancedInputUserSettings.h"
+#include "InputMappingContext.h"
+#include "EnhancedActionKeyMapping.h"
 #include "GameFramework/PlayerController.h"
 #include "Engine/LocalPlayer.h"
+#include "Kismet/GameplayStatics.h"
+#include "UI/KeyRebindSaveGame.h"
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+void UKeyBindButtonHandler::OnClicked()
+{
+    if (Parent) Parent->StartListening(Index);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+void UOptionsWidget::SetIMC(UInputMappingContext* InIMC)
+{
+    IMC = InIMC;
+}
+
+void UOptionsWidget::ApplyKeyToIMC(int32 Index, const FKey& NewKey)
+{
+    if (!IMC || !CachedBindings.IsValidIndex(Index)) return;
+
+    const UInputAction* TargetAction = CachedBindings[Index].Action;
+    if (!TargetAction) return;
+
+    // Modifie directement la touche dans l'IMC (keyboard only, ignore gamepad)
+    TArray<FEnhancedActionKeyMapping>& Mappings = const_cast<TArray<FEnhancedActionKeyMapping>&>(IMC->GetMappings());
+    const FName TargetName = TargetAction->GetFName();
+    for (FEnhancedActionKeyMapping& Mapping : Mappings)
+    {
+        if (!Mapping.Action || Mapping.Key.IsGamepadKey()) continue;
+        if (Mapping.Action->GetFName() == TargetName)
+        {
+            Mapping.Key = NewKey;
+            break;
+        }
+    }
+
+    // Retire et ré-ajoute l'IMC pour forcer Enhanced Input à relire les mappings modifiés
+    if (APlayerController* PC = GetOwningPlayer())
+    {
+        if (ULocalPlayer* LP = PC->GetLocalPlayer())
+        {
+            if (auto* Sub = LP->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>())
+            {
+                Sub->RemoveMappingContext(IMC);
+                Sub->AddMappingContext(IMC, 0);
+                UE_LOG(LogTemp, Warning, TEXT("[KeyRebind] IMC retiré et ré-ajouté"));
+            }
+        }
+    }
+
+    // Sauvegarde dans notre SaveGame
+    UKeyRebindSaveGame* Save = Cast<UKeyRebindSaveGame>(
+        UGameplayStatics::LoadGameFromSlot(UKeyRebindSaveGame::SlotName, UKeyRebindSaveGame::UserIndex));
+    if (!Save)
+        Save = Cast<UKeyRebindSaveGame>(UGameplayStatics::CreateSaveGameObject(UKeyRebindSaveGame::StaticClass()));
+    if (Save)
+    {
+        Save->MappedKeys.Add(CachedBindings[Index].MappingName, NewKey);
+        UGameplayStatics::SaveGameToSlot(Save, UKeyRebindSaveGame::SlotName, UKeyRebindSaveGame::UserIndex);
+    }
+}
+
+void UOptionsWidget::LoadAndApplySavedBindings()
+{
+    if (!IMC) return;
+
+    UKeyRebindSaveGame* Save = Cast<UKeyRebindSaveGame>(
+        UGameplayStatics::LoadGameFromSlot(UKeyRebindSaveGame::SlotName, UKeyRebindSaveGame::UserIndex));
+    if (!Save) return;
+
+    TArray<FEnhancedActionKeyMapping>& Mappings = const_cast<TArray<FEnhancedActionKeyMapping>&>(IMC->GetMappings());
+    for (int32 i = 0; i < CachedBindings.Num(); ++i)
+    {
+        const FKey* SavedKey = Save->MappedKeys.Find(CachedBindings[i].MappingName);
+        if (!SavedKey || !CachedBindings[i].Action) continue;
+
+        for (FEnhancedActionKeyMapping& Mapping : Mappings)
+        {
+            if (Mapping.Action && !Mapping.Key.IsGamepadKey() &&
+                Mapping.Action->GetFName() == CachedBindings[i].Action->GetFName())
+            {
+                Mapping.Key = *SavedKey;
+                CachedBindings[i].DefaultKey = *SavedKey;
+                break;
+            }
+        }
+    }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -32,10 +125,26 @@ TSharedRef<SWidget> UOptionsWidget::RebuildWidget()
 void UOptionsWidget::NativeConstruct()
 {
     Super::NativeConstruct();
+
+    // BuildDefaultUI may not have run yet if the WBP had an existing root widget
+    if (!RowContainer && WidgetTree)
+    {
+        BuildDefaultUI();
+    }
+
     if (BtnBack)
     {
         BtnBack->OnClicked.AddDynamic(this, &UOptionsWidget::HandleBack);
     }
+
+    // Re-populate now that the widget tree is fully constructed
+    if (CachedBindings.Num() > 0)
+    {
+        // Applique les bindings sauvegardés AVANT de construire les lignes
+        LoadAndApplySavedBindings();
+        PopulateBindings(CachedBindings);
+    }
+
     SetKeyboardFocus();
 }
 
@@ -198,14 +307,12 @@ void UOptionsWidget::PopulateBindings(const TArray<FKeyRebindEntry>& Bindings)
         BtnStyle.SetPressed(BtnNormal);
         ChangeBtn->SetStyle(BtnStyle);
 
-        // Bind change button with index capture via lambda on non-dynamic delegate is not available,
-        // so we store references and use a helper approach: clicking "Changer" focuses the widget
-        // and NativeOnKeyDown handles the next key press.
-        // We use the row index stored in CachedBindings matching by pointer.
-        const int32 CapturedIndex = i;
-        ChangeBtn->OnClicked.AddDynamic(this, &UOptionsWidget::HandleBack); // placeholder binding
-        // Override with actual lambda-friendly mechanism: store in Rows and identify by row index
-        // We'll detect which button was clicked by walking Rows in NativeOnKeyDown.
+        // Create a per-row handler object so each button has its own UFUNCTION + index
+        UKeyBindButtonHandler* Handler = NewObject<UKeyBindButtonHandler>(this);
+        Handler->Parent = this;
+        Handler->Index  = i;
+        BtnHandlers.Add(Handler);
+        ChangeBtn->OnClicked.AddDynamic(Handler, &UKeyBindButtonHandler::OnClicked);
 
         UHorizontalBoxSlot* BtnSlot = HBox->AddChildToHorizontalBox(ChangeBtn);
         BtnSlot->SetSize(FSlateChildSize(ESlateSizeRule::Automatic));
@@ -219,36 +326,14 @@ void UOptionsWidget::PopulateBindings(const TArray<FKeyRebindEntry>& Bindings)
         RefreshRow(i);
     }
 
-    // Now properly bind change buttons after Rows array is fully built
-    for (int32 i = 0; i < Rows.Num(); ++i)
-    {
-        if (Rows[i].ChangeBtn)
-        {
-            // Remove the placeholder binding
-            Rows[i].ChangeBtn->OnClicked.RemoveDynamic(this, &UOptionsWidget::HandleBack);
-        }
-    }
-    // Bind all change buttons to a single handler that identifies by button pointer
-    // Since dynamic delegates can't use lambdas, we implement a fixed set via the listening state
-    // set by each button via its tag (index stored as ChangeBtn->SetToolTipText or via a helper).
-    // Cleanest solution: re-create buttons are added to an indexed array, NativeOnMouseButtonDown
-    // identifies which was clicked. For now, buttons trigger a generic "StartListening" via
-    // the button's index in the Rows array matched at click time.
-    //
-    // Implementation: each ChangeBtn stores its index as an accessible property.
-    // We add a dedicated UFUNCTION per-row approach limited to 16 rows.
 }
 
 void UOptionsWidget::RefreshRow(int32 Index)
 {
     if (!Rows.IsValidIndex(Index) || !CachedBindings.IsValidIndex(Index)) return;
 
+    // CachedBindings[Index].DefaultKey est maintenant la touche courante (mise à jour par ApplyKeyToIMC)
     FKey CurrentKey = CachedBindings[Index].DefaultKey;
-
-    // Reading the current key from UEnhancedInputUserSettings requires the actions
-    // to be marked as Player Mappable in their Input Action assets.
-    // For now we display the DefaultKey; overrides applied via MapPlayerKey() are
-    // saved in the User Settings profile and take effect on the next session.
 
     if (Rows[Index].KeyText)
     {
@@ -266,7 +351,19 @@ void UOptionsWidget::StartListening(int32 Index)
         Rows[Index].ChangeLbl->SetColorAndOpacity(
             FSlateColor(FLinearColor(1.f, 0.5f, 0.1f, 1.f)));
     }
-    SetKeyboardFocus();
+    if (UWorld* World = GetWorld())
+    {
+        World->GetTimerManager().SetTimer(ListenTimerHandle,
+            FTimerDelegate::CreateUObject(this, &UOptionsWidget::Tick_ListenForKey, 0.f),
+            0.016f, true);
+    }
+}
+
+void UOptionsWidget::Tick_ListenForKey(float)
+{
+    // La capture de touche est gérée par NativeOnPreviewKeyDown.
+    // Ce timer n'est plus utilisé — on le laisse vide au cas où il serait déclenché.
+    if (!bListening) return;
 }
 
 void UOptionsWidget::StopListening(bool bCancelled)
@@ -279,65 +376,42 @@ void UOptionsWidget::StopListening(bool bCancelled)
     }
     bListening     = false;
     ListeningIndex = -1;
+
+    if (UWorld* World = GetWorld())
+    {
+        World->GetTimerManager().ClearTimer(ListenTimerHandle);
+    }
+}
+
+void UOptionsWidget::NativeDestruct()
+{
+    if (UWorld* World = GetWorld())
+    {
+        World->GetTimerManager().ClearTimer(ListenTimerHandle);
+    }
+    Super::NativeDestruct();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-FReply UOptionsWidget::NativeOnKeyDown(const FGeometry& MyGeometry, const FKeyEvent& InKeyEvent)
+FReply UOptionsWidget::NativeOnPreviewKeyDown(const FGeometry& MyGeometry, const FKeyEvent& InKeyEvent)
 {
+    if (!bListening) return Super::NativeOnPreviewKeyDown(MyGeometry, InKeyEvent);
+
     const FKey PressedKey = InKeyEvent.GetKey();
-
-    // "Changer" button clicks are detected here: if any ChangeBtn has focus, start listening
-    if (!bListening)
-    {
-        // Check if a change button is focused
-        for (int32 i = 0; i < Rows.Num(); ++i)
-        {
-            if (Rows[i].ChangeBtn && Rows[i].ChangeBtn->HasKeyboardFocus())
-            {
-                if (PressedKey == EKeys::Enter || PressedKey == EKeys::SpaceBar)
-                {
-                    StartListening(i);
-                    return FReply::Handled();
-                }
-            }
-        }
-        return Super::NativeOnKeyDown(MyGeometry, InKeyEvent);
-    }
-
-    // Currently listening for a new key
     if (PressedKey == EKeys::Escape)
     {
         StopListening(true);
         return FReply::Handled();
     }
 
-    // Apply the new key via Enhanced Input User Settings
     if (CachedBindings.IsValidIndex(ListeningIndex))
     {
-        if (APlayerController* PC = GetOwningPlayer())
-        {
-            if (ULocalPlayer* LP = PC->GetLocalPlayer())
-            {
-                if (UEnhancedInputLocalPlayerSubsystem* Sub =
-                        LP->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>())
-                {
-                    if (UEnhancedInputUserSettings* Settings = Sub->GetUserSettings())
-                    {
-                        FMapPlayerKeyArgs Args;
-                        Args.MappingName = CachedBindings[ListeningIndex].MappingName;
-                        Args.Slot        = EPlayerMappableKeySlot::First;
-                        Args.NewKey      = PressedKey;
-                        FGameplayTagContainer FailReason;
-                        Settings->MapPlayerKey(Args, FailReason);
-                        Settings->SaveSettings();
-                    }
-                }
-            }
-        }
+        // Applique dans l'IMC + sauvegarde + met à jour DefaultKey
+        ApplyKeyToIMC(ListeningIndex, PressedKey);
+        CachedBindings[ListeningIndex].DefaultKey = PressedKey;
         RefreshRow(ListeningIndex);
     }
-
     StopListening(false);
     return FReply::Handled();
 }

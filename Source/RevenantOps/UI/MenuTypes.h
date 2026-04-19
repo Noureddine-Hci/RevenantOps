@@ -61,11 +61,15 @@ struct FKeyRebindEntry
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Menu|Options")
     FText DisplayName;
 
-    /** Must match the PlayerMappableKeyOptions.Name on the Input Action */
+    /** Nom unique pour sauvegarder le remapping (ex: "Jump") */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Menu|Options")
     FName MappingName;
 
-    /** Default key shown when no user override exists */
+    /** L'InputAction à remapper — assigne dans BP */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Menu|Options")
+    TObjectPtr<class UInputAction> Action = nullptr;
+
+    /** Touche par défaut affichée */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Menu|Options")
     FKey DefaultKey;
 };

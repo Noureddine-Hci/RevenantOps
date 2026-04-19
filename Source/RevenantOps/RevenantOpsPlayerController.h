@@ -83,6 +83,10 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "UI|Mercenaires")
 	TArray<FKeyRebindEntry> AvailableRebinds;
 
+	/** IMC à re-enregistrer dans les UserSettings à l'ouverture des Options */
+	UPROPERTY(EditAnywhere, Category = "UI|Mercenaires")
+	UInputMappingContext* DefaultMappingContext = nullptr;
+
 	/** Loadout selection widget class */
 	UPROPERTY(EditAnywhere, Category = "UI|Mercenaires")
 	TSubclassOf<ULoadoutWidget> LoadoutWidgetClass;

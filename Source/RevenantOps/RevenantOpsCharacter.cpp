@@ -20,6 +20,7 @@
 #include "RevenantOpsPlayerController.h"
 #include "UI/RevenantOpsHUD.h"
 #include "Gameplay/AmmoBonusPickup.h"
+#include "Gameplay/WeaponPickup.h"
 
 ARevenantOpsCharacter::ARevenantOpsCharacter() {
   PrimaryActorTick.bCanEverTick = true;
@@ -802,6 +803,19 @@ void ARevenantOpsCharacter::ReloadPressed() {
   }
 }
 
+void ARevenantOpsCharacter::AddAndEquipWeapon(AWeaponBase* NewWeapon)
+{
+    if (!NewWeapon) return;
+
+    NewWeapon->SetOwnerPawn(this);
+    WeaponInventory.Add(NewWeapon);
+    NewWeapon->SetActorHiddenInGame(true);
+    NewWeapon->SetActorTickEnabled(false);
+
+    bIsArmed = true;
+    EquipWeapon(WeaponInventory.Num() - 1);
+}
+
 void ARevenantOpsCharacter::SwitchWeaponPressed() {
   if (WeaponInventory.Num() <= 1) {
     return;
@@ -816,7 +830,9 @@ void ARevenantOpsCharacter::SwitchWeaponPressed() {
 // =============================================================================
 
 void ARevenantOpsCharacter::InteractPressed() {
-  if (PendingPickup) {
+  if (PendingWeaponPickup) {
+    PendingWeaponPickup->TryPickup(this);
+  } else if (PendingPickup) {
     PendingPickup->TryPickup(this);
   }
 }

@@ -3,6 +3,7 @@
 
 #include "RevenantOpsPlayerController.h"
 #include "EnhancedInputSubsystems.h"
+#include "UserSettings/EnhancedInputUserSettings.h"
 #include "Engine/LocalPlayer.h"
 #include "InputMappingContext.h"
 #include "Blueprint/UserWidget.h"
@@ -135,6 +136,7 @@ void ARevenantOpsPlayerController::ShowOptionsScreen() {
 
   OptionsWidgetInstance = CreateWidget<UOptionsWidget>(this, OptionsWidgetClass);
   if (OptionsWidgetInstance) {
+    OptionsWidgetInstance->SetIMC(DefaultMappingContext);
     OptionsWidgetInstance->PopulateBindings(AvailableRebinds);
     OptionsWidgetInstance->OnBackClicked.AddDynamic(
         this, &ARevenantOpsPlayerController::OnOptionsBack);

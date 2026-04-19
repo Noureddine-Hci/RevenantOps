@@ -22,7 +22,8 @@ public class RevenantOps : ModuleRules
 			"Slate",
 			"SlateCore",
 			"Niagara",
-			"EngineCameras"
+			"EngineCameras",
+			"GameplayTags"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });

@@ -275,6 +275,9 @@ protected:
   /** Pickup dans la zone d'interaction — raw ptr (pas UPROPERTY = pas de CDO crash) */
   AAmmoBonusPickup *PendingPickup = nullptr;
 
+  /** Weapon pickup en zone — raw ptr */
+  class AWeaponPickup *PendingWeaponPickup = nullptr;
+
   // ========== INVENTORY (RE5-style, 9 slots) ==========
 
   /** 9-slot inventory shared between items and weapons */
@@ -388,6 +391,15 @@ public:
 public:
   /** Enregistre le pickup actif (appelé par AAmmoBonusPickup) */
   void SetPendingPickup(AAmmoBonusPickup* Pickup) { PendingPickup = Pickup; }
+
+  /** Enregistre le weapon pickup actif */
+  void SetPendingWeaponPickup(AWeaponPickup* Pickup) { PendingWeaponPickup = Pickup; }
+
+  /** Ajoute une arme déjà spawnée à l'inventaire et l'équipe — appelé par WeaponPickup */
+  void AddAndEquipWeapon(AWeaponBase* NewWeapon);
+
+  /** Retourne le nombre d'armes dans l'inventaire */
+  int32 GetWeaponCount() const { return WeaponInventory.Num(); }
 
   /** Affiche le popup RE5 sur le HUD (icone + [E] + nom) */
   void ShowPickupPrompt(UTexture2D* Icon, const FText& Name, int32 Qty);
