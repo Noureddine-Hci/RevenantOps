@@ -68,8 +68,15 @@ void ARevenantOpsPlayerController::ReceivedPlayer()
 		}
 	}
 
-	// Start the Mercenaires flow with the title screen.
-	if (TitleScreenClass)
+	// Si un match est en attente (joueur vient du menu principal), on lance directement.
+	// Sinon on affiche le title screen (on est dans Lvl_MainMenu).
+	URevenantOpsGameInstance* GI = Cast<URevenantOpsGameInstance>(GetGameInstance());
+	if (GI && GI->bPendingMatchStart)
+	{
+		GI->bPendingMatchStart = false;
+		StartMercenairesMatch();
+	}
+	else if (TitleScreenClass)
 	{
 		ShowTitleScreen();
 	}
@@ -276,23 +283,37 @@ void ARevenantOpsPlayerController::OnLoadoutConfirmed(
   }
   bLoadoutConfirmed = true;
 
-  // Apply loadout to character
-  if (ARevenantOpsCharacter *MercChar =
-          Cast<ARevenantOpsCharacter>(GetPawn())) {
-    TArray<TSubclassOf<AWeaponBase>> Loadout;
-    if (Primary)                        Loadout.Add(Primary);
-    if (Secondary && Secondary != Primary) Loadout.Add(Secondary);
-    if (Loadout.Num() > 0) {
-      MercChar->SetDefaultWeaponClasses(Loadout);
-      MercChar->SpawnDefaultWeapons();
-    }
+  // Sauvegarde le loadout dans le GameInstance (persiste entre niveaux)
+  if (URevenantOpsGameInstance* GI = Cast<URevenantOpsGameInstance>(GetGameInstance()))
+  {
+    GI->PendingPrimaryWeapon   = Primary;
+    GI->PendingSecondaryWeapon = Secondary;
+    GI->bPendingMatchStart     = true;
   }
 
-  StartMercenairesMatch();
+  // Charge le niveau de jeu
+  UGameplayStatics::OpenLevel(this, TEXT("Lvl_ThirdPerson"));
 }
 
 void ARevenantOpsPlayerController::StartMercenairesMatch() {
   ClearFlowWidgets();
+
+  // Applique le loadout sauvegardé dans le GameInstance
+  if (URevenantOpsGameInstance* GI = Cast<URevenantOpsGameInstance>(GetGameInstance()))
+  {
+    if (ARevenantOpsCharacter* MercChar = Cast<ARevenantOpsCharacter>(GetPawn()))
+    {
+      TArray<TSubclassOf<AWeaponBase>> Loadout;
+      if (GI->PendingPrimaryWeapon)   Loadout.Add(GI->PendingPrimaryWeapon);
+      if (GI->PendingSecondaryWeapon && GI->PendingSecondaryWeapon != GI->PendingPrimaryWeapon)
+          Loadout.Add(GI->PendingSecondaryWeapon);
+      if (Loadout.Num() > 0)
+      {
+        MercChar->SetDefaultWeaponClasses(Loadout);
+        MercChar->SpawnDefaultWeapons();
+      }
+    }
+  }
 
   // Show HUD
   if (!HUDWidget && HUDWidgetClass) {

@@ -4,6 +4,7 @@
 #include "CoreMinimal.h"
 #include "Engine/GameInstance.h"
 #include "UI/MenuTypes.h"
+#include "WeaponBase.h"
 #include "RevenantOpsGameInstance.generated.h"
 
 /**
@@ -31,4 +32,11 @@ public:
     /** True when a level + character have been chosen and we're about to load */
     UPROPERTY(BlueprintReadWrite, Category = "Menu")
     bool bPendingMatchStart = false;
+
+    /** Armes choisies dans le loadout */
+    UPROPERTY(BlueprintReadWrite, Category = "Menu")
+    TSubclassOf<AWeaponBase> PendingPrimaryWeapon;
+
+    UPROPERTY(BlueprintReadWrite, Category = "Menu")
+    TSubclassOf<AWeaponBase> PendingSecondaryWeapon;
 };
