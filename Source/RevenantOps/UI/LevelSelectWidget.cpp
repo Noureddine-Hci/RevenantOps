@@ -73,6 +73,12 @@ TSharedRef<SWidget> ULevelSelectWidget::RebuildWidget()
 void ULevelSelectWidget::NativeConstruct()
 {
     Super::NativeConstruct();
+    UE_LOG(LogTemp, Warning, TEXT("[LevelSelect] NativeConstruct — CarouselBox=%s BtnPrev=%s BtnNext=%s BtnConfirm=%s BtnBack=%s"),
+        CarouselBox ? TEXT("OK") : TEXT("null"),
+        BtnPrev ? TEXT("OK") : TEXT("null"),
+        BtnNext ? TEXT("OK") : TEXT("null"),
+        BtnConfirm ? TEXT("OK") : TEXT("null"),
+        BtnBack ? TEXT("OK") : TEXT("null"));
     if (BtnBack)    BtnBack->OnClicked.AddDynamic(this,    &ULevelSelectWidget::HandleBack);
     if (BtnPrev)    BtnPrev->OnClicked.AddDynamic(this,    &ULevelSelectWidget::HandlePrev);
     if (BtnNext)    BtnNext->OnClicked.AddDynamic(this,    &ULevelSelectWidget::HandleNext);
@@ -80,6 +86,7 @@ void ULevelSelectWidget::NativeConstruct()
 
     if (!CachedLevels.IsEmpty())
         PopulateLevels(CachedLevels);
+
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -96,6 +103,7 @@ void ULevelSelectWidget::BuildDefaultUI()
     // Fond plein écran
     UBorder* Bg = WidgetTree->ConstructWidget<UBorder>();
     Bg->SetBrushColor(C_BgDark);
+    Bg->SetVisibility(ESlateVisibility::HitTestInvisible);
     UCanvasPanelSlot* BgSlot = Root->AddChildToCanvas(Bg);
     BgSlot->SetAnchors(FAnchors(0.f, 0.f, 1.f, 1.f));
     BgSlot->SetOffsets(FMargin(0.f));
@@ -103,6 +111,7 @@ void ULevelSelectWidget::BuildDefaultUI()
     // Bande décorative haut (accent rouge)
     UBorder* TopBar = WidgetTree->ConstructWidget<UBorder>();
     TopBar->SetBrushColor(C_Red);
+    TopBar->SetVisibility(ESlateVisibility::HitTestInvisible);
     UCanvasPanelSlot* TopBarSlot = Root->AddChildToCanvas(TopBar);
     TopBarSlot->SetAnchors(FAnchors(0.f, 0.f, 1.f, 0.f));
     TopBarSlot->SetOffsets(FMargin(0.f, 0.f, 0.f, 4.f));
@@ -134,12 +143,14 @@ void ULevelSelectWidget::BuildDefaultUI()
     BtnPrev->AddChild(PrevLbl);
     UHorizontalBoxSlot* PrevSlot = CarouselRow->AddChildToHorizontalBox(BtnPrev);
     PrevSlot->SetVerticalAlignment(VAlign_Center);
+    PrevSlot->SetSize(FSlateChildSize(ESlateSizeRule::Automatic));
     PrevSlot->SetPadding(FMargin(0.f, 0.f, 16.f, 0.f));
 
     // Conteneur des cartes
     CarouselBox = WidgetTree->ConstructWidget<UHorizontalBox>();
     UHorizontalBoxSlot* CBoxSlot = CarouselRow->AddChildToHorizontalBox(CarouselBox);
     CBoxSlot->SetVerticalAlignment(VAlign_Center);
+    CBoxSlot->SetSize(FSlateChildSize(ESlateSizeRule::Automatic));
 
     // Bouton suivant
     BtnNext = WidgetTree->ConstructWidget<UButton>();
@@ -148,6 +159,7 @@ void ULevelSelectWidget::BuildDefaultUI()
     BtnNext->AddChild(NextLbl);
     UHorizontalBoxSlot* NextSlot = CarouselRow->AddChildToHorizontalBox(BtnNext);
     NextSlot->SetVerticalAlignment(VAlign_Center);
+    NextSlot->SetSize(FSlateChildSize(ESlateSizeRule::Automatic));
     NextSlot->SetPadding(FMargin(16.f, 0.f, 0.f, 0.f));
 
     // ── Nom du niveau + meilleur score ────────────────────────────────────────
@@ -387,12 +399,16 @@ void ULevelSelectWidget::SelectLevel(int32 Index)
 
 void ULevelSelectWidget::HandlePrev()
 {
+    UE_LOG(LogTemp, Warning, TEXT("[LevelSelect] HandlePrev — SelectedIndex=%d Num=%d BtnPrev=%s"),
+        SelectedIndex, CachedLevels.Num(), BtnPrev ? TEXT("OK") : TEXT("null"));
     if (SelectedIndex > 0)
         SelectLevel(SelectedIndex - 1);
 }
 
 void ULevelSelectWidget::HandleNext()
 {
+    UE_LOG(LogTemp, Warning, TEXT("[LevelSelect] HandleNext — SelectedIndex=%d Num=%d BtnNext=%s"),
+        SelectedIndex, CachedLevels.Num(), BtnNext ? TEXT("OK") : TEXT("null"));
     if (SelectedIndex < CachedLevels.Num() - 1)
         SelectLevel(SelectedIndex + 1);
 }

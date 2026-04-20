@@ -81,6 +81,7 @@ void UTitleScreenWidget::BuildDefaultUI()
     // Fond sombre plein écran
     UBorder* Bg = WidgetTree->ConstructWidget<UBorder>();
     Bg->SetBrushColor(C_Bg);
+    Bg->SetVisibility(ESlateVisibility::HitTestInvisible);
     UCanvasPanelSlot* BgSlot = Canvas->AddChildToCanvas(Bg);
     BgSlot->SetAnchors(FAnchors(0.f, 0.f, 1.f, 1.f));
     BgSlot->SetOffsets(FMargin(0.f));
@@ -88,6 +89,7 @@ void UTitleScreenWidget::BuildDefaultUI()
     // Bande rouge haut
     UBorder* TopBar = WidgetTree->ConstructWidget<UBorder>();
     TopBar->SetBrushColor(C_Red);
+    TopBar->SetVisibility(ESlateVisibility::HitTestInvisible);
     UCanvasPanelSlot* TopSlot = Canvas->AddChildToCanvas(TopBar);
     TopSlot->SetAnchors(FAnchors(0.f, 0.f, 1.f, 0.f));
     TopSlot->SetOffsets(FMargin(0.f, 0.f, 0.f, 5.f));
@@ -96,6 +98,7 @@ void UTitleScreenWidget::BuildDefaultUI()
     // Bande verticale séparatrice gauche/droite (60% | 40%)
     UBorder* VSep = WidgetTree->ConstructWidget<UBorder>();
     VSep->SetBrushColor(FLinearColor(C_Red.R, C_Red.G, C_Red.B, 0.6f));
+    VSep->SetVisibility(ESlateVisibility::HitTestInvisible);
     UCanvasPanelSlot* VSepSlot = Canvas->AddChildToCanvas(VSep);
     VSepSlot->SetAnchors(FAnchors(0.6f, 0.f, 0.6f, 1.f));
     VSepSlot->SetOffsets(FMargin(-1.f, 5.f, 1.f, 0.f));

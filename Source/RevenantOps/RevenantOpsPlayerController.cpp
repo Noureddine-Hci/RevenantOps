@@ -187,7 +187,9 @@ void ARevenantOpsPlayerController::ShowLevelSelectScreen() {
         this, &ARevenantOpsPlayerController::OnLevelSelectBack);
     LevelSelectWidgetInstance->AddToViewport(10);
     SetShowMouseCursor(true);
-    SetInputMode(FInputModeUIOnly());
+    FInputModeUIOnly InputMode;
+    InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+    SetInputMode(InputMode);
   }
 }
 

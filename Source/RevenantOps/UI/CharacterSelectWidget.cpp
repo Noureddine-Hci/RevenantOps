@@ -86,6 +86,7 @@ void UCharacterSelectWidget::BuildDefaultUI()
 
     UBorder* Bg = WidgetTree->ConstructWidget<UBorder>();
     Bg->SetBrushColor(CC_BgDark);
+    Bg->SetVisibility(ESlateVisibility::HitTestInvisible);
     UCanvasPanelSlot* BgSlot = Root->AddChildToCanvas(Bg);
     BgSlot->SetAnchors(FAnchors(0.f, 0.f, 1.f, 1.f));
     BgSlot->SetOffsets(FMargin(0.f));
@@ -93,6 +94,7 @@ void UCharacterSelectWidget::BuildDefaultUI()
     // Bande rouge en haut
     UBorder* TopBar = WidgetTree->ConstructWidget<UBorder>();
     TopBar->SetBrushColor(CC_Red);
+    TopBar->SetVisibility(ESlateVisibility::HitTestInvisible);
     UCanvasPanelSlot* TopBarSlot = Root->AddChildToCanvas(TopBar);
     TopBarSlot->SetAnchors(FAnchors(0.f, 0.f, 1.f, 0.f));
     TopBarSlot->SetOffsets(FMargin(0.f, 0.f, 0.f, 4.f));
@@ -152,17 +154,20 @@ void UCharacterSelectWidget::BuildDefaultUI()
     BtnPrev->AddChild(CCMakeText(WidgetTree, TEXT(" < "), 22, CC_Gold));
     UHorizontalBoxSlot* PrevHS = CarouselRow->AddChildToHorizontalBox(BtnPrev);
     PrevHS->SetVerticalAlignment(VAlign_Center);
+    PrevHS->SetSize(FSlateChildSize(ESlateSizeRule::Automatic));
     PrevHS->SetPadding(FMargin(0.f, 0.f, 12.f, 0.f));
 
     CarouselBox = WidgetTree->ConstructWidget<UHorizontalBox>();
     UHorizontalBoxSlot* CarouselHS = CarouselRow->AddChildToHorizontalBox(CarouselBox);
     CarouselHS->SetVerticalAlignment(VAlign_Center);
+    CarouselHS->SetSize(FSlateChildSize(ESlateSizeRule::Automatic));
 
     BtnNext = WidgetTree->ConstructWidget<UButton>();
     BtnNext->SetStyle(CCMakeButtonStyle(CC_PanelDark, CC_PanelMid));
     BtnNext->AddChild(CCMakeText(WidgetTree, TEXT(" > "), 22, CC_Gold));
     UHorizontalBoxSlot* NextHS = CarouselRow->AddChildToHorizontalBox(BtnNext);
     NextHS->SetVerticalAlignment(VAlign_Center);
+    NextHS->SetSize(FSlateChildSize(ESlateSizeRule::Automatic));
     NextHS->SetPadding(FMargin(12.f, 0.f, 0.f, 0.f));
 
     // Nom du perso

@@ -16,7 +16,7 @@ class UImage;
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCharacterChosen, FCharacterInfo, CharacterInfo);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnCharacterSelectBack);
 
-UCLASS(abstract, Blueprintable)
+UCLASS(Blueprintable)
 class REVENANTOPS_API UCharacterSelectWidget : public UUserWidget
 {
     GENERATED_BODY()

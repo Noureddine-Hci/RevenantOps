@@ -22,7 +22,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnLevelSelectBack);
  * Écran de sélection de niveau — style sombre militaire.
  * Carousel horizontal + leaderboard par niveau en bas.
  */
-UCLASS(abstract, Blueprintable)
+UCLASS(Blueprintable)
 class REVENANTOPS_API ULevelSelectWidget : public UUserWidget
 {
     GENERATED_BODY()
