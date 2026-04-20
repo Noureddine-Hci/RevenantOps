@@ -74,7 +74,11 @@ void ARevenantOpsPlayerController::ReceivedPlayer()
 	if (GI && GI->bPendingMatchStart)
 	{
 		GI->bPendingMatchStart = false;
-		StartMercenairesMatch();
+		// Délai d'une frame pour laisser le niveau finir son initialisation
+		FTimerHandle TempHandle;
+		GetWorld()->GetTimerManager().SetTimer(TempHandle,
+			FTimerDelegate::CreateUObject(this, &ARevenantOpsPlayerController::StartMercenairesMatch),
+			0.1f, false);
 	}
 	else if (TitleScreenClass)
 	{
