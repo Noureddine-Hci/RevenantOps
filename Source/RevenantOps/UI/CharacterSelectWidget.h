@@ -6,18 +6,16 @@
 #include "UI/MenuTypes.h"
 #include "CharacterSelectWidget.generated.h"
 
-class UScrollBox;
 class UButton;
 class UTextBlock;
-class UMenuCardWidget;
+class UVerticalBox;
+class UHorizontalBox;
+class UBorder;
+class UImage;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCharacterChosen, FCharacterInfo, CharacterInfo);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnCharacterSelectBack);
 
-/**
- * Character selection screen.
- * Call PopulateCharacters() after creating the widget.
- */
 UCLASS(abstract, Blueprintable)
 class REVENANTOPS_API UCharacterSelectWidget : public UUserWidget
 {
@@ -37,15 +35,25 @@ public:
 
 private:
     void BuildDefaultUI();
-    void HandleCardClicked(int32 Index);
+    void SelectCharacter(int32 Index);
+    void RefreshCarousel();
+    void RefreshInfo();
 
     UFUNCTION() void HandleBack();
+    UFUNCTION() void HandlePrev();
+    UFUNCTION() void HandleNext();
+    UFUNCTION() void HandleConfirm();
 
     TArray<FCharacterInfo> CachedCharacters;
+    int32 SelectedIndex = 0;
 
-    UPROPERTY() UScrollBox*              CardContainer = nullptr;
-    UPROPERTY() UButton*                 BtnBack       = nullptr;
-    UPROPERTY() TArray<UMenuCardWidget*> Cards;
+    UPROPERTY() UImage*         PortraitImage   = nullptr;
+    UPROPERTY() UHorizontalBox* CarouselBox     = nullptr;
+    UPROPERTY() UTextBlock*     CharNameText    = nullptr;
+    UPROPERTY() UButton*        BtnPrev         = nullptr;
+    UPROPERTY() UButton*        BtnNext         = nullptr;
+    UPROPERTY() UButton*        BtnConfirm      = nullptr;
+    UPROPERTY() UButton*        BtnBack         = nullptr;
 
     bool bUIBuilt = false;
 };

@@ -431,7 +431,14 @@ void ARevenantOpsPlayerController::ShowGameOverScreen(bool bVictory) {
     FinalScore = GS->GetCurrentScore();
     TotalKills = GS->GetTotalKills();
     BestCombo  = GS->GetBestCombo();
-    ULeaderboardWidget::SaveScoreStatic(this, FinalScore, TotalKills, BestCombo);
+    // Sauvegarde par niveau pour le leaderboard de sélection
+    FString LbSlot = TEXT("Leaderboard_Default");
+    if (URevenantOpsGameInstance* GI = Cast<URevenantOpsGameInstance>(GetGameInstance()))
+    {
+        if (!GI->PendingLevel.MapName.IsNone())
+            LbSlot = FString::Printf(TEXT("Leaderboard_%s"), *GI->PendingLevel.MapName.ToString());
+    }
+    ULeaderboardWidget::SaveScoreStatic(this, FinalScore, TotalKills, BestCombo, LbSlot);
     UE_LOG(LogTemp, Warning, TEXT("[GameOver] Score=%d Kills=%d BestCombo=%d"),
         FinalScore, TotalKills, BestCombo);
   } else {
