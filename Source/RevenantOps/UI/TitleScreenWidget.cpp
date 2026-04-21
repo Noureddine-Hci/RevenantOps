@@ -44,13 +44,13 @@ void UTitleScreenWidget::BuildDefaultUI()
     if (!WidgetTree) return;
 
     // ── Helpers locaux ────────────────────────────────────────────────────────
-    const FLinearColor C_Bg      (0.04f, 0.03f, 0.02f, 1.f);
-    const FLinearColor C_Panel   (0.07f, 0.06f, 0.04f, 1.f);
-    const FLinearColor C_Red     (0.75f, 0.15f, 0.10f, 1.f);
-    const FLinearColor C_Gold    (0.85f, 0.70f, 0.30f, 1.f);
-    const FLinearColor C_GoldDim (0.55f, 0.45f, 0.20f, 1.f);
-    const FLinearColor C_White   (1.f,   1.f,   1.f,   1.f);
-    const FLinearColor C_Grey    (0.45f, 0.42f, 0.38f, 1.f);
+    const FLinearColor TS_Bg      (0.04f, 0.03f, 0.02f, 1.f);
+    const FLinearColor TS_Panel   (0.07f, 0.06f, 0.04f, 1.f);
+    const FLinearColor TS_Red     (0.75f, 0.15f, 0.10f, 1.f);
+    const FLinearColor TS_Gold    (0.85f, 0.70f, 0.30f, 1.f);
+    const FLinearColor TS_GoldDim (0.55f, 0.45f, 0.20f, 1.f);
+    const FLinearColor TS_White   (1.f,   1.f,   1.f,   1.f);
+    const FLinearColor TS_Grey    (0.45f, 0.42f, 0.38f, 1.f);
 
     auto MakeBrush = [](FLinearColor C) {
         FSlateBrush B; B.TintColor = FSlateColor(C); return B;
@@ -80,7 +80,7 @@ void UTitleScreenWidget::BuildDefaultUI()
 
     // Fond sombre plein écran
     UBorder* Bg = WidgetTree->ConstructWidget<UBorder>();
-    Bg->SetBrushColor(C_Bg);
+    Bg->SetBrushColor(TS_Bg);
     Bg->SetVisibility(ESlateVisibility::HitTestInvisible);
     UCanvasPanelSlot* BgSlot = Canvas->AddChildToCanvas(Bg);
     BgSlot->SetAnchors(FAnchors(0.f, 0.f, 1.f, 1.f));
@@ -88,7 +88,7 @@ void UTitleScreenWidget::BuildDefaultUI()
 
     // Bande rouge haut
     UBorder* TopBar = WidgetTree->ConstructWidget<UBorder>();
-    TopBar->SetBrushColor(C_Red);
+    TopBar->SetBrushColor(TS_Red);
     TopBar->SetVisibility(ESlateVisibility::HitTestInvisible);
     UCanvasPanelSlot* TopSlot = Canvas->AddChildToCanvas(TopBar);
     TopSlot->SetAnchors(FAnchors(0.f, 0.f, 1.f, 0.f));
@@ -97,7 +97,7 @@ void UTitleScreenWidget::BuildDefaultUI()
 
     // Bande verticale séparatrice gauche/droite (60% | 40%)
     UBorder* VSep = WidgetTree->ConstructWidget<UBorder>();
-    VSep->SetBrushColor(FLinearColor(C_Red.R, C_Red.G, C_Red.B, 0.6f));
+    VSep->SetBrushColor(FLinearColor(TS_Red.R, TS_Red.G, TS_Red.B, 0.6f));
     VSep->SetVisibility(ESlateVisibility::HitTestInvisible);
     UCanvasPanelSlot* VSepSlot = Canvas->AddChildToCanvas(VSep);
     VSepSlot->SetAnchors(FAnchors(0.6f, 0.f, 0.6f, 1.f));
@@ -116,7 +116,7 @@ void UTitleScreenWidget::BuildDefaultUI()
     SpacerTop->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
 
     // Titre du jeu
-    UTextBlock* TitleTxt = MakeText(TEXT("REVENANTOPS"), 64, C_Gold);
+    UTextBlock* TitleTxt = MakeText(TEXT("REVENANTOPS"), 64, TS_Gold);
     FSlateFontInfo TF = TitleTxt->GetFont();
     TF.Size = 64; TitleTxt->SetFont(TF);
     UVerticalBoxSlot* TitleSlot = LeftVBox->AddChildToVerticalBox(TitleTxt);
@@ -124,14 +124,14 @@ void UTitleScreenWidget::BuildDefaultUI()
 
     // Trait rouge sous le titre
     UBorder* TitleLine = WidgetTree->ConstructWidget<UBorder>();
-    TitleLine->SetBrushColor(C_Red);
+    TitleLine->SetBrushColor(TS_Red);
     UVerticalBoxSlot* LineSlot = LeftVBox->AddChildToVerticalBox(TitleLine);
     LineSlot->SetPadding(FMargin(0.f, 0.f, 80.f, 16.f));
     Cast<UBorderSlot>(TitleLine->AddChild(
         WidgetTree->ConstructWidget<UTextBlock>()))->SetPadding(FMargin(0.f, 2.f));
 
     // Sous-titre
-    UTextBlock* SubTxt = MakeText(TEXT("MODE MERCENAIRES"), 18, C_GoldDim);
+    UTextBlock* SubTxt = MakeText(TEXT("MODE MERCENAIRES"), 18, TS_GoldDim);
     UVerticalBoxSlot* SubSlot = LeftVBox->AddChildToVerticalBox(SubTxt);
     SubSlot->SetPadding(FMargin(0.f, 0.f, 0.f, 0.f));
 
@@ -141,7 +141,7 @@ void UTitleScreenWidget::BuildDefaultUI()
     SpacerBot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
 
     // Copyright bas gauche
-    UTextBlock* Copyright = MakeText(TEXT("RevenantOps  2026"), 11, C_Grey);
+    UTextBlock* Copyright = MakeText(TEXT("RevenantOps  2026"), 11, TS_Grey);
     UVerticalBoxSlot* CopySlot = LeftVBox->AddChildToVerticalBox(Copyright);
     CopySlot->SetPadding(FMargin(0.f, 0.f, 0.f, 24.f));
 
@@ -165,10 +165,10 @@ void UTitleScreenWidget::BuildDefaultUI()
         S->SetPadding(FMargin(0.f, 0.f, 0.f, 12.f));
     };
 
-    AddBtn(PlayButton,    TEXT("JOUER"),    C_Red,   FLinearColor(0.9f, 0.2f, 0.15f, 1.f), C_White);
-    AddBtn(OptionsButton, TEXT("OPTIONS"),  C_Panel, FLinearColor(0.14f, 0.12f, 0.09f, 1.f), C_Gold);
+    AddBtn(PlayButton,    TEXT("JOUER"),    TS_Red,   FLinearColor(0.9f, 0.2f, 0.15f, 1.f), TS_White);
+    AddBtn(OptionsButton, TEXT("OPTIONS"),  TS_Panel, FLinearColor(0.14f, 0.12f, 0.09f, 1.f), TS_Gold);
     AddBtn(QuitButton,    TEXT("QUITTER"),  FLinearColor(0.05f, 0.04f, 0.03f, 1.f),
-                                            FLinearColor(0.10f, 0.08f, 0.06f, 1.f), C_Grey);
+                                            FLinearColor(0.10f, 0.08f, 0.06f, 1.f), TS_Grey);
 }
 
 void UTitleScreenWidget::OnPlayClicked() {

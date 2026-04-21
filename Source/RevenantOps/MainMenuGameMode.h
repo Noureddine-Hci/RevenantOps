@@ -16,4 +16,13 @@ class REVENANTOPS_API AMainMenuGameMode : public AGameModeBase
 
 public:
     AMainMenuGameMode();
+    virtual void BeginPlay() override;
+
+    /** Musique jouée en boucle sur le menu principal */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
+    USoundBase* MenuMusic = nullptr;
+
+    /** Volume de la musique menu (0.0 - 1.0) */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio", meta = (ClampMin = 0.f, ClampMax = 1.f))
+    float MenuMusicVolume = 0.7f;
 };

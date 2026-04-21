@@ -33,6 +33,13 @@ static void SetCanvasSlot(UWidget* Widget, FVector2D Position, FVector2D Size, F
   }
 }
 
+TSharedRef<SWidget> URevenantOpsHUD::RebuildWidget()
+{
+  if (!IsDesignTime() && WidgetTree && !WidgetTree->RootWidget)
+    BuildDefaultUI();
+  return Super::RebuildWidget();
+}
+
 void URevenantOpsHUD::BuildDefaultUI()
 {
   if (!WidgetTree) return;
@@ -201,10 +208,8 @@ void URevenantOpsHUD::BuildDefaultUI()
 void URevenantOpsHUD::NativeConstruct() {
   Super::NativeConstruct();
 
-  // Build widgets programmatically if the WBP WidgetTree is empty
-  if (!WidgetTree || !WidgetTree->RootWidget) {
-    BuildDefaultUI();
-  }
+  // Fallback si RebuildWidget n'a pas pu construire (ex: WBP rechargé à chaud)
+  if (!HealthBar) BuildDefaultUI();
 
   // --- Positionnement HUD (layout) ---
   // Top-left : HealthBar + StaminaBar
@@ -442,7 +447,17 @@ void URevenantOpsHUD::UpdateHealthDisplay() {
   }
 
   if (HealthBar) {
-    HealthBar->SetPercent(CachedHealthComp->GetHealthPercent());
+    const float HP = CachedHealthComp->GetHealthPercent();
+    HealthBar->SetPercent(HP);
+    // Vert (≥50%) → Jaune (25-50%) → Rouge (≤25%)
+    FLinearColor BarColor;
+    if (HP >= 0.5f)
+      BarColor = FLinearColor::LerpUsingHSV(FLinearColor(1.f, 1.f, 0.f), FLinearColor(0.1f, 0.9f, 0.1f), (HP - 0.5f) * 2.f);
+    else if (HP >= 0.25f)
+      BarColor = FLinearColor::LerpUsingHSV(FLinearColor(0.9f, 0.1f, 0.1f), FLinearColor(1.f, 1.f, 0.f), (HP - 0.25f) * 4.f);
+    else
+      BarColor = FLinearColor(0.9f, 0.1f, 0.1f);
+    HealthBar->SetFillColorAndOpacity(BarColor);
   }
 
   if (ShieldBar) {

@@ -9,6 +9,7 @@
 
 class UInputMappingContext;
 class UUserWidget;
+class UAudioComponent;
 class URevenantOpsHUD;
 class UTitleScreenWidget;
 class ULevelSelectWidget;
@@ -143,6 +144,17 @@ protected:
 
 	bool bInventoryOpen = false;
 
+	/** Musique jouée en boucle pendant le match */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
+	USoundBase* GameMusic = nullptr;
+
+	/** Volume musique in-game */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio", meta = (ClampMin = 0.f, ClampMax = 1.f))
+	float GameMusicVolume = 0.6f;
+
+	UPROPERTY()
+	TObjectPtr<UAudioComponent> GameMusicComponent = nullptr;
+
 	/** Gameplay initialization */
 	virtual void BeginPlay() override;
 
@@ -162,6 +174,10 @@ public:
 	/** Shows the title screen */
 	UFUNCTION(BlueprintCallable, Category = "Mercenaires|Flow")
 	void ShowTitleScreen();
+
+	/** Relance immédiatement le dernier niveau joué */
+	UFUNCTION(BlueprintCallable, Category = "Mercenaires|Flow")
+	void RestartMatch();
 
 	/** Shows the options screen */
 	UFUNCTION(BlueprintCallable, Category = "Mercenaires|Flow")

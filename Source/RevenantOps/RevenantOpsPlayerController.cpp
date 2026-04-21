@@ -2,6 +2,7 @@
 
 
 #include "RevenantOpsPlayerController.h"
+#include "Components/AudioComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "UserSettings/EnhancedInputUserSettings.h"
 #include "Engine/LocalPlayer.h"
@@ -128,6 +129,10 @@ bool ARevenantOpsPlayerController::ShouldUseTouchControls() const
 // =============================================================================
 
 void ARevenantOpsPlayerController::ShowTitleScreen() {
+  // Reset du flag de match pour afficher le Title Screen au prochain chargement
+  if (URevenantOpsGameInstance* GI = Cast<URevenantOpsGameInstance>(GetGameInstance()))
+    GI->bPendingMatchStart = false;
+
   ClearFlowWidgets();
 
   if (TitleScreenClass) {
@@ -301,7 +306,21 @@ void ARevenantOpsPlayerController::OnLoadoutConfirmed(
   UGameplayStatics::OpenLevel(this, TEXT("Lvl_ThirdPerson"));
 }
 
+void ARevenantOpsPlayerController::RestartMatch() {
+  // Remet le flag pour que ReceivedPlayer relance le match directement
+  if (URevenantOpsGameInstance* GI = Cast<URevenantOpsGameInstance>(GetGameInstance()))
+    GI->bPendingMatchStart = true;
+
+  UGameplayStatics::OpenLevel(this, TEXT("Lvl_ThirdPerson"));
+}
+
 void ARevenantOpsPlayerController::StartMercenairesMatch() {
+  // Démarre la musique in-game
+  if (GameMusic && !GameMusicComponent)
+  {
+    GameMusicComponent = UGameplayStatics::SpawnSound2D(this, GameMusic, GameMusicVolume, 1.f, 0.f, nullptr, false, true);
+  }
+
   ClearFlowWidgets();
 
   // Applique le loadout sauvegardé dans le GameInstance
@@ -402,9 +421,10 @@ void ARevenantOpsPlayerController::OnAllWavesCompleted()
     P->DisableInput(this);
   }
 
-  // Terminer le match en victoire (bypass OnMatchEnded → direct ShowGameOverScreen)
+  // Terminer le match en victoire — unbind d'abord pour éviter le double-save
   if (AMercenairesGameState* GS = GetWorld()->GetGameState<AMercenairesGameState>())
   {
+    GS->OnMatchStateChanged.RemoveDynamic(this, &ARevenantOpsPlayerController::OnMatchEnded);
     GS->EndMatch();
   }
   ShowGameOverScreen(true); // victoire
@@ -447,6 +467,16 @@ void ARevenantOpsPlayerController::ShowGameOverScreen(bool bVictory) {
     UE_LOG(LogTemp, Error, TEXT("[GameOver] GameState null — stats will show 0!"));
   }
 
+  // Stopper la musique in-game
+  if (GameMusicComponent)
+  {
+    GameMusicComponent->FadeOut(1.5f, 0.f);
+    GameMusicComponent = nullptr;
+  }
+
+  // Stopper le combat — les ennemis/spawner s'arrêtent
+  UGameplayStatics::SetGamePaused(this, true);
+
   if (GameOverWidgetClass) {
     GameOverWidgetInstance =
         CreateWidget<UGameOverWidget>(this, GameOverWidgetClass);
@@ -466,6 +496,12 @@ void ARevenantOpsPlayerController::ShowLeaderboard() {
     LeaderboardWidgetInstance =
         CreateWidget<ULeaderboardWidget>(this, LeaderboardWidgetClass);
     if (LeaderboardWidgetInstance) {
+      // Charger le slot du niveau courant
+      FString LbSlot = TEXT("Leaderboard");
+      if (URevenantOpsGameInstance* GI = Cast<URevenantOpsGameInstance>(GetGameInstance()))
+        if (!GI->PendingLevel.MapName.IsNone())
+          LbSlot = FString::Printf(TEXT("Leaderboard_%s"), *GI->PendingLevel.MapName.ToString());
+      LeaderboardWidgetInstance->SetSaveSlot(LbSlot);
       LeaderboardWidgetInstance->LoadScores();
       LeaderboardWidgetInstance->AddToViewport(10);
       SetShowMouseCursor(true);

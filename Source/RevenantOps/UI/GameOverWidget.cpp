@@ -130,7 +130,7 @@ void UGameOverWidget::BuildDefaultUI() {
   // Quit Button
   QuitButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("QuitButton"));
   UTextBlock* QuitText = WidgetTree->ConstructWidget<UTextBlock>();
-  QuitText->SetText(FText::FromString(TEXT("QUITTER")));
+  QuitText->SetText(FText::FromString(TEXT("RETOUR AU MENU PRINCIPAL")));
   QuitText->SetFont(BtnFont);
   QuitText->SetJustification(ETextJustify::Center);
   QuitButton->AddChild(QuitText);
@@ -170,8 +170,12 @@ void UGameOverWidget::ShowResults(int32 FinalScore, int32 TotalKills,
 }
 
 void UGameOverWidget::OnReplayClicked() {
-  UGameplayStatics::OpenLevel(
-      GetWorld(), FName(*GetWorld()->GetName()), true);
+  UGameplayStatics::SetGamePaused(GetWorld(), false);
+  if (ARevenantOpsPlayerController* PC =
+          Cast<ARevenantOpsPlayerController>(GetOwningPlayer()))
+  {
+    PC->RestartMatch();
+  }
 }
 
 void UGameOverWidget::OnLeaderboardClicked() {
@@ -183,6 +187,6 @@ void UGameOverWidget::OnLeaderboardClicked() {
 }
 
 void UGameOverWidget::OnQuitClicked() {
-  UKismetSystemLibrary::QuitGame(
-      GetWorld(), GetOwningPlayer(), EQuitPreference::Quit, false);
+  UGameplayStatics::SetGamePaused(GetWorld(), false);
+  UGameplayStatics::OpenLevel(GetWorld(), FName("Lvl_MainMenu"), true);
 }
