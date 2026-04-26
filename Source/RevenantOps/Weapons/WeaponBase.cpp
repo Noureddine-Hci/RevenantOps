@@ -17,6 +17,7 @@
 #include "NiagaraSystem.h"
 #include "TimerManager.h"
 #include "RevenantOpsPlayerController.h"
+#include "RevenantOpsCharacter.h"
 #include "UI/RevenantOpsHUD.h"
 #include "CameraShakes.h"
 #include "DrawDebugHelpers.h"
@@ -158,12 +159,20 @@ void AWeaponBase::StartReload() {
   ReloadStartTime = GetWorld()->GetTimeSeconds();
 
   // Play reload montage on character
+  UE_LOG(LogTemp, Warning, TEXT("StartReload: ReloadMontage=%s OwnerPawn=%s"),
+    ReloadMontage ? *ReloadMontage->GetName() : TEXT("NULL"),
+    OwnerPawn ? *OwnerPawn->GetName() : TEXT("NULL"));
   if (ReloadMontage && OwnerPawn) {
     if (ACharacter *Character = Cast<ACharacter>(OwnerPawn)) {
       if (UAnimInstance *AnimInstance =
               Character->GetMesh()->GetAnimInstance()) {
-        AnimInstance->Montage_Play(ReloadMontage);
+        float Result = AnimInstance->Montage_Play(ReloadMontage);
+        UE_LOG(LogTemp, Warning, TEXT("Montage_Play result: %f"), Result);
+      } else {
+        UE_LOG(LogTemp, Warning, TEXT("StartReload: AnimInstance is NULL"));
       }
+    } else {
+      UE_LOG(LogTemp, Warning, TEXT("StartReload: Cast to ACharacter failed"));
     }
   }
 
@@ -175,10 +184,13 @@ void AWeaponBase::StartReload() {
   // Notify Blueprint
   BP_OnReloadStart();
 
-  // Timer to finish reload
+  // Timer to finish reload — réduit par ReloadSpeedMultiplier du personnage
+  float ActualReloadTime = ReloadTime;
+  if (ARevenantOpsCharacter* Merc = Cast<ARevenantOpsCharacter>(OwnerPawn))
+    ActualReloadTime = FMath::Max(0.3f, ReloadTime / Merc->ReloadSpeedMultiplier);
   GetWorld()->GetTimerManager().SetTimer(ReloadTimerHandle, this,
                                          &AWeaponBase::FinishReload,
-                                         ReloadTime, false);
+                                         ActualReloadTime, false);
 }
 
 void AWeaponBase::StartADS() { bIsADS = true; }
@@ -333,15 +345,6 @@ void AWeaponBase::HitscanTrace(const FVector &TraceStart,
   const bool bHit = GetWorld()->LineTraceSingleByChannel(
       HitResult, TraceStart, TraceEnd, ECC_Visibility, QueryParams);
 
-  // Debug: draw trace line (green = hit, red = miss)
-  DrawDebugLine(GetWorld(), TraceStart, bHit ? HitResult.ImpactPoint : TraceEnd,
-      bHit ? FColor::Green : FColor::Red, false, 1.0f, 0, 1.f);
-  if (bHit) {
-    DrawDebugSphere(GetWorld(), HitResult.ImpactPoint, 10.f, 8, FColor::Yellow, false, 1.0f);
-  }
-
-  UE_LOG(LogTemp, Warning, TEXT("[HitscanTrace] bHit=%d TraceStart=%s Dir=%s Range=%.0f"),
-      bHit, *TraceStart.ToString(), *TraceDirection.ToString(), MaxRange);
 
   if (bHit) {
     const float HitDistance = FVector::Dist(TraceStart, HitResult.ImpactPoint);
@@ -365,12 +368,18 @@ void AWeaponBase::HitscanTrace(const FVector &TraceStart,
                                         this);
     }
 
-    // Spawn impact VFX
+    // Spawn impact VFX + hit marker uniquement sur les ennemis
     if (HitResult.GetActor() && HitResult.GetActor()->ActorHasTag(FName("Enemy"))) {
       if (BloodImpactVFX) {
         UNiagaraFunctionLibrary::SpawnSystemAtLocation(
             this, BloodImpactVFX, HitResult.ImpactPoint,
             HitResult.ImpactNormal.Rotation());
+      }
+      // Viseur clignote rouge uniquement sur hit ennemi
+      if (ARevenantOpsPlayerController* ROPC = Cast<ARevenantOpsPlayerController>(OwnerController)) {
+        if (URevenantOpsHUD* HUD = ROPC->GetHUDWidget()) {
+          HUD->ShowHitMarker();
+        }
       }
     } else if (ImpactVFX) {
       UNiagaraFunctionLibrary::SpawnSystemAtLocation(
@@ -380,13 +389,6 @@ void AWeaponBase::HitscanTrace(const FVector &TraceStart,
 
     // Notify Blueprint for impact effects
     BP_OnHit(HitResult, Damage);
-
-    // Show hit marker on HUD
-    if (ARevenantOpsPlayerController* ROPC = Cast<ARevenantOpsPlayerController>(OwnerController)) {
-      if (URevenantOpsHUD* HUD = ROPC->GetHUDWidget()) {
-        HUD->ShowHitMarker();
-      }
-    }
   }
 }
 

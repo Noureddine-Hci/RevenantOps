@@ -10,6 +10,18 @@ class UVerticalBox;
 class UButton;
 class UTextBlock;
 class UBorder;
+class UOptionsWidget;
+
+/** Helper UObject so each "Changer" button can bind to its own UFUNCTION with its row index */
+UCLASS()
+class REVENANTOPS_API UKeyBindButtonHandler : public UObject
+{
+    GENERATED_BODY()
+public:
+    UPROPERTY() UOptionsWidget* Parent = nullptr;
+    int32 Index = -1;
+    UFUNCTION() void OnClicked();
+};
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnOptionsBack);
 
@@ -37,13 +49,21 @@ public:
 
     virtual TSharedRef<SWidget> RebuildWidget() override;
     virtual void NativeConstruct() override;
-    virtual FReply NativeOnKeyDown(const FGeometry& MyGeometry, const FKeyEvent& InKeyEvent) override;
+    virtual void NativeDestruct() override;
+    virtual FReply NativeOnPreviewKeyDown(const FGeometry& MyGeometry, const FKeyEvent& InKeyEvent) override;
     virtual bool NativeSupportsKeyboardFocus() const override { return true; }
+
+    /** Appelé par le PlayerController avant AddToViewport */
+    void SetIMC(class UInputMappingContext* InIMC);
+
+    void Tick_ListenForKey(float DeltaTime);
+
+public:
+    void StartListening(int32 Index);
 
 private:
     void BuildDefaultUI();
     void RefreshRow(int32 Index);
-    void StartListening(int32 Index);
     void StopListening(bool bCancelled);
 
     UFUNCTION() void HandleBack();
@@ -56,14 +76,21 @@ private:
         UPROPERTY() UTextBlock* ChangeLbl = nullptr;
     };
 
-    TArray<FKeyRebindEntry> CachedBindings;
-    TArray<FBindingRow>     Rows;
+    TArray<FKeyRebindEntry>          CachedBindings;
+    TArray<FBindingRow>              Rows;
+    UPROPERTY() TArray<UKeyBindButtonHandler*> BtnHandlers;
 
     UPROPERTY() UVerticalBox* RowContainer = nullptr;
     UPROPERTY() UButton*      BtnBack      = nullptr;
 
+    UPROPERTY() class UInputMappingContext* IMC = nullptr;
+
     bool  bListening      = false;
     int32 ListeningIndex  = -1;
+    FTimerHandle ListenTimerHandle;
 
     bool bUIBuilt = false;
+
+    void ApplyKeyToIMC(int32 Index, const FKey& NewKey);
+    void LoadAndApplySavedBindings();
 };

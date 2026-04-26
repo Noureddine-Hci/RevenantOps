@@ -6,6 +6,7 @@
 #include "GameFramework/Actor.h"
 #include "Engine/DataTable.h"
 #include "Engine/Texture2D.h"
+#include "Gameplay/AmmoTypes.h"
 #include "WeaponBase.generated.h"
 
 class USkeletalMeshComponent;
@@ -106,6 +107,10 @@ protected:
   /** DataTable row handle — set in BP Defaults to {DT_WeaponStats, "RowName"} */
   UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Identity")
   FDataTableRowHandle WeaponDataRow;
+
+  /** Type de munitions — utilisé pour les drops ennemis */
+  UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Identity")
+  EAmmoType WeaponAmmoType = EAmmoType::Pistol;
 
   // ========== FIRING ==========
 
@@ -438,6 +443,10 @@ public:
   UFUNCTION(BlueprintCallable, Category = "Weapon")
   EWeaponState GetCurrentState() const { return CurrentState; }
 
+  /** Returns the equip montage (used by character to play on weapon switch) */
+  UFUNCTION(BlueprintCallable, Category = "Weapon")
+  UAnimMontage* GetEquipMontage() const { return EquipMontage; }
+
   /** Returns reload progress (0..1). Valid only when state == Reloading. */
   UFUNCTION(BlueprintCallable, Category = "Weapon")
   float GetReloadProgress() const;
@@ -445,6 +454,14 @@ public:
   /** Gets ADS field of view */
   UFUNCTION(BlueprintCallable, Category = "Weapon")
   float GetADSFOV() const { return ADSFOV; }
+
+  int32 GetMaxReserveAmmo() const { return MaxReserveAmmo; }
+  EAmmoType GetWeaponAmmoType() const { return WeaponAmmoType; }
+  void SetMaxReserveAmmo(int32 NewMax)
+  {
+    MaxReserveAmmo = FMath::Max(1, NewMax);
+    CurrentReserveAmmo = FMath::Min(CurrentReserveAmmo, MaxReserveAmmo);
+  }
 
   /** Adds ammo to reserve (from pickups) */
   UFUNCTION(BlueprintCallable, Category = "Weapon")

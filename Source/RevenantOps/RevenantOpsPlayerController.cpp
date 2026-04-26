@@ -2,7 +2,9 @@
 
 
 #include "RevenantOpsPlayerController.h"
+#include "Components/AudioComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "UserSettings/EnhancedInputUserSettings.h"
 #include "Engine/LocalPlayer.h"
 #include "InputMappingContext.h"
 #include "Blueprint/UserWidget.h"
@@ -67,8 +69,19 @@ void ARevenantOpsPlayerController::ReceivedPlayer()
 		}
 	}
 
-	// Start the Mercenaires flow with the title screen.
-	if (TitleScreenClass)
+	// Si un match est en attente (joueur vient du menu principal), on lance directement.
+	// Sinon on affiche le title screen (on est dans Lvl_MainMenu).
+	URevenantOpsGameInstance* GI = Cast<URevenantOpsGameInstance>(GetGameInstance());
+	if (GI && GI->bPendingMatchStart)
+	{
+		GI->bPendingMatchStart = false;
+		// Délai d'une frame pour laisser le niveau finir son initialisation
+		FTimerHandle TempHandle;
+		GetWorld()->GetTimerManager().SetTimer(TempHandle,
+			FTimerDelegate::CreateUObject(this, &ARevenantOpsPlayerController::StartMercenairesMatch),
+			0.1f, false);
+	}
+	else if (TitleScreenClass)
 	{
 		ShowTitleScreen();
 	}
@@ -116,6 +129,10 @@ bool ARevenantOpsPlayerController::ShouldUseTouchControls() const
 // =============================================================================
 
 void ARevenantOpsPlayerController::ShowTitleScreen() {
+  // Reset du flag de match pour afficher le Title Screen au prochain chargement
+  if (URevenantOpsGameInstance* GI = Cast<URevenantOpsGameInstance>(GetGameInstance()))
+    GI->bPendingMatchStart = false;
+
   ClearFlowWidgets();
 
   if (TitleScreenClass) {
@@ -135,6 +152,7 @@ void ARevenantOpsPlayerController::ShowOptionsScreen() {
 
   OptionsWidgetInstance = CreateWidget<UOptionsWidget>(this, OptionsWidgetClass);
   if (OptionsWidgetInstance) {
+    OptionsWidgetInstance->SetIMC(DefaultMappingContext);
     OptionsWidgetInstance->PopulateBindings(AvailableRebinds);
     OptionsWidgetInstance->OnBackClicked.AddDynamic(
         this, &ARevenantOpsPlayerController::OnOptionsBack);
@@ -174,7 +192,9 @@ void ARevenantOpsPlayerController::ShowLevelSelectScreen() {
         this, &ARevenantOpsPlayerController::OnLevelSelectBack);
     LevelSelectWidgetInstance->AddToViewport(10);
     SetShowMouseCursor(true);
-    SetInputMode(FInputModeUIOnly());
+    FInputModeUIOnly InputMode;
+    InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+    SetInputMode(InputMode);
   }
 }
 
@@ -222,8 +242,27 @@ void ARevenantOpsPlayerController::ShowCharacterSelectScreen() {
 void ARevenantOpsPlayerController::OnCharacterChosen(FCharacterInfo CharacterInfo) {
   if (URevenantOpsGameInstance* GI = Cast<URevenantOpsGameInstance>(GetGameInstance())) {
     GI->PendingCharacter = CharacterInfo;
+    // Pré-remplir les armes du loadout depuis l'inventaire par défaut du personnage
+    GI->PendingPrimaryWeapon   = nullptr;
+    GI->PendingSecondaryWeapon = nullptr;
+    for (const FInventoryItem& Item : CharacterInfo.DefaultInventory)
+    {
+      if (Item.Type == EInventoryItemType::Weapon && Item.WeaponClass)
+      {
+        if (!GI->PendingPrimaryWeapon)        GI->PendingPrimaryWeapon   = Item.WeaponClass;
+        else if (!GI->PendingSecondaryWeapon) GI->PendingSecondaryWeapon = Item.WeaponClass;
+      }
+    }
   }
-  ShowLoadoutScreen();
+  // Charger le niveau directement (pas d'écran de loadout)
+  bLoadoutConfirmed = true;
+  if (URevenantOpsGameInstance* GI = Cast<URevenantOpsGameInstance>(GetGameInstance()))
+  {
+    GI->bPendingMatchStart = true;
+    FName LevelName = GI->PendingLevel.MapName.IsNone() ? FName("Lvl_ThirdPerson") : GI->PendingLevel.MapName;
+    ClearFlowWidgets();
+    UGameplayStatics::OpenLevel(this, LevelName);
+  }
 }
 
 void ARevenantOpsPlayerController::OnCharacterSelectBack() {
@@ -274,23 +313,98 @@ void ARevenantOpsPlayerController::OnLoadoutConfirmed(
   }
   bLoadoutConfirmed = true;
 
-  // Apply loadout to character
-  if (ARevenantOpsCharacter *MercChar =
-          Cast<ARevenantOpsCharacter>(GetPawn())) {
-    TArray<TSubclassOf<AWeaponBase>> Loadout;
-    if (Primary)                        Loadout.Add(Primary);
-    if (Secondary && Secondary != Primary) Loadout.Add(Secondary);
-    if (Loadout.Num() > 0) {
-      MercChar->SetDefaultWeaponClasses(Loadout);
-      MercChar->SpawnDefaultWeapons();
-    }
+  // Sauvegarde le loadout dans le GameInstance (persiste entre niveaux)
+  FName LevelToLoad = TEXT("Lvl_ThirdPerson"); // fallback
+  if (URevenantOpsGameInstance* GI = Cast<URevenantOpsGameInstance>(GetGameInstance()))
+  {
+    GI->PendingPrimaryWeapon   = Primary;
+    GI->PendingSecondaryWeapon = Secondary;
+    GI->bPendingMatchStart     = true;
+    if (!GI->PendingLevel.MapName.IsNone())
+      LevelToLoad = GI->PendingLevel.MapName;
   }
 
-  StartMercenairesMatch();
+  // Charge le niveau choisi par le joueur
+  UGameplayStatics::OpenLevel(this, LevelToLoad);
+}
+
+void ARevenantOpsPlayerController::RestartMatch() {
+  FName LevelToLoad = TEXT("Lvl_ThirdPerson");
+  if (URevenantOpsGameInstance* GI = Cast<URevenantOpsGameInstance>(GetGameInstance()))
+  {
+    GI->bPendingMatchStart = true;
+    if (!GI->PendingLevel.MapName.IsNone())
+      LevelToLoad = GI->PendingLevel.MapName;
+  }
+  UGameplayStatics::OpenLevel(this, LevelToLoad);
 }
 
 void ARevenantOpsPlayerController::StartMercenairesMatch() {
+  // Démarre la musique in-game
+  if (GameMusic && !GameMusicComponent)
+  {
+    GameMusicComponent = UGameplayStatics::SpawnSound2D(this, GameMusic, GameMusicVolume, 1.f, 0.f, nullptr, false, true);
+  }
+
   ClearFlowWidgets();
+
+  // Applique le loadout + personnage sauvegardés dans le GameInstance
+  if (URevenantOpsGameInstance* GI = Cast<URevenantOpsGameInstance>(GetGameInstance()))
+  {
+    // --- Swap de personnage si une classe spécifique a été choisie ---
+    TSubclassOf<ARevenantOpsCharacter> ChosenClass = *GI->PendingCharacter.CharacterClass
+        ? TSubclassOf<ARevenantOpsCharacter>(*GI->PendingCharacter.CharacterClass)
+        : nullptr;
+    APawn* CurrentPawn = GetPawn();
+
+    if (ChosenClass && CurrentPawn && !CurrentPawn->IsA(ChosenClass))
+    {
+      // Spawn le bon personnage à la position du pawn actuel
+      FTransform SpawnTransform = CurrentPawn->GetActorTransform();
+      FActorSpawnParameters SP;
+      SP.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+      if (ARevenantOpsCharacter* NewChar = GetWorld()->SpawnActor<ARevenantOpsCharacter>(ChosenClass, SpawnTransform, SP))
+      {
+        UnPossess();
+        CurrentPawn->Destroy();
+        Possess(NewChar);
+        CurrentPawn = NewChar;
+      }
+    }
+
+    // --- Applique les talents + loadout ---
+    if (ARevenantOpsCharacter* MercChar = Cast<ARevenantOpsCharacter>(GetPawn()))
+    {
+      // Talents depuis l'écran de sélection (remplace les éventuels talents BP par défaut)
+      if (GI->PendingCharacter.Talents.Num() > 0)
+      {
+        MercChar->AssignedTalents = GI->PendingCharacter.Talents;
+        MercChar->ApplyTalents();
+      }
+
+      // Armes du loadout (extraites de l'inventaire par défaut)
+      TArray<TSubclassOf<AWeaponBase>> Loadout;
+      if (GI->PendingPrimaryWeapon)   Loadout.Add(GI->PendingPrimaryWeapon);
+      if (GI->PendingSecondaryWeapon && GI->PendingSecondaryWeapon != GI->PendingPrimaryWeapon)
+          Loadout.Add(GI->PendingSecondaryWeapon);
+      if (Loadout.Num() > 0)
+      {
+        MercChar->SetDefaultWeaponClasses(Loadout);
+        MercChar->SpawnDefaultWeapons();
+      }
+
+      // Inventaire complet du personnage (items non-armes)
+      if (GI->PendingCharacter.DefaultInventory.Num() > 0)
+      {
+        for (const FInventoryItem& Item : GI->PendingCharacter.DefaultInventory)
+        {
+          if (Item.Type != EInventoryItemType::Weapon && !Item.IsEmpty())
+            MercChar->AddItemToInventory(Item);
+        }
+      }
+    }
+  }
 
   // Show HUD
   if (!HUDWidget && HUDWidgetClass) {
@@ -341,6 +455,10 @@ void ARevenantOpsPlayerController::StartMercenairesMatch() {
     if (AEnemyWaveSpawner* WS = Cast<AEnemyWaveSpawner>(S))
     {
       UE_LOG(LogTemp, Warning, TEXT("[PC] Calling StartEncounter on %s"), *S->GetName());
+
+      // Quand toutes les vagues sont terminées → fin de match (victoire)
+      WS->OnAllWavesCompleted.AddDynamic(this, &ARevenantOpsPlayerController::OnAllWavesCompleted);
+
       WS->StartEncounter();
     }
   }
@@ -361,15 +479,32 @@ void ARevenantOpsPlayerController::OnPlayerDied(
   }
 }
 
+void ARevenantOpsPlayerController::OnAllWavesCompleted()
+{
+  // Désactiver l'input joueur
+  if (APawn* P = GetPawn())
+  {
+    P->DisableInput(this);
+  }
+
+  // Terminer le match en victoire — unbind d'abord pour éviter le double-save
+  if (AMercenairesGameState* GS = GetWorld()->GetGameState<AMercenairesGameState>())
+  {
+    GS->OnMatchStateChanged.RemoveDynamic(this, &ARevenantOpsPlayerController::OnMatchEnded);
+    GS->EndMatch();
+  }
+  ShowGameOverScreen(true); // victoire
+}
+
 void ARevenantOpsPlayerController::OnMatchEnded(bool bIsActive) {
   if (bIsActive) {
     return;
   }
 
-  ShowGameOverScreen();
+  ShowGameOverScreen(false); // mort
 }
 
-void ARevenantOpsPlayerController::ShowGameOverScreen() {
+void ARevenantOpsPlayerController::ShowGameOverScreen(bool bVictory) {
   // Hide HUD
   if (HUDWidget) {
     HUDWidget->RemoveFromParent();
@@ -384,19 +519,36 @@ void ARevenantOpsPlayerController::ShowGameOverScreen() {
     FinalScore = GS->GetCurrentScore();
     TotalKills = GS->GetTotalKills();
     BestCombo  = GS->GetBestCombo();
-    ULeaderboardWidget::SaveScoreStatic(this, FinalScore, TotalKills, BestCombo);
+    // Sauvegarde par niveau pour le leaderboard de sélection
+    FString LbSlot = TEXT("Leaderboard_Default");
+    if (URevenantOpsGameInstance* GI = Cast<URevenantOpsGameInstance>(GetGameInstance()))
+    {
+        if (!GI->PendingLevel.MapName.IsNone())
+            LbSlot = FString::Printf(TEXT("Leaderboard_%s"), *GI->PendingLevel.MapName.ToString());
+    }
+    ULeaderboardWidget::SaveScoreStatic(this, FinalScore, TotalKills, BestCombo, LbSlot);
     UE_LOG(LogTemp, Warning, TEXT("[GameOver] Score=%d Kills=%d BestCombo=%d"),
         FinalScore, TotalKills, BestCombo);
   } else {
     UE_LOG(LogTemp, Error, TEXT("[GameOver] GameState null — stats will show 0!"));
   }
 
+  // Stopper la musique in-game
+  if (GameMusicComponent)
+  {
+    GameMusicComponent->FadeOut(1.5f, 0.f);
+    GameMusicComponent = nullptr;
+  }
+
+  // Stopper le combat — les ennemis/spawner s'arrêtent
+  UGameplayStatics::SetGamePaused(this, true);
+
   if (GameOverWidgetClass) {
     GameOverWidgetInstance =
         CreateWidget<UGameOverWidget>(this, GameOverWidgetClass);
     if (GameOverWidgetInstance) {
       GameOverWidgetInstance->AddToViewport(10);
-      GameOverWidgetInstance->ShowResults(FinalScore, TotalKills, BestCombo);
+      GameOverWidgetInstance->ShowResults(FinalScore, TotalKills, BestCombo, bVictory);
       SetShowMouseCursor(true);
       SetInputMode(FInputModeUIOnly());
     }
@@ -410,6 +562,12 @@ void ARevenantOpsPlayerController::ShowLeaderboard() {
     LeaderboardWidgetInstance =
         CreateWidget<ULeaderboardWidget>(this, LeaderboardWidgetClass);
     if (LeaderboardWidgetInstance) {
+      // Charger le slot du niveau courant
+      FString LbSlot = TEXT("Leaderboard");
+      if (URevenantOpsGameInstance* GI = Cast<URevenantOpsGameInstance>(GetGameInstance()))
+        if (!GI->PendingLevel.MapName.IsNone())
+          LbSlot = FString::Printf(TEXT("Leaderboard_%s"), *GI->PendingLevel.MapName.ToString());
+      LeaderboardWidgetInstance->SetSaveSlot(LbSlot);
       LeaderboardWidgetInstance->LoadScores();
       LeaderboardWidgetInstance->AddToViewport(10);
       SetShowMouseCursor(true);

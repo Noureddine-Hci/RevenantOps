@@ -5,7 +5,47 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "Animation/AnimSequenceBase.h"
+#include "Gameplay/AmmoTypes.h"
+#include "Gameplay/AmmoBonusPickup.h"
 #include "EnemyBase.generated.h"
+
+/**
+ *  Entrée de drop de munitions.
+ *  Le drop n'apparaît que si le joueur possède une arme du type correspondant.
+ *  Chaque entrée est tirée indépendamment.
+ */
+USTRUCT(BlueprintType)
+struct FAmmoDropEntry
+{
+    GENERATED_BODY()
+
+    /** Type de munitions à dropper */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AmmoDrop")
+    EAmmoType AmmoType = EAmmoType::Pistol;
+
+    /** Probabilité de drop (0 = jamais, 1 = toujours) */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AmmoDrop",
+              meta = (ClampMin = 0.f, ClampMax = 1.f))
+    float DropChance = 0.3f;
+
+    /** Quantité de munitions donnée au pickup */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AmmoDrop",
+              meta = (ClampMin = 1, ClampMax = 120))
+    int32 AmmoAmount = 12;
+
+    /** Durée de vie du pickup avant disparition (secondes) */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AmmoDrop",
+              meta = (ClampMin = 5.f, ClampMax = 60.f))
+    float Lifetime = 12.f;
+
+    /**
+     *  BP du pickup a spawner.
+     *  L'icone et le nom sont lus automatiquement depuis le BP via IPickupInterface.
+     *  Assigner BP_AmmoBonusPickup_Pistol, BP_AmmoBonusPickup_Rifle, etc.
+     */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AmmoDrop")
+    TSubclassOf<AAmmoBonusPickup> DropClass;
+};
 
 class UHealthComponent;
 class AWeaponBase;
@@ -210,6 +250,12 @@ protected:
   static constexpr float HitFlashDuration = 0.15f;
 
   // ========== ANIMATIONS ==========
+
+  // ========== AMMO DROPS ==========
+
+  /** Drops de munitions au décès — chaque entrée est tirée indépendamment */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|AmmoDrop")
+  TArray<FAmmoDropEntry> AmmoDrop;
 
   /** Animation jouée à la mort (AnimSequence — si null → ragdoll immédiat) */
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Animation")

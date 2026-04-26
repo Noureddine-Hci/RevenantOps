@@ -10,6 +10,7 @@
 #include "AIController.h"
 #include "TimerManager.h"
 #include "WeaponBase.h"
+#include "RevenantOpsCharacter.h"
 #include "Gameplay/MercenairesGameState.h"
 #include "RevenantOpsPlayerController.h"
 #include "UI/RevenantOpsHUD.h"
@@ -540,6 +541,52 @@ void AEnemyBase::HandleDeath(UHealthComponent *HealthComponent,
               Cast<ARevenantOpsPlayerController>(PC)) {
         if (URevenantOpsHUD *HUD = ROPC->GetHUDWidget()) {
           HUD->ShowKillNotification(EnemyName.ToString(), Points);
+        }
+      }
+    }
+  }
+
+  // ── Ammo drops adaptatifs ─────────────────────────────────────────────────
+  if (AmmoDrop.Num() > 0)
+  {
+    // Collecter les types d'armes que le joueur possède actuellement
+    TSet<EAmmoType> PlayerAmmoTypes;
+    if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
+    {
+      if (ARevenantOpsCharacter* MercChar = Cast<ARevenantOpsCharacter>(PC->GetPawn()))
+      {
+        // Arme active
+        if (AWeaponBase* W = MercChar->GetCurrentWeapon())
+          PlayerAmmoTypes.Add(W->GetWeaponAmmoType());
+        // On pourrait aussi boucler sur toutes les armes — ici arme active suffit
+        // pour ne dropper que ce qui est utile immédiatement
+      }
+    }
+
+    for (const FAmmoDropEntry& Drop : AmmoDrop)
+    {
+      if (Drop.DropChance <= 0.f || !Drop.DropClass) continue;
+
+      // Ne dropper que si le joueur a une arme de ce type
+      if (!PlayerAmmoTypes.Contains(Drop.AmmoType)) continue;
+
+      if (FMath::FRand() <= Drop.DropChance)
+      {
+        FVector SpawnLoc = GetActorLocation() + FVector(
+            FMath::RandRange(-50.f, 50.f), FMath::RandRange(-50.f, 50.f), 30.f);
+        FActorSpawnParameters SP;
+        SP.SpawnCollisionHandlingOverride =
+            ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+        if (AAmmoBonusPickup* DropActor = GetWorld()->SpawnActor<AAmmoBonusPickup>(
+                Drop.DropClass, SpawnLoc, FRotator::ZeroRotator, SP))
+        {
+          DropActor->AmmoAmount      = Drop.AmmoAmount;
+          DropActor->TargetAmmoType  = Drop.AmmoType;
+          DropActor->DropLifetime    = Drop.Lifetime;
+          DropActor->RespawnTime     = 0.f;
+          // ItemIcon et DisplayName viennent automatiquement des defaults du BP
+          DropActor->StartLifetimeTimer();
         }
       }
     }

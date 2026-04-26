@@ -9,16 +9,20 @@
 class UScrollBox;
 class UButton;
 class UTextBlock;
+class UVerticalBox;
+class UHorizontalBox;
+class UBorder;
+class UImage;
 class UMenuCardWidget;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnLevelChosen, FLevelInfo, LevelInfo);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnLevelSelectBack);
 
 /**
- * Level selection screen.
- * Call PopulateLevels() after creating the widget (before AddToViewport).
+ * Écran de sélection de niveau — style sombre militaire.
+ * Carousel horizontal + leaderboard par niveau en bas.
  */
-UCLASS(abstract, Blueprintable)
+UCLASS(Blueprintable)
 class REVENANTOPS_API ULevelSelectWidget : public UUserWidget
 {
     GENERATED_BODY()
@@ -30,7 +34,6 @@ public:
     UPROPERTY(BlueprintAssignable, Category = "Menu")
     FOnLevelSelectBack OnBackClicked;
 
-    /** Populate the grid with level cards — call before AddToViewport */
     void PopulateLevels(const TArray<FLevelInfo>& Levels);
 
     virtual TSharedRef<SWidget> RebuildWidget() override;
@@ -38,15 +41,30 @@ public:
 
 private:
     void BuildDefaultUI();
-    void HandleCardClicked(int32 Index);
+    void SelectLevel(int32 Index);
+    void RefreshCarousel();
+    void RefreshLeaderboard();
 
     UFUNCTION() void HandleBack();
+    UFUNCTION() void HandlePrev();
+    UFUNCTION() void HandleNext();
+    UFUNCTION() void HandleConfirm();
 
     TArray<FLevelInfo> CachedLevels;
+    int32 SelectedIndex = 0;
 
-    UPROPERTY() UScrollBox*              CardContainer = nullptr;
-    UPROPERTY() UButton*                 BtnBack       = nullptr;
-    UPROPERTY() TArray<UMenuCardWidget*> Cards;
+    // Carousel
+    UPROPERTY() UHorizontalBox* CarouselBox     = nullptr;
+    UPROPERTY() UTextBlock*     LevelNameText   = nullptr;
+    UPROPERTY() UTextBlock*     BestScoreText   = nullptr;
+    UPROPERTY() UButton*        BtnPrev         = nullptr;
+    UPROPERTY() UButton*        BtnNext         = nullptr;
+    UPROPERTY() UButton*        BtnConfirm      = nullptr;
+    UPROPERTY() UButton*        BtnBack         = nullptr;
+
+    // Leaderboard
+    UPROPERTY() UVerticalBox*   LeaderboardBox  = nullptr;
+    UPROPERTY() UTextBlock*     LbTitle         = nullptr;
 
     bool bUIBuilt = false;
 };

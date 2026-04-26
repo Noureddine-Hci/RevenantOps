@@ -4,85 +4,201 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Gameplay/AmmoTypes.h"
 #include "DestructibleObject.generated.h"
 
 class UHealthComponent;
 class UStaticMeshComponent;
 
-/**
- *  Delegate fired when destroyed
- */
+// ─────────────────────────────────────────────────────────────────────────────
+//  Entrée de loot : une classe d'acteur + sa probabilité de drop individuelle.
+//  Exemples :
+//    - BP_HealthPickup_Small  / DropChance = 0.8
+//    - BP_AmmoBonusPickup     / DropChance = 0.5  (configurer l'AmmoType dans le BP)
+//    - BP_Pistol              / DropChance = 0.1
+// ─────────────────────────────────────────────────────────────────────────────
+USTRUCT(BlueprintType)
+struct FCrateLootEntry
+{
+    GENERATED_BODY()
+
+    /** Classe de l'acteur à spawner (BP_HealthPickup_Small, BP_AmmoBonusPickup, etc.) */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Loot")
+    TSubclassOf<AActor> ActorClass;
+
+    /** Probabilité de drop (0 = jamais, 1 = toujours) */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Loot",
+              meta = (ClampMin = 0.f, ClampMax = 1.f))
+    float DropChance = 0.5f;
+
+    /**
+     *  Si true, garantit le drop de cet item même si un autre item a déjà été droppé.
+     *  Si false, l'item est optionnel selon DropChance.
+     */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Loot")
+    bool bGuaranteed = false;
+
+    /**
+     *  Filtre adaptatif — si different de None, cet item ne droppera QUE si
+     *  le joueur possede une arme du type correspondant dans son inventaire.
+     *  Laisser a None pour les soins, armes et autres items toujours pertinents.
+     *
+     *  Exemple : AmmoTypeFilter = Rifle -> ne drop que si le joueur a un fusil.
+     */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Loot")
+    EAmmoType AmmoTypeFilter = EAmmoType::None;
+
+    /**
+     *  Poids de selection en mode PickOne.
+     *  Poids egal sur toutes les entrees = chance egale.
+     *  Doubler le poids d'une entree = deux fois plus probable que les autres.
+     *  Ex : Pistolet=1, Fusil=1, SMG=2 -> SMG a 50%, les autres 25% chacun.
+     */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Loot",
+              meta = (ClampMin = 0.01f, ClampMax = 100.f))
+    float Weight = 1.f;
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+UENUM(BlueprintType)
+enum class ELootMode : uint8
+{
+    /**
+     *  Chaque entree est tiree independamment selon son DropChance.
+     *  Plusieurs items peuvent dropper simultanement.
+     *  A utiliser pour caisses de soin et munitions.
+     */
+    Independent UMETA(DisplayName = "Independent - chaque entree tiree separement"),
+
+    /**
+     *  Une seule entree est selectionnee au hasard selon les poids (Weight).
+     *  Garantit exactement 1 drop.
+     *  A utiliser pour caisses d'armes.
+     */
+    PickOne UMETA(DisplayName = "Pick One - 1 seule entree par poids"),
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnObjectDestroyed,
-                                             ADestructibleObject *, Object);
+                                             ADestructibleObject*, Object);
 
 /**
- *  Destructible object (barrels, crates, walls, etc.)
- *  Uses HealthComponent for damage tracking.
- *  Can drop items on destruction.
+ *  Caisse / objet destructible.
+ *  - Prend des dégâts et change de matériau quand endommagée (< DamagedThreshold %)
+ *  - Spawne des items au décès selon un loot table par entrée
+ *  - Peut exploser au décès
  */
 UCLASS(Blueprintable)
-class ADestructibleObject : public AActor {
-  GENERATED_BODY()
+class ADestructibleObject : public AActor
+{
+    GENERATED_BODY()
 
 public:
-  ADestructibleObject();
+    ADestructibleObject();
 
 protected:
-  virtual void BeginPlay() override;
+    virtual void BeginPlay() override;
 
-  // ========== COMPONENTS ==========
+    // ── COMPOSANTS ─────────────────────────────────────────────────────────
 
-  /** Visual mesh */
-  UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-  UStaticMeshComponent *ObjectMesh;
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+    UStaticMeshComponent* ObjectMesh;
 
-  /** Health component */
-  UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-  UHealthComponent *HealthComp;
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+    UHealthComponent* HealthComp;
 
-  // ========== CONFIG ==========
+    // ── VISUELS ────────────────────────────────────────────────────────────
 
-  /** If true, deals explosion damage when destroyed */
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Destructible")
-  bool bExplodesOnDestruction = false;
+    /**
+     *  Matériau normal (slot 0). Laisser vide = matériau du mesh.
+     *  Assigne un M_Crate_Normal dans le BP.
+     */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Destructible|Visual")
+    TObjectPtr<UMaterialInterface> NormalMaterial = nullptr;
 
-  /** Explosion damage */
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Destructible",
-            meta = (ClampMin = 0, ClampMax = 500, EditCondition = "bExplodesOnDestruction"))
-  float ExplosionDamage = 50.f;
+    /**
+     *  Matériau endommagé — appliqué quand HP < DamagedThreshold %.
+     *  Assigne un M_Crate_Damaged dans le BP (même mat + cracks, plus sombre).
+     */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Destructible|Visual")
+    TObjectPtr<UMaterialInterface> DamagedMaterial = nullptr;
 
-  /** Explosion radius */
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Destructible",
-            meta = (ClampMin = 0, ClampMax = 2000, EditCondition = "bExplodesOnDestruction"))
-  float ExplosionRadius = 300.f;
+    /**
+     *  Seuil HP (en %) sous lequel le matériau passe en "endommagé".
+     *  Défaut : 50 % (entre 0 et 100).
+     */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Destructible|Visual",
+              meta = (ClampMin = 1, ClampMax = 99))
+    float DamagedThreshold = 50.f;
 
-  /** Loot to drop on destruction (Actor classes) */
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Destructible|Loot")
-  TArray<TSubclassOf<AActor>> LootDrops;
+    /** True si le matériau endommagé a déjà été appliqué (évite les resets inutiles) */
+    bool bDamagedMaterialApplied = false;
 
-  /** Chance to drop each loot item (0-1) */
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Destructible|Loot",
-            meta = (ClampMin = 0.0, ClampMax = 1.0))
-  float LootDropChance = 0.5f;
+    // ── EXPLOSION ──────────────────────────────────────────────────────────
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Destructible|Explosion")
+    bool bExplodesOnDestruction = false;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Destructible|Explosion",
+              meta = (ClampMin = 0, ClampMax = 500, EditCondition = "bExplodesOnDestruction"))
+    float ExplosionDamage = 50.f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Destructible|Explosion",
+              meta = (ClampMin = 0, ClampMax = 2000, EditCondition = "bExplodesOnDestruction"))
+    float ExplosionRadius = 300.f;
+
+    // ── LOOT TABLE ─────────────────────────────────────────────────────────
+
+    /**
+    /**
+     *  Mode de tirage du loot.
+     *  Independent : chaque entree est tiree selon son DropChance (caisses soins/munitions).
+     *  PickOne      : exactement 1 entree est choisie selon Weight (caisses armes).
+     */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Destructible|Loot")
+    ELootMode LootMode = ELootMode::Independent;
+
+    /**
+     *  Table de loot.
+     *  Mode Independent : utiliser DropChance + AmmoTypeFilter.
+     *  Mode PickOne     : utiliser Weight (poids relatif de selection).
+     */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Destructible|Loot")
+    TArray<FCrateLootEntry> LootTable;
+
+    /** Distance max de dispersion des drops autour du centre de la caisse (cm). */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Destructible|Loot",
+              meta = (ClampMin = 0, ClampMax = 300))
+    float LootScatterRadius = 60.f;
+
+    // ── LOGIQUE INTERNE ────────────────────────────────────────────────────
+
+    UFUNCTION()
+    void HandleDeath(UHealthComponent* HealthComponent,
+                     const AController* InstigatedBy, AActor* DamageCauser);
+
+    UFUNCTION()
+    void HandleDamage(UHealthComponent* HealthComponent, float Health,
+                      float HealthDelta, const AController* InstigatedBy);
+
+    void SpawnLoot();
+    void ApplyExplosionDamage(AController* InstigatedBy);
+
+    // ── HOOKS BLUEPRINT ────────────────────────────────────────────────────
+
+    /** Effets de destruction (particules, son, décombres) */
+    UFUNCTION(BlueprintImplementableEvent, Category = "Destructible",
+              meta = (DisplayName = "On Destroyed"))
+    void BP_OnDestroyed();
+
+    /** Appelé quand HP passe sous DamagedThreshold (afficher cracks, sons, etc.) */
+    UFUNCTION(BlueprintImplementableEvent, Category = "Destructible",
+              meta = (DisplayName = "On Damaged State"))
+    void BP_OnDamagedState();
 
 public:
-  UPROPERTY(BlueprintAssignable, Category = "Destructible|Events")
-  FOnObjectDestroyed OnObjectDestroyed;
-
-protected:
-  /** Called when health reaches zero */
-  UFUNCTION()
-  void HandleDeath(UHealthComponent *HealthComponent,
-                   const AController *InstigatedBy, AActor *DamageCauser);
-
-  /** Spawns loot drops */
-  void SpawnLoot();
-
-  /** Deals explosion damage to nearby actors */
-  void ApplyExplosionDamage(AController *InstigatedBy);
-
-  /** BP hook for destruction VFX */
-  UFUNCTION(BlueprintImplementableEvent, Category = "Destructible",
-            meta = (DisplayName = "On Destroyed"))
-  void BP_OnDestroyed();
+    UPROPERTY(BlueprintAssignable, Category = "Destructible|Events")
+    FOnObjectDestroyed OnObjectDestroyed;
 };

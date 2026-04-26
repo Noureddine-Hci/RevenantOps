@@ -9,6 +9,7 @@
 
 class UInputMappingContext;
 class UUserWidget;
+class UAudioComponent;
 class URevenantOpsHUD;
 class UTitleScreenWidget;
 class ULevelSelectWidget;
@@ -83,6 +84,10 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "UI|Mercenaires")
 	TArray<FKeyRebindEntry> AvailableRebinds;
 
+	/** IMC à re-enregistrer dans les UserSettings à l'ouverture des Options */
+	UPROPERTY(EditAnywhere, Category = "UI|Mercenaires")
+	UInputMappingContext* DefaultMappingContext = nullptr;
+
 	/** Loadout selection widget class */
 	UPROPERTY(EditAnywhere, Category = "UI|Mercenaires")
 	TSubclassOf<ULoadoutWidget> LoadoutWidgetClass;
@@ -139,6 +144,17 @@ protected:
 
 	bool bInventoryOpen = false;
 
+	/** Musique jouée en boucle pendant le match */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
+	USoundBase* GameMusic = nullptr;
+
+	/** Volume musique in-game */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio", meta = (ClampMin = 0.f, ClampMax = 1.f))
+	float GameMusicVolume = 0.6f;
+
+	UPROPERTY()
+	TObjectPtr<UAudioComponent> GameMusicComponent = nullptr;
+
 	/** Gameplay initialization */
 	virtual void BeginPlay() override;
 
@@ -158,6 +174,10 @@ public:
 	/** Shows the title screen */
 	UFUNCTION(BlueprintCallable, Category = "Mercenaires|Flow")
 	void ShowTitleScreen();
+
+	/** Relance immédiatement le dernier niveau joué */
+	UFUNCTION(BlueprintCallable, Category = "Mercenaires|Flow")
+	void RestartMatch();
 
 	/** Shows the options screen */
 	UFUNCTION(BlueprintCallable, Category = "Mercenaires|Flow")
@@ -179,9 +199,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Mercenaires|Flow")
 	void StartMercenairesMatch();
 
-	/** Shows the game over screen */
+	/** Shows the game over screen.
+	 *  @param bVictory true = toutes les vagues complétées, false = mort */
 	UFUNCTION(BlueprintCallable, Category = "Mercenaires|Flow")
-	void ShowGameOverScreen();
+	void ShowGameOverScreen(bool bVictory = false);
 
 	/** Shows the leaderboard */
 	UFUNCTION(BlueprintCallable, Category = "Mercenaires|Flow")
@@ -217,6 +238,10 @@ protected:
 	/** Handler for match end */
 	UFUNCTION()
 	void OnMatchEnded(bool bIsActive);
+
+	/** Handler quand toutes les vagues sont terminées — victoire */
+	UFUNCTION()
+	void OnAllWavesCompleted();
 
 	/** Handler for player death — ends match immediately */
 	UFUNCTION()

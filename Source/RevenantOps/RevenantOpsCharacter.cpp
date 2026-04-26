@@ -20,6 +20,9 @@
 #include "RevenantOpsPlayerController.h"
 #include "UI/RevenantOpsHUD.h"
 #include "Gameplay/AmmoBonusPickup.h"
+#include "Gameplay/HealthPickup.h"
+#include "Gameplay/PickupInterface.h"
+#include "Gameplay/WeaponPickup.h"
 
 ARevenantOpsCharacter::ARevenantOpsCharacter() {
   PrimaryActorTick.bCanEverTick = true;
@@ -94,10 +97,11 @@ void ARevenantOpsCharacter::BeginPlay() {
 
   // Cache health component and bind damage feedback
   HealthComp = FindComponentByClass<UHealthComponent>();
-  if (HealthComp) {
-    HealthComp->OnHealthChanged.AddDynamic(
-        this, &ARevenantOpsCharacter::OnDamageReceived);
-  }
+  if (HealthComp)
+    HealthComp->OnHealthChanged.AddDynamic(this, &ARevenantOpsCharacter::OnDamageReceived);
+
+  // Appliquer les perks hardcodés + les talents assignés (écran de sélection)
+  ApplyTalents();
 
   // Initialize inventory — 9 empty slots
   Inventory.SetNum(9);
@@ -105,6 +109,65 @@ void ARevenantOpsCharacter::BeginPlay() {
 
   // Spawn weapons from loadout
   SpawnDefaultWeapons();
+}
+
+// =============================================================================
+// TALENTS
+// =============================================================================
+
+void ARevenantOpsCharacter::ApplyTalents()
+{
+    for (UTalentDefinition* Talent : AssignedTalents)
+    {
+        if (!Talent) continue;
+
+        // Reload speed (multiplicatif)
+        if (Talent->ReloadSpeedBonus > 0.f)
+            ReloadSpeedMultiplier += Talent->ReloadSpeedBonus;
+
+        // Damage resistance (additif, clampé à 0.75)
+        if (Talent->DamageResistanceBonus > 0.f)
+            DamageResistance = FMath::Min(DamageResistance + Talent->DamageResistanceBonus, 0.75f);
+
+        // Ammo capacity (multiplicatif)
+        if (Talent->AmmoCapacityBonus > 0.f)
+            AmmoCapacityMultiplier += Talent->AmmoCapacityBonus;
+
+        // Move speed (additif)
+        if (Talent->MoveSpeedBonus > 0.f)
+            MoveSpeedBonus += Talent->MoveSpeedBonus;
+
+        // Max health bonus — appliqué directement sur HealthComp si disponible
+        if (Talent->MaxHealthBonus > 0.f)
+        {
+            if (!HealthComp) HealthComp = FindComponentByClass<UHealthComponent>();
+            if (HealthComp)
+            {
+                HealthComp->SetMaxHealth(HealthComp->GetMaxHealth() * (1.f + Talent->MaxHealthBonus));
+                HealthComp->ResetHealth(); // CurrentHealth = nouveau max
+            }
+        }
+
+        // Stamina bonus
+        if (Talent->StaminaBonus > 0.f)
+        {
+            MaxStamina = FMath::Min(MaxStamina * (1.f + Talent->StaminaBonus), 200.f);
+            CurrentStamina = MaxStamina;
+        }
+    }
+
+    // Re-appliquer les stats calculées (résistance, vitesse) maintenant que les talents sont cumulés
+    if (HealthComp)
+        HealthComp->DamageMultiplier = FMath::Clamp(1.f - DamageResistance, 0.25f, 1.f);
+
+    if (MoveSpeedBonus > 0.f)
+    {
+        // MoveSpeedBonus accumulé = somme des % talents (ex: 0.2 + 0.1 = 0.3 = +30%)
+        WalkSpeed   *= (1.f + MoveSpeedBonus);
+        SprintSpeed *= (1.f + MoveSpeedBonus);
+        GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
+        MoveSpeedBonus = 0.f; // reset pour éviter double-application si rappelé
+    }
 }
 
 // =============================================================================
@@ -117,6 +180,7 @@ void ARevenantOpsCharacter::Tick(float DeltaTime) {
   UpdateMovementSpeed(DeltaTime);
   UpdateStamina(DeltaTime);
   UpdateCameraFOV(DeltaTime);
+  UpdateAnimationValues();
 
   // Auto-end slide if speed drops too low
   if (bIsSliding) {
@@ -596,6 +660,14 @@ void ARevenantOpsCharacter::SpawnDefaultWeapons() {
 
     if (NewWeapon) {
       NewWeapon->SetOwnerPawn(this);
+
+      // Appliquer le multiplicateur de capacité de munitions du personnage
+      if (AmmoCapacityMultiplier != 1.f)
+      {
+        int32 NewMax = FMath::RoundToInt(NewWeapon->GetMaxReserveAmmo() * AmmoCapacityMultiplier);
+        NewWeapon->SetMaxReserveAmmo(NewMax);
+      }
+
       WeaponInventory.Add(NewWeapon);
 
       // Hide all weapons initially (EquipWeapon will show the active one)
@@ -666,6 +738,32 @@ void ARevenantOpsCharacter::UseInventoryItem(int32 SlotIndex) {
   }
 }
 
+void ARevenantOpsCharacter::UpdateAnimationValues()
+{
+  if (!GetController()) return;
+
+  // --- Aim Pitch / Yaw (control rotation relative to actor) ---
+  const FRotator ControlRot = GetControlRotation();
+  const FRotator ActorRot   = GetActorRotation();
+  FRotator Delta = (ControlRot - ActorRot).GetNormalized();
+
+  // Pitch: UE stores pitch inverted for controllers — negate for natural up/down
+  AimPitch = FMath::ClampAngle(-Delta.Pitch, -90.f, 90.f);
+  AimYaw   = FMath::ClampAngle( Delta.Yaw,  -180.f, 180.f);
+
+  // --- Movement Direction (velocity relative to actor forward) ---
+  const FVector Velocity = GetVelocity();
+  if (Velocity.SizeSquared2D() > 1.f)
+  {
+    const FVector LocalVel = ActorRot.UnrotateVector(Velocity);
+    MovementDirection = FMath::RadiansToDegrees(FMath::Atan2(LocalVel.Y, LocalVel.X));
+  }
+  else
+  {
+    MovementDirection = 0.f;
+  }
+}
+
 void ARevenantOpsCharacter::EquipWeapon(int32 Index) {
   if (!WeaponInventory.IsValidIndex(Index)) {
     return;
@@ -688,6 +786,12 @@ void ARevenantOpsCharacter::EquipWeapon(int32 Index) {
     CurrentWeapon->SetActorHiddenInGame(false);
     CurrentWeapon->SetActorTickEnabled(true);
     AttachWeaponToSocket(CurrentWeapon);
+
+    // Play equip montage if assigned on the weapon
+    if (UAnimMontage* EqMontage = CurrentWeapon->GetEquipMontage())
+    {
+      PlayAnimMontage(EqMontage);
+    }
   }
 }
 
@@ -769,6 +873,19 @@ void ARevenantOpsCharacter::ReloadPressed() {
   }
 }
 
+void ARevenantOpsCharacter::AddAndEquipWeapon(AWeaponBase* NewWeapon)
+{
+    if (!NewWeapon) return;
+
+    NewWeapon->SetOwnerPawn(this);
+    WeaponInventory.Add(NewWeapon);
+    NewWeapon->SetActorHiddenInGame(true);
+    NewWeapon->SetActorTickEnabled(false);
+
+    bIsArmed = true;
+    EquipWeapon(WeaponInventory.Num() - 1);
+}
+
 void ARevenantOpsCharacter::SwitchWeaponPressed() {
   if (WeaponInventory.Num() <= 1) {
     return;
@@ -783,8 +900,11 @@ void ARevenantOpsCharacter::SwitchWeaponPressed() {
 // =============================================================================
 
 void ARevenantOpsCharacter::InteractPressed() {
-  if (PendingPickup) {
-    PendingPickup->TryPickup(this);
+  if (PendingWeaponPickup) {
+    PendingWeaponPickup->TryPickup(this);
+  } else if (PendingInteractable &&
+             PendingInteractable->Implements<UPickupInterface>()) {
+    IPickupInterface::Execute_TryPickupInteract(PendingInteractable, this);
   }
 }
 

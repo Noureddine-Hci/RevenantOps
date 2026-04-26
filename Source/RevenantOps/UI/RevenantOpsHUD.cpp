@@ -33,6 +33,13 @@ static void SetCanvasSlot(UWidget* Widget, FVector2D Position, FVector2D Size, F
   }
 }
 
+TSharedRef<SWidget> URevenantOpsHUD::RebuildWidget()
+{
+  if (!IsDesignTime() && WidgetTree && !WidgetTree->RootWidget)
+    BuildDefaultUI();
+  return Super::RebuildWidget();
+}
+
 void URevenantOpsHUD::BuildDefaultUI()
 {
   if (!WidgetTree) return;
@@ -103,7 +110,8 @@ void URevenantOpsHUD::BuildDefaultUI()
   }
 
   MakeImg(HitMarkerImage,       FName("HitMarkerImage"),       FVector2D(-16.f, -16.f), FVector2D(32.f, 32.f), FAnchors(0.5f, 0.5f));
-  MakeImg(DamageDirectionImage, FName("DamageDirectionImage"), FVector2D(-32.f, -32.f), FVector2D(64.f, 64.f), FAnchors(0.5f, 0.5f));
+  // Indicateur directionnel : fine barre 10×36, centrée, déplacée à 85px du centre via RenderTransform
+  MakeImg(DamageDirectionImage, FName("DamageDirectionImage"), FVector2D(-5.f, -103.f), FVector2D(10.f, 36.f), FAnchors(0.5f, 0.5f));
 
   // LowHealthVignette : full-screen stretch
   LowHealthVignette = WidgetTree->ConstructWidget<UImage>(
@@ -201,10 +209,8 @@ void URevenantOpsHUD::BuildDefaultUI()
 void URevenantOpsHUD::NativeConstruct() {
   Super::NativeConstruct();
 
-  // Build widgets programmatically if the WBP WidgetTree is empty
-  if (!WidgetTree || !WidgetTree->RootWidget) {
-    BuildDefaultUI();
-  }
+  // Fallback si RebuildWidget n'a pas pu construire (ex: WBP rechargé à chaud)
+  if (!HealthBar) BuildDefaultUI();
 
   // --- Positionnement HUD (layout) ---
   // Top-left : HealthBar + StaminaBar
@@ -341,6 +347,11 @@ void URevenantOpsHUD::NativeConstruct() {
     ReloadBar->SetVisibility(ESlateVisibility::Collapsed);
   }
   if (DamageDirectionImage) {
+    // Rouge semi-transparent, bords arrondis simulés par la couleur
+    FSlateBrush RedBrush;
+    RedBrush.DrawAs = ESlateBrushDrawType::Box;
+    RedBrush.TintColor = FSlateColor(FLinearColor(1.f, 0.1f, 0.1f, 1.f));
+    DamageDirectionImage->SetBrush(RedBrush);
     DamageDirectionImage->SetVisibility(ESlateVisibility::Collapsed);
   }
   if (KillNotificationText) {
@@ -442,7 +453,17 @@ void URevenantOpsHUD::UpdateHealthDisplay() {
   }
 
   if (HealthBar) {
-    HealthBar->SetPercent(CachedHealthComp->GetHealthPercent());
+    const float HP = CachedHealthComp->GetHealthPercent();
+    HealthBar->SetPercent(HP);
+    // Vert (≥50%) → Jaune (25-50%) → Rouge (≤25%)
+    FLinearColor BarColor;
+    if (HP >= 0.5f)
+      BarColor = FLinearColor::LerpUsingHSV(FLinearColor(1.f, 1.f, 0.f), FLinearColor(0.1f, 0.9f, 0.1f), (HP - 0.5f) * 2.f);
+    else if (HP >= 0.25f)
+      BarColor = FLinearColor::LerpUsingHSV(FLinearColor(0.9f, 0.1f, 0.1f), FLinearColor(1.f, 1.f, 0.f), (HP - 0.25f) * 4.f);
+    else
+      BarColor = FLinearColor(0.9f, 0.1f, 0.1f);
+    HealthBar->SetFillColorAndOpacity(BarColor);
   }
 
   if (ShieldBar) {
@@ -593,22 +614,35 @@ void URevenantOpsHUD::UpdateLowHealthVignette() {
 // =============================================================================
 
 void URevenantOpsHUD::UpdateHitMarker(float DeltaTime) {
-  if (!HitMarkerImage) {
-    return;
-  }
+  if (HitMarkerTimer <= 0.f) return;
 
-  if (HitMarkerTimer > 0.f) {
-    HitMarkerTimer -= DeltaTime;
-    const float Alpha = FMath::Clamp(HitMarkerTimer / HitMarkerDuration, 0.f, 1.f);
-    HitMarkerImage->SetOpacity(Alpha);
+  HitMarkerTimer -= DeltaTime;
+  const float T = FMath::Clamp(HitMarkerTimer / HitMarkerDuration, 0.f, 1.f);
+
+  // Lerp rouge → blanc au fil du fade
+  const FLinearColor HitColor  (1.f, 0.15f, 0.15f, 1.f);
+  const FLinearColor IdleColor (1.f, 1.f,   1.f,   0.9f);
+  const FLinearColor Current = FLinearColor::LerpUsingHSV(IdleColor, HitColor, T);
+
+  for (UImage* Line : {CrosshairTop, CrosshairBottom, CrosshairLeft, CrosshairRight})
+    if (Line) Line->SetColorAndOpacity(Current);
+
+  if (HitMarkerTimer <= 0.f)
+  {
+    // Retour à la couleur normale du viseur
+    for (UImage* Line : {CrosshairTop, CrosshairBottom, CrosshairLeft, CrosshairRight})
+      if (Line) Line->SetColorAndOpacity(FLinearColor(1.f, 1.f, 1.f, 0.9f));
   }
 }
 
 void URevenantOpsHUD::ShowHitMarker() {
   HitMarkerTimer = HitMarkerDuration;
-  if (HitMarkerImage) {
-    HitMarkerImage->SetOpacity(1.f);
-  }
+  // Flash immédiat rouge
+  const FLinearColor HitColor(1.f, 0.15f, 0.15f, 1.f);
+  for (UImage* Line : {CrosshairTop, CrosshairBottom, CrosshairLeft, CrosshairRight})
+    if (Line) Line->SetColorAndOpacity(HitColor);
+  // Cacher l'ancien carré
+  if (HitMarkerImage) HitMarkerImage->SetVisibility(ESlateVisibility::Collapsed);
 }
 
 void URevenantOpsHUD::ShowDamageDirection(const FVector &DamageOrigin) {
@@ -631,7 +665,15 @@ void URevenantOpsHUD::ShowDamageDirection(const FVector &DamageOrigin) {
   DamageDirectionTimer = DamageDirectionDuration;
 
   if (DamageDirectionImage) {
-    DamageDirectionImage->SetRenderTransformAngle(DamageDirectionAngle);
+    // La barre est positionnée à 85px au-dessus du centre.
+    // On la fait pivoter autour de l'ancre (0.5, 0.5) du widget = son centre.
+    // Le pivot du Canvas slot est le centre de l'écran → SetRenderTransformAngle
+    // suffit car le widget est déjà décalé vers le haut dans son slot.
+    FWidgetTransform T;
+    T.Angle = DamageDirectionAngle;
+    T.Scale  = FVector2D(1.f, 1.f);
+    DamageDirectionImage->SetRenderTransform(T);
+    DamageDirectionImage->SetRenderTransformPivot(FVector2D(0.5f, 3.4f)); // pivot = centre écran
     DamageDirectionImage->SetOpacity(1.f);
     DamageDirectionImage->SetVisibility(ESlateVisibility::HitTestInvisible);
   }

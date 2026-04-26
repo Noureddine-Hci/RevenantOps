@@ -44,6 +44,9 @@ public:
   static void SaveScoreStatic(UObject* WorldContext, int32 Score, int32 Kills, int32 BestCombo,
                                const FString& SlotName = TEXT("Leaderboard"), int32 MaxEntries = 10);
 
+  /** Set the save slot before calling LoadScores */
+  void SetSaveSlot(const FString& InSlotName) { SaveSlotName = InSlotName; }
+
 protected:
   /** Max entries in the leaderboard */
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Leaderboard",
