@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Gameplay/AmmoTypes.h"
+#include "Gameplay/PickupInterface.h"
 #include "AmmoBonusPickup.generated.h"
 
 class USphereComponent;
@@ -12,11 +14,19 @@ class UTexture2D;
 class ARevenantOpsCharacter;
 
 /**
- *  Ammo pickup for the arena.
- *  Refills a percentage of the current weapon's reserve ammo on overlap.
+ *  Ammo pickup — ramassage manuel (touche E) avec popup icone.
+ *  Implementer IPickupInterface permet de recuperer l'icone automatiquement
+ *  partout (drops ennemis, caisses) sans renseigner DropIcon manuellement.
+ *
+ *  Configuration dans le BP :
+ *    - ItemIcon        : texture a assigner UNE SEULE FOIS dans le BP
+ *    - DisplayName     : ex "Munitions Pistolet"
+ *    - AmmoAmount      : quantite par defaut
+ *    - TargetAmmoType  : type de l'arme cible
  */
 UCLASS(Blueprintable)
-class AAmmoBonusPickup : public AActor {
+class AAmmoBonusPickup : public AActor, public IPickupInterface
+{
   GENERATED_BODY()
 
 public:
@@ -27,28 +37,14 @@ protected:
   virtual void Tick(float DeltaTime) override;
 
   UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-  UStaticMeshComponent *PickupMesh;
+  UStaticMeshComponent* PickupMesh;
 
   UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-  USphereComponent *CollisionSphere;
+  USphereComponent* CollisionSphere;
 
-  /** Ammo to add to each weapon's reserve */
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AmmoPickup",
-            meta = (ClampMin = 1, ClampMax = 999))
-  int32 AmmoAmount = 30;
-
-  /** Nom affiché dans le popup (ex: "Munitions") */
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AmmoPickup")
-  FText DisplayName = FText::FromString("Munitions");
-
-  /** Icone affichée dans le popup */
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AmmoPickup")
-  UTexture2D* ItemIcon = nullptr;
-
-  /** Joueur en zone — raw ptr sans UPROPERTY pour éviter CDO crash */
+  /** Joueur en zone — raw ptr sans UPROPERTY pour eviter CDO crash */
   ARevenantOpsCharacter* PendingPlayer = nullptr;
 
-  /** Bob and rotate like other pickups */
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AmmoPickup|Visual")
   bool bBobbing = true;
 
@@ -64,31 +60,69 @@ protected:
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AmmoPickup|Visual")
   float RotationSpeed = 90.f;
 
-  /** Respawn time (0 = no respawn) */
+  float InitialZ = 0.f;
+  FTimerHandle RespawnTimer;
+  FTimerHandle LifetimeTimer;
+
+  UFUNCTION()
+  void OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
+                      UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
+                      bool bFromSweep, const FHitResult& SweepResult);
+
+  UFUNCTION()
+  void OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
+                    UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
+
+  void HidePickup();
+  void RespawnPickup();
+  void OnLifetimeExpired();
+
+public:
+  // ── IPickupInterface ─────────────────────────────────────────────────────
+
+  virtual UTexture2D*  GetPickupIcon_Implementation()          const override { return ItemIcon; }
+  virtual FText        GetPickupDisplayName_Implementation()   const override { return DisplayName; }
+  virtual int32        GetPickupDisplayAmount_Implementation() const override { return AmmoAmount; }
+  virtual void         TryPickupInteract_Implementation(ARevenantOpsCharacter* Player) override;
+
+  // ── API publique ─────────────────────────────────────────────────────────
+
+  /** Appele par le personnage quand il appuie sur E */
+  void TryPickup(ARevenantOpsCharacter* Player);
+
+  /** Demarre le timer de vie du drop ennemi apres assignation des proprietes. */
+  void StartLifetimeTimer();
+
+  // ── Proprietes configurables (dans le BP ou au spawn) ───────────────────
+
+  /** Icone affichee dans le popup — a assigner UNE FOIS dans le BP */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AmmoPickup")
+  TObjectPtr<UTexture2D> ItemIcon = nullptr;
+
+  /** Nom affiche dans le popup */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AmmoPickup")
+  FText DisplayName = FText::FromString("Munitions");
+
+  /** Quantite de munitions donnee */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AmmoPickup",
+            meta = (ClampMin = 1, ClampMax = 999))
+  int32 AmmoAmount = 30;
+
+  /** Temps de respawn (0 = pas de respawn) */
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AmmoPickup",
             meta = (ClampMin = 0, ClampMax = 300))
   float RespawnTime = 45.f;
 
-  float InitialZ = 0.f;
-  FTimerHandle RespawnTimer;
+  /** Type d'arme ciblee (None = arme active, sinon filtre par type) */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AmmoPickup|Drop")
+  EAmmoType TargetAmmoType = EAmmoType::None;
 
-  UFUNCTION()
-  void OnOverlapBegin(UPrimitiveComponent *OverlappedComp, AActor *OtherActor,
-                      UPrimitiveComponent *OtherComp, int32 OtherBodyIndex,
-                      bool bFromSweep, const FHitResult &SweepResult);
-
-  UFUNCTION()
-  void OnOverlapEnd(UPrimitiveComponent *OverlappedComp, AActor *OtherActor,
-                    UPrimitiveComponent *OtherComp, int32 OtherBodyIndex);
-
-  void HidePickup();
-  void RespawnPickup();
-
-public:
-  /** Appelé par le personnage quand il appuie sur E */
-  void TryPickup(ARevenantOpsCharacter* Player);
+  /** Duree de vie du drop ennemi (0 = pickup statique permanent) */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AmmoPickup|Drop",
+            meta = (ClampMin = 0.f, ClampMax = 60.f))
+  float DropLifetime = 0.f;
 
   UFUNCTION(BlueprintImplementableEvent, Category = "AmmoPickup",
             meta = (DisplayName = "On Ammo Picked Up"))
-  void BP_OnPickedUp(APawn *PickedUpBy, int32 AmmoAdded);
+  void BP_OnPickedUp(APawn* PickedUpBy, int32 AmmoAdded);
 };

@@ -5,6 +5,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "RevenantOpsCharacter.h"
 #include "WeaponBase.h"
+#include "TimerManager.h"
 
 AAmmoBonusPickup::AAmmoBonusPickup() {
   PrimaryActorTick.bCanEverTick = true;
@@ -26,6 +27,9 @@ void AAmmoBonusPickup::BeginPlay() {
   InitialZ = GetActorLocation().Z;
   CollisionSphere->OnComponentBeginOverlap.AddDynamic(this, &AAmmoBonusPickup::OnOverlapBegin);
   CollisionSphere->OnComponentEndOverlap.AddDynamic(this, &AAmmoBonusPickup::OnOverlapEnd);
+
+  // Le timer DropLifetime est démarré manuellement via StartLifetimeTimer()
+  // après que les propriétés post-spawn ont été assignées.
 }
 
 void AAmmoBonusPickup::Tick(float DeltaTime) {
@@ -62,24 +66,62 @@ void AAmmoBonusPickup::OnOverlapEnd(
   if (!Player || Player != PendingPlayer) return;
 
   PendingPlayer = nullptr;
-  Player->SetPendingPickup(nullptr);
+  Player->ClearPendingPickup();
   Player->HidePickupPrompt();
+}
+
+void AAmmoBonusPickup::TryPickupInteract_Implementation(ARevenantOpsCharacter* Player)
+{
+  TryPickup(Player);
 }
 
 void AAmmoBonusPickup::TryPickup(ARevenantOpsCharacter* Player) {
   if (!Player) return;
 
   AWeaponBase* Weapon = Player->GetCurrentWeapon();
-  if (Weapon) {
-    Weapon->AddReserveAmmo(AmmoAmount);
+  if (Weapon)
+  {
+    // Si TargetAmmoType est défini, ne donner des munitions que si l'arme correspond
+    bool bTypeMatch = (TargetAmmoType == EAmmoType::None)
+                   || (Weapon->GetWeaponAmmoType() == TargetAmmoType);
+    if (bTypeMatch)
+      Weapon->AddReserveAmmo(AmmoAmount);
   }
 
   PendingPlayer = nullptr;
-  Player->SetPendingPickup(nullptr);
+  Player->ClearPendingPickup();
   Player->HidePickupPrompt();
 
   BP_OnPickedUp(Player, AmmoAmount);
-  HidePickup();
+
+  // Drop ennemi : on détruit l'acteur, pas de respawn
+  if (DropLifetime > 0.f)
+  {
+    GetWorldTimerManager().ClearTimer(LifetimeTimer);
+    Destroy();
+  }
+  else
+    HidePickup();
+}
+
+void AAmmoBonusPickup::StartLifetimeTimer()
+{
+  if (DropLifetime > 0.f && !GetWorldTimerManager().IsTimerActive(LifetimeTimer))
+  {
+    GetWorldTimerManager().SetTimer(LifetimeTimer, this,
+        &AAmmoBonusPickup::OnLifetimeExpired, DropLifetime, false);
+  }
+}
+
+void AAmmoBonusPickup::OnLifetimeExpired()
+{
+  // Cacher le prompt si le joueur est encore en zone
+  if (PendingPlayer)
+  {
+    PendingPlayer->ClearPendingPickup();
+    PendingPlayer->HidePickupPrompt();
+  }
+  Destroy();
 }
 
 void AAmmoBonusPickup::HidePickup() {

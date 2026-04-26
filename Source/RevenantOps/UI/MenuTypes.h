@@ -4,6 +4,9 @@
 #include "CoreMinimal.h"
 #include "Engine/Texture2D.h"
 #include "GameFramework/Pawn.h"
+#include "Animation/AnimInstance.h"
+#include "Gameplay/TalentDefinition.h"
+#include "Gameplay/InventoryItem.h"
 #include "MenuTypes.generated.h"
 
 /** Describes a playable level shown in the level select screen */
@@ -39,9 +42,25 @@ struct FCharacterInfo
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Menu|Character")
     TSubclassOf<APawn> CharacterClass;
 
-    /** Optional thumbnail shown on the card */
+    /** Optional thumbnail shown on the card (carousel) */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Menu|Character")
     UTexture2D* Thumbnail = nullptr;
+
+    /** Skeletal mesh affiché dans le portrait 3D (SceneCapture) */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Menu|Character")
+    TObjectPtr<USkeletalMesh> PreviewMesh = nullptr;
+
+    /** AnimInstance pour la pose dans le portrait (optionnel) */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Menu|Character")
+    TSubclassOf<UAnimInstance> PreviewAnimClass;
+
+    /** Talents assignés à ce personnage — créer des DA_Talent_* dans le Content Browser */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Menu|Character")
+    TArray<TObjectPtr<UTalentDefinition>> Talents;
+
+    /** Inventaire de départ du personnage (armes + objets) — affiché dans la sélection */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Menu|Character")
+    TArray<FInventoryItem> DefaultInventory;
 };
 
 /**

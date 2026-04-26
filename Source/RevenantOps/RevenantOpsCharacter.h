@@ -6,6 +6,7 @@
 #include "GameFramework/Character.h"
 #include "Logging/LogMacros.h"
 #include "Gameplay/InventoryItem.h"
+#include "Gameplay/TalentDefinition.h"
 #include "RevenantOpsCharacter.generated.h"
 
 class USpringArmComponent;
@@ -15,6 +16,8 @@ class UAnimMontage;
 class AWeaponBase;
 class UHealthComponent;
 class AAmmoBonusPickup;
+class AHealthPickup;
+// IPickupInterface — utilisee dans InteractPressed via Execute_
 struct FInputActionValue;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
@@ -268,12 +271,52 @@ protected:
   UPROPERTY(BlueprintReadOnly, Category = "Animation")
   float MovementDirection = 0.f;
 
+public:
+  // ── Perks personnage (override dans chaque BP enfant) ────────────────────
+
+  /** Multiplicateur de vitesse de rechargement (1.0 = normal, 1.5 = 50% plus vite) */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Character|Perks",
+            meta = (ClampMin = 0.5f, ClampMax = 3.f))
+  float ReloadSpeedMultiplier = 1.0f;
+
+  /** Réduction des dégâts reçus en % (0 = aucune, 0.25 = 25% de réduction) */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Character|Perks",
+            meta = (ClampMin = 0.f, ClampMax = 0.75f))
+  float DamageResistance = 0.0f;
+
+  /** Multiplicateur de munitions en réserve (1.0 = normal, 1.5 = 50% de plus) */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Character|Perks",
+            meta = (ClampMin = 0.5f, ClampMax = 3.f))
+  float AmmoCapacityMultiplier = 1.0f;
+
+  /** Bonus de vitesse de déplacement (ajouté à WalkSpeed) */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Character|Perks",
+            meta = (ClampMin = 0.f, ClampMax = 300.f))
+  float MoveSpeedBonus = 0.0f;
+
+  /** Description courte des perks pour l'écran de sélection */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Character|Perks")
+  FText PerkDescription;
+
+  // ── Système de talents ────────────────────────────────────────────────────
+
+  /** Talents actifs sur ce personnage (assignés depuis FCharacterInfo ou en debug) */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Character|Talents")
+  TArray<TObjectPtr<UTalentDefinition>> AssignedTalents;
+
+  /** Applique les bonus de tous les talents assignés (appelé dans BeginPlay) */
+  UFUNCTION(BlueprintCallable, Category = "Character|Talents")
+  void ApplyTalents();
+
   /** Cached health component for damage feedback */
   UPROPERTY()
   UHealthComponent *HealthComp = nullptr;
 
-  /** Pickup dans la zone d'interaction — raw ptr (pas UPROPERTY = pas de CDO crash) */
-  AAmmoBonusPickup *PendingPickup = nullptr;
+  /**
+   *  Pickup actif en zone (munitions, soins...) — interroge via IPickupInterface.
+   *  Raw ptr intentionnel (pas de UPROPERTY pour eviter CDO crash).
+   */
+  AActor* PendingInteractable = nullptr;
 
   /** Weapon pickup en zone — raw ptr */
   class AWeaponPickup *PendingWeaponPickup = nullptr;
@@ -389,8 +432,14 @@ public:
   void UseInventoryItem(int32 SlotIndex);
 
 public:
-  /** Enregistre le pickup actif (appelé par AAmmoBonusPickup) */
-  void SetPendingPickup(AAmmoBonusPickup* Pickup) { PendingPickup = Pickup; }
+  /** Enregistre n'importe quel pickup IPickupInterface actif */
+  void SetPendingPickup(AActor* Pickup) { PendingInteractable = Pickup; }
+
+  /** Efface le pickup actif (evite l'ambiguite sur nullptr) */
+  void ClearPendingPickup() { PendingInteractable = nullptr; }
+
+  /** Alias pour HealthPickup — identique a SetPendingPickup */
+  void SetPendingHealthPickup(AActor* Pickup) { PendingInteractable = Pickup; }
 
   /** Enregistre le weapon pickup actif */
   void SetPendingWeaponPickup(AWeaponPickup* Pickup) { PendingWeaponPickup = Pickup; }
@@ -400,6 +449,9 @@ public:
 
   /** Retourne le nombre d'armes dans l'inventaire */
   int32 GetWeaponCount() const { return WeaponInventory.Num(); }
+
+  /** Retourne toutes les armes de l'inventaire (lecture seule) */
+  const TArray<AWeaponBase*>& GetWeaponInventory() const { return WeaponInventory; }
 
   /** Affiche le popup RE5 sur le HUD (icone + [E] + nom) */
   void ShowPickupPrompt(UTexture2D* Icon, const FText& Name, int32 Qty);
