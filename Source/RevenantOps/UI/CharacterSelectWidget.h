@@ -4,6 +4,8 @@
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 #include "UI/MenuTypes.h"
+#include "UI/CharacterPreviewActor.h"
+#include "Gameplay/TalentDefinition.h"
 #include "CharacterSelectWidget.generated.h"
 
 class UButton;
@@ -12,6 +14,7 @@ class UVerticalBox;
 class UHorizontalBox;
 class UBorder;
 class UImage;
+class UUniformGridPanel;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCharacterChosen, FCharacterInfo, CharacterInfo);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnCharacterSelectBack);
@@ -32,6 +35,7 @@ public:
 
     virtual TSharedRef<SWidget> RebuildWidget() override;
     virtual void NativeConstruct() override;
+    virtual void NativeDestruct() override;
 
 private:
     void BuildDefaultUI();
@@ -54,6 +58,16 @@ private:
     UPROPERTY() UButton*        BtnNext         = nullptr;
     UPROPERTY() UButton*        BtnConfirm      = nullptr;
     UPROPERTY() UButton*        BtnBack         = nullptr;
+    UPROPERTY() UVerticalBox*   TalentsVBox     = nullptr;
+    UPROPERTY() UUniformGridPanel* InventoryGrid = nullptr;
 
     bool bUIBuilt = false;
+
+    /** Classe du preview actor — assigne BP_CharacterPreviewActor dans le WBP */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Preview",
+              meta = (AllowPrivateAccess = "true"))
+    TSubclassOf<ACharacterPreviewActor> PreviewActorClass;
+
+    /** Acteur de preview 3D — spawné/détruit avec le widget */
+    UPROPERTY() ACharacterPreviewActor* PreviewActor = nullptr;
 };

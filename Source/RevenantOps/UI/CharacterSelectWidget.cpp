@@ -13,7 +13,11 @@
 #include "Components/CanvasPanelSlot.h"
 #include "Components/SizeBox.h"
 #include "Components/SizeBoxSlot.h"
+#include "Components/UniformGridPanel.h"
+#include "Components/UniformGridSlot.h"
 #include "Blueprint/WidgetTree.h"
+#include "Engine/TextureRenderTarget2D.h"
+#include "UI/CharacterPreviewActor.h"
 
 // ─── Couleurs (même palette que LevelSelectWidget) ────────────────────────────
 static const FLinearColor CC_BgDark    (0.04f, 0.03f, 0.02f, 0.97f);
@@ -69,8 +73,26 @@ void UCharacterSelectWidget::NativeConstruct()
     if (BtnNext)    BtnNext->OnClicked.AddDynamic(this,    &UCharacterSelectWidget::HandleNext);
     if (BtnConfirm) BtnConfirm->OnClicked.AddDynamic(this, &UCharacterSelectWidget::HandleConfirm);
 
+    // Spawn du preview actor loin du gameplay (Z=50000)
+    if (UWorld* W = GetWorld())
+    {
+        TSubclassOf<ACharacterPreviewActor> ClassToSpawn = PreviewActorClass
+            ? PreviewActorClass
+            : TSubclassOf<ACharacterPreviewActor>(ACharacterPreviewActor::StaticClass());
+        FActorSpawnParameters SP;
+        SP.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+        PreviewActor = W->SpawnActor<ACharacterPreviewActor>(
+            ClassToSpawn, FVector(0.f, 0.f, 50000.f), FRotator::ZeroRotator, SP);
+    }
+
     if (!CachedCharacters.IsEmpty())
         PopulateCharacters(CachedCharacters);
+}
+
+void UCharacterSelectWidget::NativeDestruct()
+{
+    if (PreviewActor) { PreviewActor->Destroy(); PreviewActor = nullptr; }
+    Super::NativeDestruct();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -120,7 +142,7 @@ void UCharacterSelectWidget::BuildDefaultUI()
 
     // -- Portrait gauche ------
     UBorder* PortraitPanel = WidgetTree->ConstructWidget<UBorder>();
-    PortraitPanel->SetBrushColor(CC_PanelDark);
+    PortraitPanel->SetBrushColor(FLinearColor(0.f, 0.f, 0.f, 0.f)); // transparent
     UHorizontalBoxSlot* PortraitHSlot = MainRow->AddChildToHorizontalBox(PortraitPanel);
     PortraitHSlot->SetVerticalAlignment(VAlign_Fill);
     FSlateChildSize PortraitSize(ESlateSizeRule::Fill); PortraitSize.Value = 1.2f;
@@ -202,12 +224,42 @@ void UCharacterSelectWidget::BuildDefaultUI()
     // hauteur 2px via padding
     if (SepBSlot) SepBSlot->SetPadding(FMargin(0.f, 1.f));
 
+    // Sous-titre TALENTS
+    UTextBlock* TalentsTitle = CCMakeText(WidgetTree, TEXT("TALENTS"), 12, CC_GoldDim);
+    UVerticalBoxSlot* TalentsTitleSlot = InfoVBox->AddChildToVerticalBox(TalentsTitle);
+    TalentsTitleSlot->SetPadding(FMargin(0.f, 0.f, 0.f, 8.f));
+
+    // VBox dynamique — peuplé dans RefreshInfo()
+    TalentsVBox = WidgetTree->ConstructWidget<UVerticalBox>();
+    UVerticalBoxSlot* TalentsVSlot = InfoVBox->AddChildToVerticalBox(TalentsVBox);
+    TalentsVSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+
+    // Ligne séparatrice
+    UBorder* Sep2 = WidgetTree->ConstructWidget<UBorder>();
+    Sep2->SetBrushColor(CC_GoldDim);
+    UVerticalBoxSlot* Sep2Slot = InfoVBox->AddChildToVerticalBox(Sep2);
+    Sep2Slot->SetPadding(FMargin(0.f, 8.f, 0.f, 8.f));
+    UBorderSlot* Sep2B = Cast<UBorderSlot>(Sep2->AddChild(WidgetTree->ConstructWidget<UTextBlock>()));
+    if (Sep2B) Sep2B->SetPadding(FMargin(0.f, 1.f));
+
+    // Sous-titre ÉQUIPEMENT
+    UTextBlock* InvTitle = CCMakeText(WidgetTree, TEXT("ÉQUIPEMENT"), 12, CC_GoldDim);
+    UVerticalBoxSlot* InvTitleSlot = InfoVBox->AddChildToVerticalBox(InvTitle);
+    InvTitleSlot->SetPadding(FMargin(0.f, 0.f, 0.f, 6.f));
+
+    // Grille 3x3 — peuplée dans RefreshInfo()
+    InventoryGrid = WidgetTree->ConstructWidget<UUniformGridPanel>();
+    InventoryGrid->SetSlotPadding(FMargin(2.f));
+    UVerticalBoxSlot* GridSlot = InfoVBox->AddChildToVerticalBox(InventoryGrid);
+    GridSlot->SetPadding(FMargin(0.f, 0.f, 0.f, 8.f));
+
+    // Hint navigation en bas
     UTextBlock* InfoHint = CCMakeText(WidgetTree,
-        TEXT("Utilisez < > pour\nnaviguer entre\nles personnages."),
-        13, CC_Grey);
+        TEXT("Utilisez < > pour\nnaviguer."),
+        11, CC_Grey);
     InfoHint->SetAutoWrapText(true);
     UVerticalBoxSlot* HintSlot = InfoVBox->AddChildToVerticalBox(InfoHint);
-    HintSlot->SetPadding(FMargin(0.f, 0.f, 0.f, 0.f));
+    HintSlot->SetPadding(FMargin(0.f, 4.f, 0.f, 0.f));
 
     // ── Boutons bas ───────────────────────────────────────────────────────────
     UHorizontalBox* BtnRow = WidgetTree->ConstructWidget<UHorizontalBox>();
@@ -297,15 +349,160 @@ void UCharacterSelectWidget::RefreshCarousel()
 
 void UCharacterSelectWidget::RefreshInfo()
 {
-    if (CharNameText && CachedCharacters.IsValidIndex(SelectedIndex))
-        CharNameText->SetText(CachedCharacters[SelectedIndex].DisplayName);
+    if (!CachedCharacters.IsValidIndex(SelectedIndex)) return;
+    const FCharacterInfo& Info = CachedCharacters[SelectedIndex];
 
-    if (PortraitImage && CachedCharacters.IsValidIndex(SelectedIndex))
+    if (CharNameText)
+        CharNameText->SetText(Info.DisplayName);
+
+    // Portrait 3D via SceneCapture
+    if (PortraitImage)
     {
-        if (CachedCharacters[SelectedIndex].Thumbnail)
-            PortraitImage->SetBrushFromTexture(CachedCharacters[SelectedIndex].Thumbnail);
+        if (PreviewActor)
+        {
+            // Mettre à jour le mesh du preview actor
+            PreviewActor->UpdateMesh(Info.PreviewMesh, Info.PreviewAnimClass);
+
+            // Afficher le render target dans le portrait dès qu'il est prêt
+            if (PreviewActor->RenderTarget)
+            {
+                FSlateBrush Brush;
+                Brush.SetResourceObject(PreviewActor->RenderTarget);
+                Brush.DrawAs    = ESlateBrushDrawType::Image;
+                Brush.ImageType = ESlateBrushImageType::FullColor; // active le canal alpha
+                Brush.TintColor = FSlateColor(FLinearColor::White);
+                PortraitImage->SetBrush(Brush);
+            }
+        }
+        else if (Info.Thumbnail)
+            PortraitImage->SetBrushFromTexture(Info.Thumbnail);  // fallback
         else
             PortraitImage->SetColorAndOpacity(FLinearColor(0.2f, 0.17f, 0.13f, 1.f));
+    }
+
+    // ── Grille Inventaire ─────────────────────────────────────────────────────
+    if (InventoryGrid && WidgetTree)
+    {
+        InventoryGrid->ClearChildren();
+        const TArray<FInventoryItem>& Items = Info.DefaultInventory;
+        const int32 MaxSlots = 9;
+        for (int32 i = 0; i < MaxSlots; ++i)
+        {
+            // Fond du slot
+            UBorder* SlotBg = WidgetTree->ConstructWidget<UBorder>();
+            SlotBg->SetBrushColor(CC_PanelMid);
+
+            USizeBox* SlotSB = WidgetTree->ConstructWidget<USizeBox>();
+            SlotSB->SetWidthOverride(36.f);
+            SlotSB->SetHeightOverride(36.f);
+            SlotSB->AddChild(SlotBg);
+
+            if (Items.IsValidIndex(i) && !Items[i].IsEmpty())
+            {
+                const FInventoryItem& Item = Items[i];
+                UImage* ItemImg = WidgetTree->ConstructWidget<UImage>();
+                if (Item.ItemIcon)
+                    ItemImg->SetBrushFromTexture(Item.ItemIcon);
+                else
+                {
+                    // Couleur par type si pas d'icône
+                    FLinearColor TypeColor = CC_Grey;
+                    switch (Item.Type)
+                    {
+                        case EInventoryItemType::Weapon:    TypeColor = FLinearColor(0.3f, 0.5f, 0.8f, 1.f); break;
+                        case EInventoryItemType::Health:    TypeColor = FLinearColor(0.2f, 0.8f, 0.3f, 1.f); break;
+                        case EInventoryItemType::Ammo:      TypeColor = FLinearColor(0.8f, 0.7f, 0.2f, 1.f); break;
+                        case EInventoryItemType::TimeBonus: TypeColor = FLinearColor(0.8f, 0.3f, 0.8f, 1.f); break;
+                        default: break;
+                    }
+                    ItemImg->SetColorAndOpacity(TypeColor);
+                }
+                UBorderSlot* ImgBS = Cast<UBorderSlot>(SlotBg->AddChild(ItemImg));
+                if (ImgBS)
+                {
+                    ImgBS->SetHorizontalAlignment(HAlign_Fill);
+                    ImgBS->SetVerticalAlignment(VAlign_Fill);
+                    ImgBS->SetPadding(FMargin(2.f));
+                }
+            }
+
+            UUniformGridSlot* GS = InventoryGrid->AddChildToUniformGrid(SlotSB, i / 3, i % 3);
+            if (GS)
+            {
+                GS->SetHorizontalAlignment(HAlign_Center);
+                GS->SetVerticalAlignment(VAlign_Center);
+            }
+        }
+    }
+
+    // ── Panneau Talents ───────────────────────────────────────────────────────
+    if (!TalentsVBox || !WidgetTree) return;
+    TalentsVBox->ClearChildren();
+
+    if (Info.Talents.IsEmpty())
+    {
+        UTextBlock* NoTalent = CCMakeText(WidgetTree, TEXT("Aucun talent assigné."), 11, CC_Grey);
+        NoTalent->SetAutoWrapText(true);
+        TalentsVBox->AddChildToVerticalBox(NoTalent);
+        return;
+    }
+
+    for (const TObjectPtr<UTalentDefinition>& Talent : Info.Talents)
+    {
+        if (!Talent) continue;
+
+        // Ligne = icône (si dispo) + nom + description
+        UHorizontalBox* Row = WidgetTree->ConstructWidget<UHorizontalBox>();
+        UVerticalBoxSlot* RowSlot = TalentsVBox->AddChildToVerticalBox(Row);
+        RowSlot->SetPadding(FMargin(0.f, 0.f, 0.f, 8.f));
+
+        // Icône talent (petit carré)
+        USizeBox* IconBox = WidgetTree->ConstructWidget<USizeBox>();
+        IconBox->SetWidthOverride(28.f);
+        IconBox->SetHeightOverride(28.f);
+        UImage* IconImg = WidgetTree->ConstructWidget<UImage>();
+        if (Talent->Icon)
+            IconImg->SetBrushFromTexture(Talent->Icon);
+        else
+            IconImg->SetColorAndOpacity(FLinearColor(CC_Gold.R, CC_Gold.G, CC_Gold.B, 0.5f));
+        IconBox->AddChild(IconImg);
+        UHorizontalBoxSlot* IconHS = Row->AddChildToHorizontalBox(IconBox);
+        IconHS->SetVerticalAlignment(VAlign_Top);
+        IconHS->SetPadding(FMargin(0.f, 0.f, 6.f, 0.f));
+
+        // Nom + description
+        UVerticalBox* TextVBox = WidgetTree->ConstructWidget<UVerticalBox>();
+        UHorizontalBoxSlot* TextHS = Row->AddChildToHorizontalBox(TextVBox);
+        TextHS->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+        TextHS->SetVerticalAlignment(VAlign_Top);
+
+        UTextBlock* NameTxt = CCMakeText(WidgetTree, Talent->DisplayName.ToString(), 12, CC_Gold);
+        TextVBox->AddChildToVerticalBox(NameTxt);
+
+        if (!Talent->Description.IsEmpty())
+        {
+            UTextBlock* DescTxt = CCMakeText(WidgetTree, Talent->Description.ToString(), 10, CC_Grey);
+            DescTxt->SetAutoWrapText(true);
+            UVerticalBoxSlot* DescSlot = TextVBox->AddChildToVerticalBox(DescTxt);
+            DescSlot->SetPadding(FMargin(0.f, 2.f, 0.f, 0.f));
+        }
+
+        // Résumé des bonus non-nuls
+        FString BonusStr;
+        if (Talent->ReloadSpeedBonus     > 0.f) BonusStr += FString::Printf(TEXT("  Rechargement +%.0f%%\n"), Talent->ReloadSpeedBonus * 100.f);
+        if (Talent->DamageResistanceBonus> 0.f) BonusStr += FString::Printf(TEXT("  Résistance +%.0f%%\n"),   Talent->DamageResistanceBonus * 100.f);
+        if (Talent->AmmoCapacityBonus    > 0.f) BonusStr += FString::Printf(TEXT("  Munitions +%.0f%%\n"),    Talent->AmmoCapacityBonus * 100.f);
+        if (Talent->MoveSpeedBonus       > 0.f) BonusStr += FString::Printf(TEXT("  Vitesse +%.0f%%\n"),       Talent->MoveSpeedBonus * 100.f);
+        if (Talent->MaxHealthBonus       > 0.f) BonusStr += FString::Printf(TEXT("  Vie +%.0f%%\n"),           Talent->MaxHealthBonus * 100.f);
+        if (Talent->StaminaBonus         > 0.f) BonusStr += FString::Printf(TEXT("  Endurance +%.0f%%\n"),     Talent->StaminaBonus * 100.f);
+        BonusStr.TrimEndInline();
+
+        if (!BonusStr.IsEmpty())
+        {
+            UTextBlock* BonusTxt = CCMakeText(WidgetTree, BonusStr, 10, FLinearColor(0.4f, 0.9f, 0.4f, 1.f));
+            UVerticalBoxSlot* BonusSlot = TextVBox->AddChildToVerticalBox(BonusTxt);
+            BonusSlot->SetPadding(FMargin(0.f, 2.f, 0.f, 0.f));
+        }
     }
 }
 

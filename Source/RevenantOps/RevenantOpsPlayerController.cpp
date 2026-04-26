@@ -242,8 +242,27 @@ void ARevenantOpsPlayerController::ShowCharacterSelectScreen() {
 void ARevenantOpsPlayerController::OnCharacterChosen(FCharacterInfo CharacterInfo) {
   if (URevenantOpsGameInstance* GI = Cast<URevenantOpsGameInstance>(GetGameInstance())) {
     GI->PendingCharacter = CharacterInfo;
+    // Pré-remplir les armes du loadout depuis l'inventaire par défaut du personnage
+    GI->PendingPrimaryWeapon   = nullptr;
+    GI->PendingSecondaryWeapon = nullptr;
+    for (const FInventoryItem& Item : CharacterInfo.DefaultInventory)
+    {
+      if (Item.Type == EInventoryItemType::Weapon && Item.WeaponClass)
+      {
+        if (!GI->PendingPrimaryWeapon)        GI->PendingPrimaryWeapon   = Item.WeaponClass;
+        else if (!GI->PendingSecondaryWeapon) GI->PendingSecondaryWeapon = Item.WeaponClass;
+      }
+    }
   }
-  ShowLoadoutScreen();
+  // Charger le niveau directement (pas d'écran de loadout)
+  bLoadoutConfirmed = true;
+  if (URevenantOpsGameInstance* GI = Cast<URevenantOpsGameInstance>(GetGameInstance()))
+  {
+    GI->bPendingMatchStart = true;
+    FName LevelName = GI->PendingLevel.MapName.IsNone() ? FName("Lvl_ThirdPerson") : GI->PendingLevel.MapName;
+    ClearFlowWidgets();
+    UGameplayStatics::OpenLevel(this, LevelName);
+  }
 }
 
 void ARevenantOpsPlayerController::OnCharacterSelectBack() {
@@ -295,23 +314,29 @@ void ARevenantOpsPlayerController::OnLoadoutConfirmed(
   bLoadoutConfirmed = true;
 
   // Sauvegarde le loadout dans le GameInstance (persiste entre niveaux)
+  FName LevelToLoad = TEXT("Lvl_ThirdPerson"); // fallback
   if (URevenantOpsGameInstance* GI = Cast<URevenantOpsGameInstance>(GetGameInstance()))
   {
     GI->PendingPrimaryWeapon   = Primary;
     GI->PendingSecondaryWeapon = Secondary;
     GI->bPendingMatchStart     = true;
+    if (!GI->PendingLevel.MapName.IsNone())
+      LevelToLoad = GI->PendingLevel.MapName;
   }
 
-  // Charge le niveau de jeu
-  UGameplayStatics::OpenLevel(this, TEXT("Lvl_ThirdPerson"));
+  // Charge le niveau choisi par le joueur
+  UGameplayStatics::OpenLevel(this, LevelToLoad);
 }
 
 void ARevenantOpsPlayerController::RestartMatch() {
-  // Remet le flag pour que ReceivedPlayer relance le match directement
+  FName LevelToLoad = TEXT("Lvl_ThirdPerson");
   if (URevenantOpsGameInstance* GI = Cast<URevenantOpsGameInstance>(GetGameInstance()))
+  {
     GI->bPendingMatchStart = true;
-
-  UGameplayStatics::OpenLevel(this, TEXT("Lvl_ThirdPerson"));
+    if (!GI->PendingLevel.MapName.IsNone())
+      LevelToLoad = GI->PendingLevel.MapName;
+  }
+  UGameplayStatics::OpenLevel(this, LevelToLoad);
 }
 
 void ARevenantOpsPlayerController::StartMercenairesMatch() {
@@ -323,11 +348,42 @@ void ARevenantOpsPlayerController::StartMercenairesMatch() {
 
   ClearFlowWidgets();
 
-  // Applique le loadout sauvegardé dans le GameInstance
+  // Applique le loadout + personnage sauvegardés dans le GameInstance
   if (URevenantOpsGameInstance* GI = Cast<URevenantOpsGameInstance>(GetGameInstance()))
   {
+    // --- Swap de personnage si une classe spécifique a été choisie ---
+    TSubclassOf<ARevenantOpsCharacter> ChosenClass = *GI->PendingCharacter.CharacterClass
+        ? TSubclassOf<ARevenantOpsCharacter>(*GI->PendingCharacter.CharacterClass)
+        : nullptr;
+    APawn* CurrentPawn = GetPawn();
+
+    if (ChosenClass && CurrentPawn && !CurrentPawn->IsA(ChosenClass))
+    {
+      // Spawn le bon personnage à la position du pawn actuel
+      FTransform SpawnTransform = CurrentPawn->GetActorTransform();
+      FActorSpawnParameters SP;
+      SP.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+      if (ARevenantOpsCharacter* NewChar = GetWorld()->SpawnActor<ARevenantOpsCharacter>(ChosenClass, SpawnTransform, SP))
+      {
+        UnPossess();
+        CurrentPawn->Destroy();
+        Possess(NewChar);
+        CurrentPawn = NewChar;
+      }
+    }
+
+    // --- Applique les talents + loadout ---
     if (ARevenantOpsCharacter* MercChar = Cast<ARevenantOpsCharacter>(GetPawn()))
     {
+      // Talents depuis l'écran de sélection (remplace les éventuels talents BP par défaut)
+      if (GI->PendingCharacter.Talents.Num() > 0)
+      {
+        MercChar->AssignedTalents = GI->PendingCharacter.Talents;
+        MercChar->ApplyTalents();
+      }
+
+      // Armes du loadout (extraites de l'inventaire par défaut)
       TArray<TSubclassOf<AWeaponBase>> Loadout;
       if (GI->PendingPrimaryWeapon)   Loadout.Add(GI->PendingPrimaryWeapon);
       if (GI->PendingSecondaryWeapon && GI->PendingSecondaryWeapon != GI->PendingPrimaryWeapon)
@@ -336,6 +392,16 @@ void ARevenantOpsPlayerController::StartMercenairesMatch() {
       {
         MercChar->SetDefaultWeaponClasses(Loadout);
         MercChar->SpawnDefaultWeapons();
+      }
+
+      // Inventaire complet du personnage (items non-armes)
+      if (GI->PendingCharacter.DefaultInventory.Num() > 0)
+      {
+        for (const FInventoryItem& Item : GI->PendingCharacter.DefaultInventory)
+        {
+          if (Item.Type != EInventoryItemType::Weapon && !Item.IsEmpty())
+            MercChar->AddItemToInventory(Item);
+        }
       }
     }
   }
