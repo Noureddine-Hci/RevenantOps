@@ -21,6 +21,7 @@
 #include "UI/LeaderboardWidget.h"
 #include "UI/LeaderboardSaveGame.h"
 #include "UI/InventoryWidget.h"
+#include "UI/MenuWidgetBase.h"
 #include "Gameplay/InventoryItem.h"
 #include "Gameplay/MercenairesGameState.h"
 #include "WeaponBase.h"
@@ -128,38 +129,52 @@ bool ARevenantOpsPlayerController::ShouldUseTouchControls() const
 // MERCENAIRES GAME FLOW
 // =============================================================================
 
+void ARevenantOpsPlayerController::DoTransition(TFunction<void()> Fn)
+{
+    if (UMenuWidgetBase* W = ActiveMenu.Get())
+        W->FadeOutThen(0.15f, MoveTemp(Fn));
+    else
+        Fn();
+    ActiveMenu.Reset();
+}
+
 void ARevenantOpsPlayerController::ShowTitleScreen() {
-  // Reset du flag de match pour afficher le Title Screen au prochain chargement
-  if (URevenantOpsGameInstance* GI = Cast<URevenantOpsGameInstance>(GetGameInstance()))
-    GI->bPendingMatchStart = false;
+  DoTransition([this]()
+  {
+    if (URevenantOpsGameInstance* GI = Cast<URevenantOpsGameInstance>(GetGameInstance()))
+      GI->bPendingMatchStart = false;
 
-  ClearFlowWidgets();
+    ClearFlowWidgets();
 
-  if (TitleScreenClass) {
-    TitleScreenWidget = CreateWidget<UTitleScreenWidget>(this, TitleScreenClass);
-    if (TitleScreenWidget) {
-      TitleScreenWidget->AddToViewport(10);
-      SetShowMouseCursor(true);
-      SetInputMode(FInputModeUIOnly());
+    if (TitleScreenClass) {
+      TitleScreenWidget = CreateWidget<UTitleScreenWidget>(this, TitleScreenClass);
+      if (TitleScreenWidget) {
+        TitleScreenWidget->AddToViewport(10);
+        ActiveMenu = TitleScreenWidget;
+        SetShowMouseCursor(true);
+        SetInputMode(FInputModeUIOnly());
+      }
     }
-  }
+  });
 }
 
 void ARevenantOpsPlayerController::ShowOptionsScreen() {
-  ClearFlowWidgets();
-
-  if (!OptionsWidgetClass) return;
-
-  OptionsWidgetInstance = CreateWidget<UOptionsWidget>(this, OptionsWidgetClass);
-  if (OptionsWidgetInstance) {
-    OptionsWidgetInstance->SetIMC(DefaultMappingContext);
-    OptionsWidgetInstance->PopulateBindings(AvailableRebinds);
-    OptionsWidgetInstance->OnBackClicked.AddDynamic(
-        this, &ARevenantOpsPlayerController::OnOptionsBack);
-    OptionsWidgetInstance->AddToViewport(10);
-    SetShowMouseCursor(true);
-    SetInputMode(FInputModeUIOnly());
-  }
+  DoTransition([this]()
+  {
+    ClearFlowWidgets();
+    if (!OptionsWidgetClass) return;
+    OptionsWidgetInstance = CreateWidget<UOptionsWidget>(this, OptionsWidgetClass);
+    if (OptionsWidgetInstance) {
+      OptionsWidgetInstance->SetIMC(DefaultMappingContext);
+      OptionsWidgetInstance->PopulateBindings(AvailableRebinds);
+      OptionsWidgetInstance->OnBackClicked.AddDynamic(
+          this, &ARevenantOpsPlayerController::OnOptionsBack);
+      OptionsWidgetInstance->AddToViewport(10);
+      ActiveMenu = OptionsWidgetInstance;
+      SetShowMouseCursor(true);
+      SetInputMode(FInputModeUIOnly());
+    }
+  });
 }
 
 void ARevenantOpsPlayerController::OnOptionsBack() {
@@ -167,35 +182,31 @@ void ARevenantOpsPlayerController::OnOptionsBack() {
 }
 
 void ARevenantOpsPlayerController::ShowLevelSelectScreen() {
-  ClearFlowWidgets();
-
-  // Fallback si aucun niveau configuré dans le BP
-  if (AvailableLevels.IsEmpty()) {
-    FLevelInfo DefaultLevel;
-    DefaultLevel.DisplayName = FText::FromString(TEXT("The Compound"));
-    DefaultLevel.MapName     = FName(TEXT("Lvl_ThirdPerson"));
-    AvailableLevels.Add(DefaultLevel);
-  }
-
-  if (!LevelSelectWidgetClass) {
-    // Pas de widget configuré → sauter directement à CharacterSelect
-    ShowCharacterSelectScreen();
-    return;
-  }
-
-  LevelSelectWidgetInstance = CreateWidget<ULevelSelectWidget>(this, LevelSelectWidgetClass);
-  if (LevelSelectWidgetInstance) {
-    LevelSelectWidgetInstance->PopulateLevels(AvailableLevels);
-    LevelSelectWidgetInstance->OnLevelChosen.AddDynamic(
-        this, &ARevenantOpsPlayerController::OnLevelChosen);
-    LevelSelectWidgetInstance->OnBackClicked.AddDynamic(
-        this, &ARevenantOpsPlayerController::OnLevelSelectBack);
-    LevelSelectWidgetInstance->AddToViewport(10);
-    SetShowMouseCursor(true);
-    FInputModeUIOnly InputMode;
-    InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-    SetInputMode(InputMode);
-  }
+  DoTransition([this]()
+  {
+    ClearFlowWidgets();
+    if (AvailableLevels.IsEmpty()) {
+      FLevelInfo DefaultLevel;
+      DefaultLevel.DisplayName = FText::FromString(TEXT("The Compound"));
+      DefaultLevel.MapName     = FName(TEXT("Lvl_ThirdPerson"));
+      AvailableLevels.Add(DefaultLevel);
+    }
+    if (!LevelSelectWidgetClass) { ShowCharacterSelectScreen(); return; }
+    LevelSelectWidgetInstance = CreateWidget<ULevelSelectWidget>(this, LevelSelectWidgetClass);
+    if (LevelSelectWidgetInstance) {
+      LevelSelectWidgetInstance->PopulateLevels(AvailableLevels);
+      LevelSelectWidgetInstance->OnLevelChosen.AddDynamic(
+          this, &ARevenantOpsPlayerController::OnLevelChosen);
+      LevelSelectWidgetInstance->OnBackClicked.AddDynamic(
+          this, &ARevenantOpsPlayerController::OnLevelSelectBack);
+      LevelSelectWidgetInstance->AddToViewport(10);
+      ActiveMenu = LevelSelectWidgetInstance;
+      SetShowMouseCursor(true);
+      FInputModeUIOnly InputMode;
+      InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+      SetInputMode(InputMode);
+    }
+  });
 }
 
 void ARevenantOpsPlayerController::OnLevelChosen(FLevelInfo LevelInfo) {
@@ -211,32 +222,28 @@ void ARevenantOpsPlayerController::OnLevelSelectBack() {
 }
 
 void ARevenantOpsPlayerController::ShowCharacterSelectScreen() {
-  ClearFlowWidgets();
-
-  // Fallback si aucun personnage configuré dans le BP
-  if (AvailableCharacters.IsEmpty()) {
-    FCharacterInfo DefaultChar;
-    DefaultChar.DisplayName = FText::FromString(TEXT("Mercenaire"));
-    AvailableCharacters.Add(DefaultChar);
-  }
-
-  if (!CharacterSelectWidgetClass) {
-    // Pas de widget configuré → sauter directement au Loadout
-    ShowLoadoutScreen();
-    return;
-  }
-
-  CharacterSelectWidgetInstance = CreateWidget<UCharacterSelectWidget>(this, CharacterSelectWidgetClass);
-  if (CharacterSelectWidgetInstance) {
-    CharacterSelectWidgetInstance->PopulateCharacters(AvailableCharacters);
-    CharacterSelectWidgetInstance->OnCharacterChosen.AddDynamic(
-        this, &ARevenantOpsPlayerController::OnCharacterChosen);
-    CharacterSelectWidgetInstance->OnBackClicked.AddDynamic(
-        this, &ARevenantOpsPlayerController::OnCharacterSelectBack);
-    CharacterSelectWidgetInstance->AddToViewport(10);
-    SetShowMouseCursor(true);
-    SetInputMode(FInputModeUIOnly());
-  }
+  DoTransition([this]()
+  {
+    ClearFlowWidgets();
+    if (AvailableCharacters.IsEmpty()) {
+      FCharacterInfo DefaultChar;
+      DefaultChar.DisplayName = FText::FromString(TEXT("Mercenaire"));
+      AvailableCharacters.Add(DefaultChar);
+    }
+    if (!CharacterSelectWidgetClass) { ShowLoadoutScreen(); return; }
+    CharacterSelectWidgetInstance = CreateWidget<UCharacterSelectWidget>(this, CharacterSelectWidgetClass);
+    if (CharacterSelectWidgetInstance) {
+      CharacterSelectWidgetInstance->PopulateCharacters(AvailableCharacters);
+      CharacterSelectWidgetInstance->OnCharacterChosen.AddDynamic(
+          this, &ARevenantOpsPlayerController::OnCharacterChosen);
+      CharacterSelectWidgetInstance->OnBackClicked.AddDynamic(
+          this, &ARevenantOpsPlayerController::OnCharacterSelectBack);
+      CharacterSelectWidgetInstance->AddToViewport(10);
+      ActiveMenu = CharacterSelectWidgetInstance;
+      SetShowMouseCursor(true);
+      SetInputMode(FInputModeUIOnly());
+    }
+  });
 }
 
 void ARevenantOpsPlayerController::OnCharacterChosen(FCharacterInfo CharacterInfo) {
@@ -270,40 +277,38 @@ void ARevenantOpsPlayerController::OnCharacterSelectBack() {
 }
 
 void ARevenantOpsPlayerController::ShowLoadoutScreen() {
-  ClearFlowWidgets();
-  bLoadoutConfirmed = false;
-
-  // If no weapon classes configured in BP, load defaults from known content paths
-  if (AvailableWeaponClasses.IsEmpty())
+  DoTransition([this]()
   {
-    static const TCHAR* DefaultPaths[] = {
-      TEXT("/Game/Mercenaires/Weapons/BP_Pistol.BP_Pistol_C"),
-      TEXT("/Game/Mercenaires/Weapons/BP_AssaultRifle.BP_AssaultRifle_C"),
-      TEXT("/Game/Mercenaires/Weapons/BP_SMG.BP_SMG_C"),
-      TEXT("/Game/Mercenaires/Weapons/BP_Shotgun.BP_Shotgun_C"),
-      TEXT("/Game/Mercenaires/Weapons/BP_Sniper.BP_Sniper_C"),
-    };
-    for (const TCHAR* Path : DefaultPaths)
+    ClearFlowWidgets();
+    bLoadoutConfirmed = false;
+
+    if (AvailableWeaponClasses.IsEmpty())
     {
-      if (UClass* WC = LoadClass<AWeaponBase>(nullptr, Path))
-      {
-        AvailableWeaponClasses.Add(WC);
+      static const TCHAR* DefaultPaths[] = {
+        TEXT("/Game/Mercenaires/Weapons/BP_Pistol.BP_Pistol_C"),
+        TEXT("/Game/Mercenaires/Weapons/BP_AssaultRifle.BP_AssaultRifle_C"),
+        TEXT("/Game/Mercenaires/Weapons/BP_SMG.BP_SMG_C"),
+        TEXT("/Game/Mercenaires/Weapons/BP_Shotgun.BP_Shotgun_C"),
+        TEXT("/Game/Mercenaires/Weapons/BP_Sniper.BP_Sniper_C"),
+      };
+      for (const TCHAR* Path : DefaultPaths)
+        if (UClass* WC = LoadClass<AWeaponBase>(nullptr, Path))
+          AvailableWeaponClasses.Add(WC);
+    }
+
+    if (LoadoutWidgetClass) {
+      LoadoutWidgetInstance = CreateWidget<ULoadoutWidget>(this, LoadoutWidgetClass);
+      if (LoadoutWidgetInstance) {
+        LoadoutWidgetInstance->PopulateFromClasses(AvailableWeaponClasses);
+        LoadoutWidgetInstance->OnLoadoutConfirmed.AddDynamic(
+            this, &ARevenantOpsPlayerController::OnLoadoutConfirmed);
+        LoadoutWidgetInstance->AddToViewport(10);
+        ActiveMenu = LoadoutWidgetInstance;
+        SetShowMouseCursor(true);
+        SetInputMode(FInputModeUIOnly());
       }
     }
-  }
-
-  if (LoadoutWidgetClass) {
-    LoadoutWidgetInstance =
-        CreateWidget<ULoadoutWidget>(this, LoadoutWidgetClass);
-    if (LoadoutWidgetInstance) {
-      LoadoutWidgetInstance->PopulateFromClasses(AvailableWeaponClasses);
-      LoadoutWidgetInstance->OnLoadoutConfirmed.AddDynamic(
-          this, &ARevenantOpsPlayerController::OnLoadoutConfirmed);
-      LoadoutWidgetInstance->AddToViewport(10);
-      SetShowMouseCursor(true);
-      SetInputMode(FInputModeUIOnly());
-    }
-  }
+  }); // DoTransition
 }
 
 void ARevenantOpsPlayerController::OnLoadoutConfirmed(

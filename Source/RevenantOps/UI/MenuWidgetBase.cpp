@@ -39,6 +39,24 @@ void UMenuWidgetBase::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
         }
     }
 
+    // ── Fade-out ──────────────────────────────────────────────────────────────
+    if (bFadeOutActive)
+    {
+        FadeOutElapsed += InDeltaTime;
+        const float A = FMath::Clamp(FadeOutElapsed / FadeOutDuration, 0.f, 1.f);
+        SetRenderOpacity(1.f - A * A * (3.f - 2.f * A)); // smoothstep inverse
+
+        if (A >= 1.f)
+        {
+            bFadeOutActive = false;
+            if (FadeOutCallback)
+            {
+                auto CB = MoveTemp(FadeOutCallback);
+                CB(); // peut appeler RemoveFromParent → ne plus accéder à this après
+            }
+        }
+    }
+
     // ── Hover pulse ───────────────────────────────────────────────────────────
     // Pour chaque bouton enregistré : pulse l'opacité s'il est survolé,
     // sinon restaure à 1. IsHovered() est fiable en NativeTick.
@@ -81,6 +99,21 @@ void UMenuWidgetBase::PlayClickSound()
 {
     if (SoundClick)
         UGameplayStatics::PlaySound2D(this, SoundClick);
+}
+
+void UMenuWidgetBase::FadeOutThen(float Duration, TFunction<void()> Callback)
+{
+    if (Duration <= 0.f)
+    {
+        if (Callback) Callback();
+        return;
+    }
+    // Annuler le fade-in en cours s'il y en a un
+    bFadeActive    = false;
+    FadeOutDuration = Duration;
+    FadeOutElapsed  = 0.f;
+    FadeOutCallback = MoveTemp(Callback);
+    bFadeOutActive  = true;
 }
 
 void UMenuWidgetBase::HandleHover()

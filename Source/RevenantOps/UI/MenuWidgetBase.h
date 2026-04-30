@@ -62,16 +62,30 @@ protected:
      *  - Enregistre le bouton pour le hover pulse (NativeTick)
      */
     void BindButtonSounds(UButton* Btn);
-
     void PlayClickSound();
+
+public:
+    /**
+     *  Fade l'opacite de 1→0 sur Duration secondes, puis appelle Callback.
+     *  Utiliser avant RemoveFromParent pour une transition douce.
+     */
+    void FadeOutThen(float Duration, TFunction<void()> Callback);
+
+protected:
 
 private:
     // Fade-in
     float FadeElapsed = 0.f;
     bool  bFadeActive = false;
 
-    // Hover pulse : liste de tous les boutons enregistrés
+    // Hover pulse
     TArray<TWeakObjectPtr<UButton>> RegisteredButtons;
+
+    // Fade-out
+    float              FadeOutDuration = 0.f;
+    float              FadeOutElapsed  = 0.f;
+    bool               bFadeOutActive  = false;
+    TFunction<void()>  FadeOutCallback;
 
     UFUNCTION() void HandleHover();
 };
