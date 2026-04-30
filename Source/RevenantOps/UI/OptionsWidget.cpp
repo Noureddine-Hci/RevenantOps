@@ -196,8 +196,7 @@ void UOptionsWidget::BuildDefaultUI()
     // Titre
     UTextBlock* Title = WidgetTree->ConstructWidget<UTextBlock>();
     Title->SetText(FText::FromString(TEXT("BRIEFING — CONFIGURATION TOUCHES")));
-    FSlateFontInfo TitleFont = Title->GetFont();
-    TitleFont.Size = 22; Title->SetFont(TitleFont);
+    Title->SetFont(UUIHelpers::GetFont(Th, 22));
     Title->SetColorAndOpacity(FSlateColor(C_Gold));
     VBox->AddChildToVerticalBox(Title)->SetPadding(FMargin(0.f, 0.f, 0.f, 18.f));
 
@@ -216,7 +215,7 @@ void UOptionsWidget::BuildDefaultUI()
     {
         UTextBlock* T = WidgetTree->ConstructWidget<UTextBlock>();
         T->SetText(FText::FromString(Label));
-        FSlateFontInfo F = T->GetFont(); F.Size = 12; T->SetFont(F);
+        T->SetFont(UUIHelpers::GetFont(Th, 12));
         T->SetColorAndOpacity(FSlateColor(C_GoldDim));
         UHorizontalBoxSlot* S = Headers->AddChildToHorizontalBox(T);
         S->SetSize(FSlateChildSize(ESlateSizeRule::Automatic));
@@ -240,7 +239,7 @@ void UOptionsWidget::BuildDefaultUI()
     BtnBack = WidgetTree->ConstructWidget<UButton>();
     UTextBlock* BackLbl = WidgetTree->ConstructWidget<UTextBlock>();
     BackLbl->SetText(FText::FromString(TEXT("< RETOUR")));
-    FSlateFontInfo BackFont = BackLbl->GetFont(); BackFont.Size = 15; BackLbl->SetFont(BackFont);
+    BackLbl->SetFont(UUIHelpers::GetFont(Th, 15));
     BackLbl->SetColorAndOpacity(FSlateColor(C_Grey));
     BtnBack->AddChild(BackLbl);
     BtnBack->SetStyle(UUIHelpers::MakeStandardButtonStyle(Th));
@@ -278,7 +277,7 @@ void UOptionsWidget::PopulateBindings(const TArray<FKeyRebindEntry>& Bindings)
         // Action name
         UTextBlock* ActionLbl = WidgetTree->ConstructWidget<UTextBlock>();
         ActionLbl->SetText(Bindings[i].DisplayName);
-        FSlateFontInfo F = ActionLbl->GetFont(); F.Size = 14; ActionLbl->SetFont(F);
+        ActionLbl->SetFont(UUIHelpers::GetFont(Th, 14));
         ActionLbl->SetColorAndOpacity(FSlateColor(C_White));
         UHorizontalBoxSlot* ActionSlot = HBox->AddChildToHorizontalBox(ActionLbl);
         ActionSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
@@ -287,7 +286,7 @@ void UOptionsWidget::PopulateBindings(const TArray<FKeyRebindEntry>& Bindings)
         // Touche courante
         UTextBlock* KeyTxt = WidgetTree->ConstructWidget<UTextBlock>();
         KeyTxt->SetColorAndOpacity(FSlateColor(C_Gold));
-        FSlateFontInfo KF = KeyTxt->GetFont(); KF.Size = 14; KeyTxt->SetFont(KF);
+        KeyTxt->SetFont(UUIHelpers::GetFont(Th, 14));
         UHorizontalBoxSlot* KeySlot = HBox->AddChildToHorizontalBox(KeyTxt);
         KeySlot->SetSize(FSlateChildSize(ESlateSizeRule::Automatic));
         KeySlot->SetPadding(FMargin(16.f, 0.f));
@@ -296,7 +295,7 @@ void UOptionsWidget::PopulateBindings(const TArray<FKeyRebindEntry>& Bindings)
         // Bouton changer
         UButton* ChangeBtn = WidgetTree->ConstructWidget<UButton>();
         UTextBlock* ChangeLbl = WidgetTree->ConstructWidget<UTextBlock>();
-        FSlateFontInfo CF = ChangeLbl->GetFont(); CF.Size = 12; ChangeLbl->SetFont(CF);
+        ChangeLbl->SetFont(UUIHelpers::GetFont(Th, 12));
         ChangeLbl->SetText(FText::FromString(TEXT("Changer")));
         ChangeLbl->SetColorAndOpacity(FSlateColor(C_White));
         ChangeBtn->AddChild(ChangeLbl);
