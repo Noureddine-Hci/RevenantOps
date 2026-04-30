@@ -112,6 +112,21 @@ public:
     static FLinearColor WithAlpha(const FLinearColor& Color, float Alpha);
 
     // ─────────────────────────────────────────────────────────────────────────
+    // TYPOGRAPHIE
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     *  Retourne la FSlateFontInfo appropriee depuis le theme :
+     *  - Size >= 24 → FontTitle (stencil militaire)
+     *  - Size <  24 → FontBody  (corps de texte)
+     *  - Fallback   → FCoreStyle "Bold"/"Regular" si le theme est null ou
+     *                 si la font n'a pas ete assignee dans le DataAsset.
+     *  La taille demandee est toujours forcee sur le resultat.
+     */
+    UFUNCTION(BlueprintPure, Category = "UIHelpers|Typography")
+    static FSlateFontInfo GetFont(const UUITheme* Theme, int32 Size);
+
+    // ─────────────────────────────────────────────────────────────────────────
     // THEME GLOBAL
     // ─────────────────────────────────────────────────────────────────────────
 

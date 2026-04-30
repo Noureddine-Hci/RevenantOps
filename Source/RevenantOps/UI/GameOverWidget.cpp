@@ -79,10 +79,10 @@ void UGameOverWidget::BuildDefaultUI() {
       return S;
   };
 
-  FSlateFontInfo LargeFont = FCoreStyle::GetDefaultFontStyle("Bold",    32);
-  FSlateFontInfo MedFont   = FCoreStyle::GetDefaultFontStyle("Regular", 20);
-  FSlateFontInfo BtnFont   = FCoreStyle::GetDefaultFontStyle("Bold",    16);
-  FSlateFontInfo SmallFont = FCoreStyle::GetDefaultFontStyle("Regular", 14);
+  FSlateFontInfo LargeFont = UUIHelpers::GetFont(T, 32);
+  FSlateFontInfo MedFont   = UUIHelpers::GetFont(T, 20);
+  FSlateFontInfo BtnFont   = UUIHelpers::GetFont(T, 16);
+  FSlateFontInfo SmallFont = UUIHelpers::GetFont(T, 14);
 
   UVerticalBox* VBox = WidgetTree->ConstructWidget<UVerticalBox>();
   UCanvasPanelSlot* VBoxSlot = Canvas->AddChildToCanvas(VBox);
@@ -107,7 +107,7 @@ void UGameOverWidget::BuildDefaultUI() {
   {
       UTextBlock* Header = WidgetTree->ConstructWidget<UTextBlock>();
       Header->SetText(FText::FromString(TEXT("RAPPORT DE MISSION")));
-      Header->SetFont(FCoreStyle::GetDefaultFontStyle("Bold", 13));
+      Header->SetFont(UUIHelpers::GetFont(T, 13));
       Header->SetColorAndOpacity(FSlateColor(C_GoldDim));
       Header->SetJustification(ETextJustify::Center);
       VBox->AddChildToVerticalBox(Header)->SetPadding(FMargin(0.f, 0.f, 0.f, 6.f));

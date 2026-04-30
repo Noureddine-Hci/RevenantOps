@@ -1,4 +1,4 @@
-// Copyright RevenantOps. All Rights Reserved.
+﻿// Copyright RevenantOps. All Rights Reserved.
 #include "UI/CharacterSelectWidget.h"
 #include "UI/UITheme.h"
 #include "UI/UIHelpers.h"
@@ -35,18 +35,19 @@ static FButtonStyle CSW_MakeButtonStyle(FLinearColor Normal, FLinearColor Hover)
     return S;
 }
 
-static UTextBlock* CSW_MakeText(UWidgetTree* WT, const FString& Str, int32 Size,
+static UTextBlock* CSW_MakeText(UWidgetTree* WT, const UUITheme* Theme,
+                                const FString& Str, int32 Size,
                                 FLinearColor Color, ETextJustify::Type Justify = ETextJustify::Left)
 {
     UTextBlock* T = WT->ConstructWidget<UTextBlock>();
     T->SetText(FText::FromString(Str));
-    FSlateFontInfo F = T->GetFont(); F.Size = Size; T->SetFont(F);
+    T->SetFont(UUIHelpers::GetFont(Theme, Size));
     T->SetColorAndOpacity(FSlateColor(Color));
     T->SetJustification(Justify);
     return T;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 TSharedRef<SWidget> UCharacterSelectWidget::RebuildWidget()
 {
@@ -85,7 +86,7 @@ void UCharacterSelectWidget::NativeDestruct()
     Super::NativeDestruct();
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 void UCharacterSelectWidget::BuildDefaultUI()
 {
@@ -104,7 +105,7 @@ void UCharacterSelectWidget::BuildDefaultUI()
     const FLinearColor C_CardSel   = FLinearColor(0.15f, 0.12f, 0.07f, 1.f);
     const FLinearColor C_CardUnsel = FLinearColor(0.06f, 0.05f, 0.04f, 1.f);
 
-    // ── Root ─────────────────────────────────────────────────────────────────
+    // â”€â”€ Root â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     UCanvasPanel* Root = WidgetTree->ConstructWidget<UCanvasPanel>();
     WidgetTree->RootWidget = Root;
 
@@ -124,19 +125,19 @@ void UCharacterSelectWidget::BuildDefaultUI()
     TopBarSlot->SetOffsets(FMargin(0.f, 0.f, 0.f, 4.f));
     TopBarSlot->SetAutoSize(true);
 
-    // ── Layout principal ──────────────────────────────────────────────────────
+    // â”€â”€ Layout principal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     UVerticalBox* VMain = WidgetTree->ConstructWidget<UVerticalBox>();
     UCanvasPanelSlot* VSlot = Root->AddChildToCanvas(VMain);
     VSlot->SetAnchors(FAnchors(0.f, 0.f, 1.f, 1.f));
     VSlot->SetOffsets(FMargin(60.f, 20.f, 60.f, 20.f));
 
     // Titre
-    UTextBlock* Title = CSW_MakeText(WidgetTree, TEXT("SELECTION DU PERSONNAGE"), 30, C_Gold, ETextJustify::Center);
+    UTextBlock* Title = CSW_MakeText(WidgetTree, T, TEXT("SELECTION DU PERSONNAGE"), 30, C_Gold, ETextJustify::Center);
     UVerticalBoxSlot* TitleSlot = VMain->AddChildToVerticalBox(Title);
     TitleSlot->SetHorizontalAlignment(HAlign_Center);
     TitleSlot->SetPadding(FMargin(0.f, 16.f, 0.f, 24.f));
 
-    // ── Zone centrale : portrait gauche + carousel + info droite ──────────────
+    // â”€â”€ Zone centrale : portrait gauche + carousel + info droite â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     UHorizontalBox* MainRow = WidgetTree->ConstructWidget<UHorizontalBox>();
     UVerticalBoxSlot* MainRowSlot = VMain->AddChildToVerticalBox(MainRow);
     MainRowSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
@@ -175,7 +176,7 @@ void UCharacterSelectWidget::BuildDefaultUI()
 
     BtnPrev = WidgetTree->ConstructWidget<UButton>();
     BtnPrev->SetStyle(CSW_MakeButtonStyle(C_Panel, C_PanelMid));
-    BtnPrev->AddChild(CSW_MakeText(WidgetTree, TEXT(" < "), 22, C_Gold));
+    BtnPrev->AddChild(CSW_MakeText(WidgetTree, T, TEXT(" < "), 22, C_Gold));
     UHorizontalBoxSlot* PrevHS = CarouselRow->AddChildToHorizontalBox(BtnPrev);
     PrevHS->SetVerticalAlignment(VAlign_Center);
     PrevHS->SetSize(FSlateChildSize(ESlateSizeRule::Automatic));
@@ -188,14 +189,14 @@ void UCharacterSelectWidget::BuildDefaultUI()
 
     BtnNext = WidgetTree->ConstructWidget<UButton>();
     BtnNext->SetStyle(CSW_MakeButtonStyle(C_Panel, C_PanelMid));
-    BtnNext->AddChild(CSW_MakeText(WidgetTree, TEXT(" > "), 22, C_Gold));
+    BtnNext->AddChild(CSW_MakeText(WidgetTree, T, TEXT(" > "), 22, C_Gold));
     UHorizontalBoxSlot* NextHS = CarouselRow->AddChildToHorizontalBox(BtnNext);
     NextHS->SetVerticalAlignment(VAlign_Center);
     NextHS->SetSize(FSlateChildSize(ESlateSizeRule::Automatic));
     NextHS->SetPadding(FMargin(12.f, 0.f, 0.f, 0.f));
 
     // Nom du perso
-    CharNameText = CSW_MakeText(WidgetTree, TEXT("---"), 24, C_White, ETextJustify::Center);
+    CharNameText = CSW_MakeText(WidgetTree, T, TEXT("---"), 24, C_White, ETextJustify::Center);
     UVerticalBoxSlot* NameVSlot = CenterVBox->AddChildToVerticalBox(CharNameText);
     NameVSlot->SetHorizontalAlignment(HAlign_Center);
     NameVSlot->SetPadding(FMargin(0.f, 0.f, 0.f, 8.f));
@@ -213,11 +214,11 @@ void UCharacterSelectWidget::BuildDefaultUI()
     UBorderSlot* InfoBSlot = Cast<UBorderSlot>(InfoPanel->AddChild(InfoVBox));
     if (InfoBSlot) InfoBSlot->SetPadding(FMargin(16.f, 16.f));
 
-    UTextBlock* InfoTitle = CSW_MakeText(WidgetTree, TEXT("MERCENAIRE"), 14, C_GoldDim);
+    UTextBlock* InfoTitle = CSW_MakeText(WidgetTree, T, TEXT("MERCENAIRE"), 14, C_GoldDim);
     UVerticalBoxSlot* InfoTitleSlot = InfoVBox->AddChildToVerticalBox(InfoTitle);
     InfoTitleSlot->SetPadding(FMargin(0.f, 0.f, 0.f, 12.f));
 
-    // Ligne décorative
+    // Ligne dÃ©corative
     UBorder* Sep = WidgetTree->ConstructWidget<UBorder>();
     Sep->SetBrushColor(C_Red);
     UVerticalBoxSlot* SepSlot = InfoVBox->AddChildToVerticalBox(Sep);
@@ -226,16 +227,16 @@ void UCharacterSelectWidget::BuildDefaultUI()
     if (SepBSlot) SepBSlot->SetPadding(FMargin(0.f, 1.f));
 
     // Sous-titre TALENTS
-    UTextBlock* TalentsTitle = CSW_MakeText(WidgetTree, TEXT("TALENTS"), 12, C_GoldDim);
+    UTextBlock* TalentsTitle = CSW_MakeText(WidgetTree, T, TEXT("TALENTS"), 12, C_GoldDim);
     UVerticalBoxSlot* TalentsTitleSlot = InfoVBox->AddChildToVerticalBox(TalentsTitle);
     TalentsTitleSlot->SetPadding(FMargin(0.f, 0.f, 0.f, 8.f));
 
-    // VBox dynamique — peuplé dans RefreshInfo()
+    // VBox dynamique â€” peuplÃ© dans RefreshInfo()
     TalentsVBox = WidgetTree->ConstructWidget<UVerticalBox>();
     UVerticalBoxSlot* TalentsVSlot = InfoVBox->AddChildToVerticalBox(TalentsVBox);
     TalentsVSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
 
-    // Ligne séparatrice
+    // Ligne sÃ©paratrice
     UBorder* Sep2 = WidgetTree->ConstructWidget<UBorder>();
     Sep2->SetBrushColor(C_GoldDim);
     UVerticalBoxSlot* Sep2Slot = InfoVBox->AddChildToVerticalBox(Sep2);
@@ -243,33 +244,33 @@ void UCharacterSelectWidget::BuildDefaultUI()
     UBorderSlot* Sep2B = Cast<UBorderSlot>(Sep2->AddChild(WidgetTree->ConstructWidget<UTextBlock>()));
     if (Sep2B) Sep2B->SetPadding(FMargin(0.f, 1.f));
 
-    // Sous-titre ÉQUIPEMENT
-    UTextBlock* InvTitle = CSW_MakeText(WidgetTree, TEXT("ÉQUIPEMENT"), 12, C_GoldDim);
+    // Sous-titre Ã‰QUIPEMENT
+    UTextBlock* InvTitle = CSW_MakeText(WidgetTree, T, TEXT("Ã‰QUIPEMENT"), 12, C_GoldDim);
     UVerticalBoxSlot* InvTitleSlot = InfoVBox->AddChildToVerticalBox(InvTitle);
     InvTitleSlot->SetPadding(FMargin(0.f, 0.f, 0.f, 6.f));
 
-    // Grille 3x3 — peuplée dans RefreshInfo()
+    // Grille 3x3 â€” peuplÃ©e dans RefreshInfo()
     InventoryGrid = WidgetTree->ConstructWidget<UUniformGridPanel>();
     InventoryGrid->SetSlotPadding(FMargin(2.f));
     UVerticalBoxSlot* GridSlot = InfoVBox->AddChildToVerticalBox(InventoryGrid);
     GridSlot->SetPadding(FMargin(0.f, 0.f, 0.f, 8.f));
 
     // Hint navigation en bas
-    UTextBlock* InfoHint = CSW_MakeText(WidgetTree,
+    UTextBlock* InfoHint = CSW_MakeText(WidgetTree, T,
         TEXT("Utilisez < > pour\nnaviguer."),
         11, C_Grey);
     InfoHint->SetAutoWrapText(true);
     UVerticalBoxSlot* HintSlot = InfoVBox->AddChildToVerticalBox(InfoHint);
     HintSlot->SetPadding(FMargin(0.f, 4.f, 0.f, 0.f));
 
-    // ── Boutons bas ───────────────────────────────────────────────────────────
+    // â”€â”€ Boutons bas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     UHorizontalBox* BtnRow = WidgetTree->ConstructWidget<UHorizontalBox>();
     UVerticalBoxSlot* BtnRowSlot = VMain->AddChildToVerticalBox(BtnRow);
     BtnRowSlot->SetHorizontalAlignment(HAlign_Fill);
 
     BtnBack = WidgetTree->ConstructWidget<UButton>();
     BtnBack->SetStyle(CSW_MakeButtonStyle(C_PanelMid, UUIHelpers::WithAlpha(C_Gold, 0.15f)));
-    BtnBack->AddChild(CSW_MakeText(WidgetTree, TEXT("< RETOUR"), 16, C_Grey));
+    BtnBack->AddChild(CSW_MakeText(WidgetTree, T, TEXT("< RETOUR"), 16, C_Grey));
     UHorizontalBoxSlot* BackHS = BtnRow->AddChildToHorizontalBox(BtnBack);
     BackHS->SetSize(FSlateChildSize(ESlateSizeRule::Automatic));
     BackHS->SetPadding(FMargin(0.f, 0.f, 16.f, 0.f));
@@ -280,12 +281,12 @@ void UCharacterSelectWidget::BuildDefaultUI()
 
     BtnConfirm = WidgetTree->ConstructWidget<UButton>();
     BtnConfirm->SetStyle(CSW_MakeButtonStyle(UUIHelpers::WithAlpha(C_Red, 0.85f), C_Red));
-    BtnConfirm->AddChild(CSW_MakeText(WidgetTree, TEXT("SELECTIONNER  >"), 16, C_White));
+    BtnConfirm->AddChild(CSW_MakeText(WidgetTree, T, TEXT("SELECTIONNER  >"), 16, C_White));
     UHorizontalBoxSlot* ConfirmHS = BtnRow->AddChildToHorizontalBox(BtnConfirm);
     ConfirmHS->SetSize(FSlateChildSize(ESlateSizeRule::Automatic));
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 void UCharacterSelectWidget::PopulateCharacters(const TArray<FCharacterInfo>& Characters)
 {
@@ -340,7 +341,7 @@ void UCharacterSelectWidget::RefreshCarousel()
         UVerticalBoxSlot* ThumbVSlot = CardVBox->AddChildToVerticalBox(ThumbSB);
         ThumbVSlot->SetHorizontalAlignment(HAlign_Center);
 
-        UTextBlock* CardName = CSW_MakeText(WidgetTree,
+        UTextBlock* CardName = CSW_MakeText(WidgetTree, T,
             CachedCharacters[Idx].DisplayName.ToString(),
             bSelected ? 12 : 9,
             bSelected ? C_White : C_Grey,
@@ -368,10 +369,10 @@ void UCharacterSelectWidget::RefreshInfo()
     {
         if (PreviewActor)
         {
-            // Mettre à jour le mesh du preview actor
+            // Mettre Ã  jour le mesh du preview actor
             PreviewActor->UpdateMesh(Info.PreviewMesh, Info.PreviewAnimClass);
 
-            // Afficher le render target dans le portrait dès qu'il est prêt
+            // Afficher le render target dans le portrait dÃ¨s qu'il est prÃªt
             if (PreviewActor->RenderTarget)
             {
                 FSlateBrush Brush;
@@ -392,13 +393,13 @@ void UCharacterSelectWidget::RefreshInfo()
         }
     }
 
-    // ── Grille Inventaire ─────────────────────────────────────────────────────
+    // â”€â”€ Grille Inventaire â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (InventoryGrid && WidgetTree)
     {
         InventoryGrid->ClearChildren();
-        UUITheme* TInv = GetTheme();
+        UUITheme* T = GetTheme();
         const FLinearColor C_PanelMid = FLinearColor(0.10f, 0.09f, 0.07f, 1.f);
-        const FLinearColor C_Grey     = TInv ? TInv->GreySoft : FLinearColor(0.45f, 0.42f, 0.38f, 1.f);
+        const FLinearColor C_Grey     = T ? T->GreySoft : FLinearColor(0.45f, 0.42f, 0.38f, 1.f);
 
         const TArray<FInventoryItem>& Items = Info.DefaultInventory;
         const int32 MaxSlots = 9;
@@ -421,7 +422,7 @@ void UCharacterSelectWidget::RefreshInfo()
                     ItemImg->SetBrushFromTexture(Item.ItemIcon);
                 else
                 {
-                    // Couleur par type si pas d'icône
+                    // Couleur par type si pas d'icÃ´ne
                     FLinearColor TypeColor = C_Grey;
                     switch (Item.Type)
                     {
@@ -451,18 +452,18 @@ void UCharacterSelectWidget::RefreshInfo()
         }
     }
 
-    // ── Panneau Talents ───────────────────────────────────────────────────────
+    // â”€â”€ Panneau Talents â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (!TalentsVBox || !WidgetTree) return;
     TalentsVBox->ClearChildren();
 
-    UUITheme* TTal = GetTheme();
-    const FLinearColor C_Gold    = TTal ? TTal->GoldTarnish : FLinearColor(0.85f, 0.70f, 0.30f, 1.f);
-    const FLinearColor C_Grey    = TTal ? TTal->GreySoft    : FLinearColor(0.45f, 0.42f, 0.38f, 1.f);
-    const FLinearColor C_Bonus   = FLinearColor(0.4f, 0.9f, 0.4f, 1.f); // vert stat — pas dans theme
+    UUITheme* T = GetTheme();
+    const FLinearColor C_Gold    = T ? T->GoldTarnish : FLinearColor(0.85f, 0.70f, 0.30f, 1.f);
+    const FLinearColor C_Grey    = T ? T->GreySoft    : FLinearColor(0.45f, 0.42f, 0.38f, 1.f);
+    const FLinearColor C_Bonus   = FLinearColor(0.4f, 0.9f, 0.4f, 1.f); // vert stat â€” pas dans theme
 
     if (Info.Talents.IsEmpty())
     {
-        UTextBlock* NoTalent = CSW_MakeText(WidgetTree, TEXT("Aucun talent assigné."), 11, C_Grey);
+        UTextBlock* NoTalent = CSW_MakeText(WidgetTree, T, TEXT("Aucun talent assignÃ©."), 11, C_Grey);
         NoTalent->SetAutoWrapText(true);
         TalentsVBox->AddChildToVerticalBox(NoTalent);
         return;
@@ -476,7 +477,7 @@ void UCharacterSelectWidget::RefreshInfo()
         UVerticalBoxSlot* RowSlot = TalentsVBox->AddChildToVerticalBox(Row);
         RowSlot->SetPadding(FMargin(0.f, 0.f, 0.f, 8.f));
 
-        // Icône talent (petit carré)
+        // IcÃ´ne talent (petit carrÃ©)
         USizeBox* IconBox = WidgetTree->ConstructWidget<USizeBox>();
         IconBox->SetWidthOverride(28.f);
         IconBox->SetHeightOverride(28.f);
@@ -496,21 +497,21 @@ void UCharacterSelectWidget::RefreshInfo()
         TextHS->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
         TextHS->SetVerticalAlignment(VAlign_Top);
 
-        UTextBlock* NameTxt = CSW_MakeText(WidgetTree, Talent->DisplayName.ToString(), 12, C_Gold);
+        UTextBlock* NameTxt = CSW_MakeText(WidgetTree, T, Talent->DisplayName.ToString(), 12, C_Gold);
         TextVBox->AddChildToVerticalBox(NameTxt);
 
         if (!Talent->Description.IsEmpty())
         {
-            UTextBlock* DescTxt = CSW_MakeText(WidgetTree, Talent->Description.ToString(), 10, C_Grey);
+            UTextBlock* DescTxt = CSW_MakeText(WidgetTree, T, Talent->Description.ToString(), 10, C_Grey);
             DescTxt->SetAutoWrapText(true);
             UVerticalBoxSlot* DescSlot = TextVBox->AddChildToVerticalBox(DescTxt);
             DescSlot->SetPadding(FMargin(0.f, 2.f, 0.f, 0.f));
         }
 
-        // Résumé des bonus non-nuls
+        // RÃ©sumÃ© des bonus non-nuls
         FString BonusStr;
         if (Talent->ReloadSpeedBonus     > 0.f) BonusStr += FString::Printf(TEXT("  Rechargement +%.0f%%\n"), Talent->ReloadSpeedBonus * 100.f);
-        if (Talent->DamageResistanceBonus> 0.f) BonusStr += FString::Printf(TEXT("  Résistance +%.0f%%\n"),   Talent->DamageResistanceBonus * 100.f);
+        if (Talent->DamageResistanceBonus> 0.f) BonusStr += FString::Printf(TEXT("  RÃ©sistance +%.0f%%\n"),   Talent->DamageResistanceBonus * 100.f);
         if (Talent->AmmoCapacityBonus    > 0.f) BonusStr += FString::Printf(TEXT("  Munitions +%.0f%%\n"),    Talent->AmmoCapacityBonus * 100.f);
         if (Talent->MoveSpeedBonus       > 0.f) BonusStr += FString::Printf(TEXT("  Vitesse +%.0f%%\n"),       Talent->MoveSpeedBonus * 100.f);
         if (Talent->MaxHealthBonus       > 0.f) BonusStr += FString::Printf(TEXT("  Vie +%.0f%%\n"),           Talent->MaxHealthBonus * 100.f);
@@ -519,7 +520,7 @@ void UCharacterSelectWidget::RefreshInfo()
 
         if (!BonusStr.IsEmpty())
         {
-            UTextBlock* BonusTxt = CSW_MakeText(WidgetTree, BonusStr, 10, C_Bonus);
+            UTextBlock* BonusTxt = CSW_MakeText(WidgetTree, T, BonusStr, 10, C_Bonus);
             UVerticalBoxSlot* BonusSlot = TextVBox->AddChildToVerticalBox(BonusTxt);
             BonusSlot->SetPadding(FMargin(0.f, 2.f, 0.f, 0.f));
         }

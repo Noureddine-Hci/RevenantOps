@@ -186,12 +186,12 @@ void ULoadoutWidget::BuildDefaultUI()
     VS->SetAutoSize(true);
     VS->SetZOrder(2);
 
-    FSlateFontInfo TitleFont  = FCoreStyle::GetDefaultFontStyle("Bold",    28);
-    FSlateFontInfo LabelFont  = FCoreStyle::GetDefaultFontStyle("Bold",    14);
-    FSlateFontInfo ArrowFont  = FCoreStyle::GetDefaultFontStyle("Bold",    20);
-    FSlateFontInfo WeaponFont = FCoreStyle::GetDefaultFontStyle("Regular", 18);
-    FSlateFontInfo StatsFont  = FCoreStyle::GetDefaultFontStyle("Regular", 12);
-    FSlateFontInfo BtnFont    = FCoreStyle::GetDefaultFontStyle("Bold",    16);
+    FSlateFontInfo TitleFont  = UUIHelpers::GetFont(T, 28);
+    FSlateFontInfo LabelFont  = UUIHelpers::GetFont(T, 14);
+    FSlateFontInfo ArrowFont  = UUIHelpers::GetFont(T, 20);
+    FSlateFontInfo WeaponFont = UUIHelpers::GetFont(T, 18);
+    FSlateFontInfo StatsFont  = UUIHelpers::GetFont(T, 12);
+    FSlateFontInfo BtnFont    = UUIHelpers::GetFont(T, 16);
 
     auto AddLabel = [&](const FString& Str, FSlateFontInfo Font,
                         const FLinearColor& Color, FMargin Pad)

@@ -1,4 +1,4 @@
-// Copyright RevenantOps. All Rights Reserved.
+﻿// Copyright RevenantOps. All Rights Reserved.
 #include "UI/LevelSelectWidget.h"
 #include "UI/UITheme.h"
 #include "UI/UIHelpers.h"
@@ -21,7 +21,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "UI/LeaderboardSaveGame.h"
 
-// ─── Helpers fichier-local ────────────────────────────────────────────────────
+// â”€â”€â”€ Helpers fichier-local â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 static FSlateBrush LSW_MakeBrush(const FLinearColor& Color)
 {
     FSlateBrush B; B.TintColor = FSlateColor(Color); return B;
@@ -36,19 +36,20 @@ static FButtonStyle LSW_MakeButtonStyle(const FLinearColor& Normal, const FLinea
     return S;
 }
 
-static UTextBlock* LSW_MakeText(UWidgetTree* WT, const FString& Str, int32 Size,
+static UTextBlock* LSW_MakeText(UWidgetTree* WT, const UUITheme* Theme,
+                                 const FString& Str, int32 Size,
                                  const FLinearColor& Color,
                                  ETextJustify::Type Justify = ETextJustify::Left)
 {
     UTextBlock* T = WT->ConstructWidget<UTextBlock>();
     T->SetText(FText::FromString(Str));
-    FSlateFontInfo F = T->GetFont(); F.Size = Size; T->SetFont(F);
+    T->SetFont(UUIHelpers::GetFont(Theme, Size));
     T->SetColorAndOpacity(FSlateColor(Color));
     T->SetJustification(Justify);
     return T;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 TSharedRef<SWidget> ULevelSelectWidget::RebuildWidget()
 {
@@ -60,7 +61,7 @@ TSharedRef<SWidget> ULevelSelectWidget::RebuildWidget()
 void ULevelSelectWidget::NativeConstruct()
 {
     Super::NativeConstruct();
-    UE_LOG(LogTemp, Warning, TEXT("[LevelSelect] NativeConstruct — CarouselBox=%s BtnPrev=%s BtnNext=%s BtnConfirm=%s BtnBack=%s"),
+    UE_LOG(LogTemp, Warning, TEXT("[LevelSelect] NativeConstruct â€” CarouselBox=%s BtnPrev=%s BtnNext=%s BtnConfirm=%s BtnBack=%s"),
         CarouselBox ? TEXT("OK") : TEXT("null"),
         BtnPrev ? TEXT("OK") : TEXT("null"),
         BtnNext ? TEXT("OK") : TEXT("null"),
@@ -81,25 +82,25 @@ void ULevelSelectWidget::NativeConstruct()
 
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 void ULevelSelectWidget::BuildDefaultUI()
 {
     if (!WidgetTree) return;
     bUIBuilt = true;
 
-    // ── Theme ────────────────────────────────────────────────────────────────
+    // â”€â”€ Theme â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     UUITheme* T = GetTheme();
     const FLinearColor C_BgDark    = T ? T->BgDeep     : FLinearColor(0.03f, 0.025f, 0.02f, 1.f);
     const FLinearColor C_PanelDark = T ? T->BgPanel     : FLinearColor(0.07f, 0.06f,  0.04f, 1.f);
-    const FLinearColor C_PanelMid  = FLinearColor(0.10f, 0.09f, 0.07f, 1.f); // intermédiaire
+    const FLinearColor C_PanelMid  = FLinearColor(0.10f, 0.09f, 0.07f, 1.f); // intermÃ©diaire
     const FLinearColor C_Gold      = T ? T->GoldTarnish : FLinearColor(0.85f, 0.70f,  0.30f, 1.f);
     const FLinearColor C_GoldDim   = T ? T->GoldDim     : FLinearColor(0.55f, 0.45f,  0.20f, 1.f);
     const FLinearColor C_White     = T ? T->WhiteText   : FLinearColor(0.95f, 0.93f,  0.88f, 1.f);
     const FLinearColor C_Grey      = T ? T->GreySoft    : FLinearColor(0.45f, 0.42f,  0.38f, 1.f);
     const FLinearColor C_Red       = T ? T->RedBlood    : FLinearColor(0.75f, 0.15f,  0.10f, 1.f);
 
-    // ── Root canvas ──────────────────────────────────────────────────────────
+    // â”€â”€ Root canvas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     UCanvasPanel* Root = WidgetTree->ConstructWidget<UCanvasPanel>();
     WidgetTree->RootWidget = Root;
 
@@ -118,18 +119,18 @@ void ULevelSelectWidget::BuildDefaultUI()
     TopBarSlot->SetOffsets(FMargin(0.f, 0.f, 0.f, 4.f));
     TopBarSlot->SetAutoSize(true);
 
-    // ── Layout vertical principal ─────────────────────────────────────────────
+    // â”€â”€ Layout vertical principal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     UVerticalBox* VMain = WidgetTree->ConstructWidget<UVerticalBox>();
     UCanvasPanelSlot* VMainSlot = Root->AddChildToCanvas(VMain);
     VMainSlot->SetAnchors(FAnchors(0.f, 0.f, 1.f, 1.f));
     VMainSlot->SetOffsets(FMargin(60.f, 20.f, 60.f, 20.f));
 
-    UTextBlock* Title = LSW_MakeText(WidgetTree, "CHOIX DU NIVEAU", 30, C_Gold, ETextJustify::Center);
+    UTextBlock* Title = LSW_MakeText(WidgetTree, T, "CHOIX DU NIVEAU", 30, C_Gold, ETextJustify::Center);
     UVerticalBoxSlot* TitleSlot = VMain->AddChildToVerticalBox(Title);
     TitleSlot->SetHorizontalAlignment(HAlign_Center);
     TitleSlot->SetPadding(FMargin(0.f, 16.f, 0.f, 24.f));
 
-    // ── Carousel ─────────────────────────────────────────────────────────────
+    // â”€â”€ Carousel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     UHorizontalBox* CarouselRow = WidgetTree->ConstructWidget<UHorizontalBox>();
     UVerticalBoxSlot* CarouselSlot = VMain->AddChildToVerticalBox(CarouselRow);
     CarouselSlot->SetHorizontalAlignment(HAlign_Center);
@@ -137,7 +138,7 @@ void ULevelSelectWidget::BuildDefaultUI()
 
     BtnPrev = WidgetTree->ConstructWidget<UButton>();
     BtnPrev->SetStyle(LSW_MakeButtonStyle(C_PanelDark, C_PanelMid));
-    BtnPrev->AddChild(LSW_MakeText(WidgetTree, " < ", 24, C_Gold));
+    BtnPrev->AddChild(LSW_MakeText(WidgetTree, T, " < ", 24, C_Gold));
     UHorizontalBoxSlot* PrevSlot = CarouselRow->AddChildToHorizontalBox(BtnPrev);
     PrevSlot->SetVerticalAlignment(VAlign_Center);
     PrevSlot->SetSize(FSlateChildSize(ESlateSizeRule::Automatic));
@@ -150,13 +151,13 @@ void ULevelSelectWidget::BuildDefaultUI()
 
     BtnNext = WidgetTree->ConstructWidget<UButton>();
     BtnNext->SetStyle(LSW_MakeButtonStyle(C_PanelDark, C_PanelMid));
-    BtnNext->AddChild(LSW_MakeText(WidgetTree, " > ", 24, C_Gold));
+    BtnNext->AddChild(LSW_MakeText(WidgetTree, T, " > ", 24, C_Gold));
     UHorizontalBoxSlot* NextSlot = CarouselRow->AddChildToHorizontalBox(BtnNext);
     NextSlot->SetVerticalAlignment(VAlign_Center);
     NextSlot->SetSize(FSlateChildSize(ESlateSizeRule::Automatic));
     NextSlot->SetPadding(FMargin(16.f, 0.f, 0.f, 0.f));
 
-    // ── Info niveau ───────────────────────────────────────────────────────────
+    // â”€â”€ Info niveau â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     UBorder* InfoPanel = WidgetTree->ConstructWidget<UBorder>();
     InfoPanel->SetBrushColor(C_PanelDark);
     UVerticalBoxSlot* InfoSlot = VMain->AddChildToVerticalBox(InfoPanel);
@@ -167,15 +168,15 @@ void ULevelSelectWidget::BuildDefaultUI()
     UBorderSlot* InfoBSlot = Cast<UBorderSlot>(InfoPanel->AddChild(InfoVBox));
     if (InfoBSlot) InfoBSlot->SetPadding(FMargin(40.f, 12.f));
 
-    LevelNameText = LSW_MakeText(WidgetTree, "---", 22, C_White, ETextJustify::Center);
+    LevelNameText = LSW_MakeText(WidgetTree, T, "---", 22, C_White, ETextJustify::Center);
     UVerticalBoxSlot* NameSlot = InfoVBox->AddChildToVerticalBox(LevelNameText);
     NameSlot->SetHorizontalAlignment(HAlign_Center);
     NameSlot->SetPadding(FMargin(0.f, 0.f, 0.f, 6.f));
 
-    BestScoreText = LSW_MakeText(WidgetTree, "MEILLEUR SCORE : ---", 16, C_GoldDim, ETextJustify::Center);
+    BestScoreText = LSW_MakeText(WidgetTree, T, "MEILLEUR SCORE : ---", 16, C_GoldDim, ETextJustify::Center);
     InfoVBox->AddChildToVerticalBox(BestScoreText)->SetHorizontalAlignment(HAlign_Center);
 
-    // ── Leaderboard ───────────────────────────────────────────────────────────
+    // â”€â”€ Leaderboard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     UBorder* LbPanel = WidgetTree->ConstructWidget<UBorder>();
     LbPanel->SetBrushColor(C_PanelDark);
     UVerticalBoxSlot* LbPanelSlot = VMain->AddChildToVerticalBox(LbPanel);
@@ -186,13 +187,13 @@ void ULevelSelectWidget::BuildDefaultUI()
     if (UBorderSlot* LbBSlot = Cast<UBorderSlot>(LbPanel->AddChild(LbVBox)))
         LbBSlot->SetPadding(FMargin(24.f, 12.f));
 
-    LbTitle = LSW_MakeText(WidgetTree, "CLASSEMENT", 16, C_Gold);
+    LbTitle = LSW_MakeText(WidgetTree, T, "CLASSEMENT", 16, C_Gold);
     LbVBox->AddChildToVerticalBox(LbTitle)->SetPadding(FMargin(0.f, 0.f, 0.f, 8.f));
 
     LeaderboardBox = WidgetTree->ConstructWidget<UVerticalBox>();
     LbVBox->AddChildToVerticalBox(LeaderboardBox)->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
 
-    // ── Boutons bas ───────────────────────────────────────────────────────────
+    // â”€â”€ Boutons bas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     UHorizontalBox* BtnRow = WidgetTree->ConstructWidget<UHorizontalBox>();
     UVerticalBoxSlot* BtnRowSlot = VMain->AddChildToVerticalBox(BtnRow);
     BtnRowSlot->SetHorizontalAlignment(HAlign_Fill);
@@ -200,7 +201,7 @@ void ULevelSelectWidget::BuildDefaultUI()
 
     BtnBack = WidgetTree->ConstructWidget<UButton>();
     BtnBack->SetStyle(LSW_MakeButtonStyle(C_PanelMid, UUIHelpers::WithAlpha(C_Gold, 0.15f)));
-    BtnBack->AddChild(LSW_MakeText(WidgetTree, "< RETOUR", 16, C_Grey));
+    BtnBack->AddChild(LSW_MakeText(WidgetTree, T, "< RETOUR", 16, C_Grey));
     UHorizontalBoxSlot* BackHSlot = BtnRow->AddChildToHorizontalBox(BtnBack);
     BackHSlot->SetSize(FSlateChildSize(ESlateSizeRule::Automatic));
     BackHSlot->SetPadding(FMargin(0.f, 0.f, 16.f, 0.f));
@@ -212,11 +213,11 @@ void ULevelSelectWidget::BuildDefaultUI()
     BtnConfirm = WidgetTree->ConstructWidget<UButton>();
     BtnConfirm->SetStyle(LSW_MakeButtonStyle(
         UUIHelpers::WithAlpha(C_Red, 0.85f), C_Red));
-    BtnConfirm->AddChild(LSW_MakeText(WidgetTree, "SELECTIONNER  >", 16, C_White));
+    BtnConfirm->AddChild(LSW_MakeText(WidgetTree, T, "SELECTIONNER  >", 16, C_White));
     BtnRow->AddChildToHorizontalBox(BtnConfirm)->SetSize(FSlateChildSize(ESlateSizeRule::Automatic));
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 void ULevelSelectWidget::PopulateLevels(const TArray<FLevelInfo>& Levels)
 {
@@ -274,7 +275,7 @@ void ULevelSelectWidget::RefreshCarousel()
         ThumbSB->AddChild(Thumb);
         CardVBox->AddChildToVerticalBox(ThumbSB)->SetHorizontalAlignment(HAlign_Center);
 
-        UTextBlock* CardName = LSW_MakeText(WidgetTree,
+        UTextBlock* CardName = LSW_MakeText(WidgetTree, T,
             CachedLevels[Idx].DisplayName.ToString(),
             bSelected ? 13 : 10,
             bSelected ? C_White : C_Grey,
@@ -323,7 +324,7 @@ void ULevelSelectWidget::RefreshLeaderboard()
     if (!Save || Save->Scores.IsEmpty())
     {
         LeaderboardBox->AddChildToVerticalBox(
-            LSW_MakeText(WidgetTree, TEXT("Aucun score enregistre"), 14, C_Grey));
+            LSW_MakeText(WidgetTree, T, TEXT("Aucun score enregistre"), 14, C_Grey));
         return;
     }
 
@@ -332,7 +333,7 @@ void ULevelSelectWidget::RefreshLeaderboard()
 
     auto AddHeader = [&](const FString& Label, float Fill) {
         UHorizontalBoxSlot* S = Headers->AddChildToHorizontalBox(
-            LSW_MakeText(WidgetTree, Label, 12, C_GoldDim));
+            LSW_MakeText(WidgetTree, T, Label, 12, C_GoldDim));
         FSlateChildSize SZ(ESlateSizeRule::Fill); SZ.Value = Fill; S->SetSize(SZ);
     };
     AddHeader("#", 0.5f); AddHeader("SCORE", 2.f); AddHeader("KILLS", 1.f);
@@ -349,7 +350,7 @@ void ULevelSelectWidget::RefreshLeaderboard()
 
         auto AddCell = [&](const FString& Val, float Fill) {
             UHorizontalBoxSlot* S = Row->AddChildToHorizontalBox(
-                LSW_MakeText(WidgetTree, Val, 13, RowColor));
+                LSW_MakeText(WidgetTree, T, Val, 13, RowColor));
             FSlateChildSize SZ(ESlateSizeRule::Fill); SZ.Value = Fill; S->SetSize(SZ);
         };
         AddCell(FString::Printf(TEXT("#%d"), i + 1), 0.5f);
@@ -368,11 +369,11 @@ void ULevelSelectWidget::SelectLevel(int32 Index)
     RefreshLeaderboard();
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 void ULevelSelectWidget::HandlePrev()
 {
-    UE_LOG(LogTemp, Warning, TEXT("[LevelSelect] HandlePrev — SelectedIndex=%d Num=%d BtnPrev=%s"),
+    UE_LOG(LogTemp, Warning, TEXT("[LevelSelect] HandlePrev â€” SelectedIndex=%d Num=%d BtnPrev=%s"),
         SelectedIndex, CachedLevels.Num(), BtnPrev ? TEXT("OK") : TEXT("null"));
     if (SelectedIndex > 0)
         SelectLevel(SelectedIndex - 1);
@@ -380,7 +381,7 @@ void ULevelSelectWidget::HandlePrev()
 
 void ULevelSelectWidget::HandleNext()
 {
-    UE_LOG(LogTemp, Warning, TEXT("[LevelSelect] HandleNext — SelectedIndex=%d Num=%d BtnNext=%s"),
+    UE_LOG(LogTemp, Warning, TEXT("[LevelSelect] HandleNext â€” SelectedIndex=%d Num=%d BtnNext=%s"),
         SelectedIndex, CachedLevels.Num(), BtnNext ? TEXT("OK") : TEXT("null"));
     if (SelectedIndex < CachedLevels.Num() - 1)
         SelectLevel(SelectedIndex + 1);

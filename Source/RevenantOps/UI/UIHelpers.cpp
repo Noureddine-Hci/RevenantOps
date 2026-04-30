@@ -102,6 +102,33 @@ FLinearColor UUIHelpers::WithAlpha(const FLinearColor& Color, float Alpha)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// TYPOGRAPHIE
+// ─────────────────────────────────────────────────────────────────────────────
+
+#include "Styling/CoreStyle.h"
+
+FSlateFontInfo UUIHelpers::GetFont(const UUITheme* Theme, int32 Size)
+{
+    FSlateFontInfo Fi;
+
+    if (Theme)
+    {
+        if (Size >= 24 && Theme->FontTitle.HasValidFont())
+            Fi = Theme->FontTitle;
+        else if (Size < 24 && Theme->FontBody.HasValidFont())
+            Fi = Theme->FontBody;
+        else if (Theme->FontBody.HasValidFont())
+            Fi = Theme->FontBody; // fallback body même pour grands textes si Title absent
+    }
+
+    if (!Fi.HasValidFont())
+        Fi = FCoreStyle::GetDefaultFontStyle(Size >= 18 ? "Bold" : "Regular", Size);
+
+    Fi.Size = Size; // toujours forcer la taille demandée
+    return Fi;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // THEME GLOBAL
 // ─────────────────────────────────────────────────────────────────────────────
 
