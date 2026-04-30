@@ -1,6 +1,8 @@
 // Copyright RevenantOps. All Rights Reserved.
 
 #include "GameOverWidget.h"
+#include "UI/UITheme.h"
+#include "UI/UIHelpers.h"
 #include "Styling/CoreStyle.h"
 #include "Components/Button.h"
 #include "Components/TextBlock.h"
@@ -25,17 +27,16 @@ void UGameOverWidget::NativeConstruct() {
   Super::NativeConstruct();
 
   if (ReplayButton) {
-    ReplayButton->OnClicked.AddDynamic(this,
-                                        &UGameOverWidget::OnReplayClicked);
+    ReplayButton->OnClicked.AddDynamic(this, &UGameOverWidget::OnReplayClicked);
+    BindButtonSounds(ReplayButton);
   }
-
   if (LeaderboardButton) {
-    LeaderboardButton->OnClicked.AddDynamic(
-        this, &UGameOverWidget::OnLeaderboardClicked);
+    LeaderboardButton->OnClicked.AddDynamic(this, &UGameOverWidget::OnLeaderboardClicked);
+    BindButtonSounds(LeaderboardButton);
   }
-
   if (QuitButton) {
     QuitButton->OnClicked.AddDynamic(this, &UGameOverWidget::OnQuitClicked);
+    BindButtonSounds(QuitButton);
   }
 }
 
@@ -58,115 +59,135 @@ void UGameOverWidget::BuildDefaultUI() {
   BgSlot->SetOffsets(FMargin(0.f, 0.f, 0.f, 0.f));
   BgSlot->SetZOrder(0);
 
+  // ── Theme ────────────────────────────────────────────────────────────────
+  UUITheme* T = GetTheme();
+  const FLinearColor C_Gold    = T ? T->GoldTarnish : FLinearColor(0.85f, 0.70f, 0.30f, 1.f);
+  const FLinearColor C_GoldDim = T ? T->GoldDim     : FLinearColor(0.55f, 0.45f, 0.20f, 1.f);
+  const FLinearColor C_White   = T ? T->WhiteText   : FLinearColor(0.95f, 0.93f, 0.88f, 1.f);
+  const FLinearColor C_Grey    = T ? T->GreySoft    : FLinearColor(0.45f, 0.42f, 0.38f, 1.f);
+  const FLinearColor C_Red     = T ? T->RedBlood    : FLinearColor(0.75f, 0.15f, 0.10f, 1.f);
+  const FLinearColor C_Alert   = T ? T->RedAlert    : FLinearColor(1.f,   0.25f, 0.15f, 1.f);
+  const FLinearColor C_Panel   = T ? T->BgPanel     : FLinearColor(0.07f, 0.06f, 0.04f, 1.f);
+
+  auto MakeBtnStyle = [&](const FLinearColor& N, const FLinearColor& H) {
+      FButtonStyle S;
+      S.SetNormal (UUIHelpers::MakeSolidBrush(N));
+      S.SetHovered(UUIHelpers::MakeSolidBrush(H));
+      S.SetPressed(UUIHelpers::MakeSolidBrush(UUIHelpers::WithAlpha(H, 0.6f)));
+      S.NormalPadding  = FMargin(32.f, 10.f);
+      S.PressedPadding = FMargin(32.f, 11.f, 32.f, 9.f);
+      return S;
+  };
+
+  FSlateFontInfo LargeFont = FCoreStyle::GetDefaultFontStyle("Bold",    32);
+  FSlateFontInfo MedFont   = FCoreStyle::GetDefaultFontStyle("Regular", 20);
+  FSlateFontInfo BtnFont   = FCoreStyle::GetDefaultFontStyle("Bold",    16);
+  FSlateFontInfo SmallFont = FCoreStyle::GetDefaultFontStyle("Regular", 14);
+
   UVerticalBox* VBox = WidgetTree->ConstructWidget<UVerticalBox>();
   UCanvasPanelSlot* VBoxSlot = Canvas->AddChildToCanvas(VBox);
   VBoxSlot->SetAnchors(FAnchors(0.5f, 0.5f, 0.5f, 0.5f));
   VBoxSlot->SetAlignment(FVector2D(0.5f, 0.5f));
   VBoxSlot->SetAutoSize(true);
 
-  FSlateFontInfo LargeFont = FCoreStyle::GetDefaultFontStyle("Bold", 36);
-  FSlateFontInfo MedFont   = FCoreStyle::GetDefaultFontStyle("Regular", 22);
-  FSlateFontInfo BtnFont   = FCoreStyle::GetDefaultFontStyle("Regular", 20);
+  auto AddStat = [&](UTextBlock*& OutTb, const FString& InitStr,
+                     FSlateFontInfo Font, const FLinearColor& Color, FMargin Pad)
+  {
+      OutTb = WidgetTree->ConstructWidget<UTextBlock>();
+      OutTb->SetText(FText::FromString(InitStr));
+      OutTb->SetFont(Font);
+      OutTb->SetColorAndOpacity(FSlateColor(Color));
+      OutTb->SetJustification(ETextJustify::Center);
+      UVerticalBoxSlot* S = VBox->AddChildToVerticalBox(OutTb);
+      S->SetHorizontalAlignment(HAlign_Center);
+      S->SetPadding(Pad);
+  };
 
-  // Title (mis à jour selon victoire/défaite dans ShowResults)
+  // "RAPPORT DE MISSION" header
+  {
+      UTextBlock* Header = WidgetTree->ConstructWidget<UTextBlock>();
+      Header->SetText(FText::FromString(TEXT("RAPPORT DE MISSION")));
+      Header->SetFont(FCoreStyle::GetDefaultFontStyle("Bold", 13));
+      Header->SetColorAndOpacity(FSlateColor(C_GoldDim));
+      Header->SetJustification(ETextJustify::Center);
+      VBox->AddChildToVerticalBox(Header)->SetPadding(FMargin(0.f, 0.f, 0.f, 6.f));
+  }
+
+  // Trait séparateur
+  {
+      UImage* Line = WidgetTree->ConstructWidget<UImage>();
+      Line->SetColorAndOpacity(UUIHelpers::WithAlpha(C_Red, 0.6f));
+      UCanvasPanelSlot* unused = nullptr;
+      VBox->AddChildToVerticalBox(Line)->SetPadding(FMargin(0.f, 0.f, 0.f, 20.f));
+  }
+
+  // Titre (mort / victoire) — mis à jour dans ShowResults
   TitleText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("TitleText"));
-  TitleText->SetText(FText::FromString(TEXT("VOUS ÊTES MORT")));
+  TitleText->SetText(FText::FromString(TEXT("OPERATEUR NEUTRALISE")));
   TitleText->SetFont(LargeFont);
-  TitleText->SetColorAndOpacity(FSlateColor(FLinearColor(1.f, 0.2f, 0.2f)));
+  TitleText->SetColorAndOpacity(FSlateColor(C_Alert));
   TitleText->SetJustification(ETextJustify::Center);
-  UVerticalBoxSlot* TitleSlot = VBox->AddChildToVerticalBox(TitleText);
-  TitleSlot->SetHorizontalAlignment(EHorizontalAlignment::HAlign_Center);
-  TitleSlot->SetPadding(FMargin(0, 0, 0, 30));
+  VBox->AddChildToVerticalBox(TitleText)->SetPadding(FMargin(0.f, 0.f, 0.f, 28.f));
 
-  // Score
-  FinalScoreText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("FinalScoreText"));
-  FinalScoreText->SetText(FText::FromString(TEXT("Score: 0")));
-  FinalScoreText->SetFont(MedFont);
-  FinalScoreText->SetJustification(ETextJustify::Center);
-  UVerticalBoxSlot* ScoreSlot = VBox->AddChildToVerticalBox(FinalScoreText);
-  ScoreSlot->SetHorizontalAlignment(EHorizontalAlignment::HAlign_Center);
-  ScoreSlot->SetPadding(FMargin(0, 0, 0, 10));
+  // Stats
+  AddStat(FinalScoreText, TEXT("SCORE : 0"),         MedFont, C_Gold,    FMargin(0.f, 0.f, 0.f, 8.f));
+  AddStat(TotalKillsText, TEXT("ELIMINATIONS : 0"),  MedFont, C_White,   FMargin(0.f, 0.f, 0.f, 8.f));
+  AddStat(BestComboText,  TEXT("MEILLEUR COMBO : x0"),MedFont, C_GoldDim, FMargin(0.f, 0.f, 0.f, 28.f));
 
-  // Kills
-  TotalKillsText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("TotalKillsText"));
-  TotalKillsText->SetText(FText::FromString(TEXT("Kills: 0")));
-  TotalKillsText->SetFont(MedFont);
-  TotalKillsText->SetJustification(ETextJustify::Center);
-  UVerticalBoxSlot* KillsSlot = VBox->AddChildToVerticalBox(TotalKillsText);
-  KillsSlot->SetHorizontalAlignment(EHorizontalAlignment::HAlign_Center);
-  KillsSlot->SetPadding(FMargin(0, 0, 0, 10));
+  // Boutons
+  auto AddBtn = [&](UButton*& BtnRef, const FString& Label,
+                    const FLinearColor& BgN, const FLinearColor& BgH, FMargin Pad)
+  {
+      BtnRef = WidgetTree->ConstructWidget<UButton>();
+      BtnRef->SetStyle(MakeBtnStyle(BgN, BgH));
+      UTextBlock* Lbl = WidgetTree->ConstructWidget<UTextBlock>();
+      Lbl->SetText(FText::FromString(Label));
+      Lbl->SetFont(BtnFont);
+      Lbl->SetJustification(ETextJustify::Center);
+      Lbl->SetColorAndOpacity(FSlateColor(C_White));
+      BtnRef->AddChild(Lbl);
+      VBox->AddChildToVerticalBox(BtnRef)->SetPadding(Pad);
+  };
 
-  // Best Combo
-  BestComboText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("BestComboText"));
-  BestComboText->SetText(FText::FromString(TEXT("Best Combo: x0")));
-  BestComboText->SetFont(MedFont);
-  BestComboText->SetJustification(ETextJustify::Center);
-  UVerticalBoxSlot* ComboSlot = VBox->AddChildToVerticalBox(BestComboText);
-  ComboSlot->SetHorizontalAlignment(EHorizontalAlignment::HAlign_Center);
-  ComboSlot->SetPadding(FMargin(0, 0, 0, 30));
-
-  // Replay Button
-  ReplayButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("ReplayButton"));
-  UTextBlock* ReplayText = WidgetTree->ConstructWidget<UTextBlock>();
-  ReplayText->SetText(FText::FromString(TEXT("REJOUER")));
-  ReplayText->SetFont(BtnFont);
-  ReplayText->SetJustification(ETextJustify::Center);
-  ReplayButton->AddChild(ReplayText);
-  UVerticalBoxSlot* ReplaySlot = VBox->AddChildToVerticalBox(ReplayButton);
-  ReplaySlot->SetHorizontalAlignment(EHorizontalAlignment::HAlign_Center);
-  ReplaySlot->SetPadding(FMargin(0, 0, 0, 10));
-
-  // Leaderboard Button
-  LeaderboardButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("LeaderboardButton"));
-  UTextBlock* LBText = WidgetTree->ConstructWidget<UTextBlock>();
-  LBText->SetText(FText::FromString(TEXT("LEADERBOARD")));
-  LBText->SetFont(BtnFont);
-  LBText->SetJustification(ETextJustify::Center);
-  LeaderboardButton->AddChild(LBText);
-  UVerticalBoxSlot* LBSlot = VBox->AddChildToVerticalBox(LeaderboardButton);
-  LBSlot->SetHorizontalAlignment(EHorizontalAlignment::HAlign_Center);
-  LBSlot->SetPadding(FMargin(0, 0, 0, 10));
-
-  // Quit Button
-  QuitButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("QuitButton"));
-  UTextBlock* QuitText = WidgetTree->ConstructWidget<UTextBlock>();
-  QuitText->SetText(FText::FromString(TEXT("RETOUR AU MENU PRINCIPAL")));
-  QuitText->SetFont(BtnFont);
-  QuitText->SetJustification(ETextJustify::Center);
-  QuitButton->AddChild(QuitText);
-  UVerticalBoxSlot* QuitSlot = VBox->AddChildToVerticalBox(QuitButton);
-  QuitSlot->SetHorizontalAlignment(EHorizontalAlignment::HAlign_Center);
+  AddBtn(ReplayButton,      TEXT(">> REDEPLOY"),          UUIHelpers::WithAlpha(C_Red, 0.85f), C_Red,   FMargin(0.f, 0.f, 0.f, 8.f));
+  AddBtn(LeaderboardButton, TEXT("   CLASSEMENT"),        UUIHelpers::WithAlpha(C_Panel, 0.9f), UUIHelpers::WithAlpha(C_Gold, 0.2f), FMargin(0.f, 0.f, 0.f, 8.f));
+  AddBtn(QuitButton,        TEXT("   RETOUR AU QG"),      FLinearColor(0.f, 0.f, 0.f, 0.f),   UUIHelpers::WithAlpha(C_Grey, 0.15f), FMargin(0.f, 0.f, 0.f, 0.f));
 }
 
 void UGameOverWidget::ShowResults(int32 FinalScore, int32 TotalKills,
-                                   int32 BestCombo, bool bVictory) {
-  // Titre et couleur selon victoire ou défaite
-  if (TitleText) {
-    if (bVictory) {
-      TitleText->SetText(FText::FromString(TEXT("MISSION ACCOMPLIE")));
-      TitleText->SetColorAndOpacity(FSlateColor(FLinearColor(0.2f, 1.f, 0.2f)));
-    } else {
-      TitleText->SetText(FText::FromString(TEXT("VOUS ÊTES MORT")));
-      TitleText->SetColorAndOpacity(FSlateColor(FLinearColor(1.f, 0.2f, 0.2f)));
+                                   int32 BestCombo, bool bVictory)
+{
+    UUITheme* T = GetTheme();
+    const FLinearColor C_Gold  = T ? T->GoldTarnish : FLinearColor(0.85f, 0.70f, 0.30f, 1.f);
+    const FLinearColor C_Alert = T ? T->RedAlert    : FLinearColor(1.f,   0.25f, 0.15f, 1.f);
+
+    if (TitleText)
+    {
+        if (bVictory)
+        {
+            TitleText->SetText(FText::FromString(TEXT("MISSION ACCOMPLIE")));
+            TitleText->SetColorAndOpacity(FSlateColor(C_Gold));
+        }
+        else
+        {
+            TitleText->SetText(FText::FromString(TEXT("OPERATEUR NEUTRALISE")));
+            TitleText->SetColorAndOpacity(FSlateColor(C_Alert));
+        }
     }
-  }
 
-  if (FinalScoreText) {
-    FinalScoreText->SetText(
-        FText::FromString(FString::Printf(TEXT("Score: %d"), FinalScore)));
-  }
+    if (FinalScoreText)
+        FinalScoreText->SetText(FText::FromString(
+            FString::Printf(TEXT("SCORE : %d"), FinalScore)));
 
-  if (TotalKillsText) {
-    TotalKillsText->SetText(
-        FText::FromString(FString::Printf(TEXT("Kills: %d"), TotalKills)));
-  }
+    if (TotalKillsText)
+        TotalKillsText->SetText(FText::FromString(
+            FString::Printf(TEXT("ELIMINATIONS : %d"), TotalKills)));
 
-  if (BestComboText) {
-    BestComboText->SetText(
-        FText::FromString(FString::Printf(TEXT("Best Combo: x%d"), BestCombo)));
-  }
+    if (BestComboText)
+        BestComboText->SetText(FText::FromString(
+            FString::Printf(TEXT("MEILLEUR COMBO : x%d"), BestCombo)));
 
-  BP_OnResultsShown(FinalScore, TotalKills, BestCombo);
+    BP_OnResultsShown(FinalScore, TotalKills, BestCombo);
 }
 
 void UGameOverWidget::OnReplayClicked() {

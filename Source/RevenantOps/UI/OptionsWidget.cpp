@@ -1,5 +1,7 @@
 // Copyright RevenantOps. All Rights Reserved.
 #include "UI/OptionsWidget.h"
+#include "UI/UITheme.h"
+#include "UI/UIHelpers.h"
 #include "Components/Button.h"
 #include "Components/TextBlock.h"
 #include "Components/Border.h"
@@ -135,6 +137,7 @@ void UOptionsWidget::NativeConstruct()
     if (BtnBack)
     {
         BtnBack->OnClicked.AddDynamic(this, &UOptionsWidget::HandleBack);
+        BindButtonSounds(BtnBack);
     }
 
     // Re-populate now that the widget tree is fully constructed
@@ -155,89 +158,93 @@ void UOptionsWidget::BuildDefaultUI()
     if (!WidgetTree) return;
     bUIBuilt = true;
 
+    // ── Theme ────────────────────────────────────────────────────────────────
+    UUITheme* Th = GetTheme();
+    const FLinearColor C_Bg      = Th ? Th->BgDeep      : FLinearColor(0.03f, 0.025f, 0.02f, 1.f);
+    const FLinearColor C_Panel   = Th ? Th->BgPanel      : FLinearColor(0.07f, 0.06f,  0.04f, 1.f);
+    const FLinearColor C_Gold    = Th ? Th->GoldTarnish  : FLinearColor(0.85f, 0.70f,  0.30f, 1.f);
+    const FLinearColor C_GoldDim = Th ? Th->GoldDim      : FLinearColor(0.55f, 0.45f,  0.20f, 1.f);
+    const FLinearColor C_White   = Th ? Th->WhiteText    : FLinearColor(0.95f, 0.93f,  0.88f, 1.f);
+    const FLinearColor C_Grey    = Th ? Th->GreySoft     : FLinearColor(0.45f, 0.42f,  0.38f, 1.f);
+    const FLinearColor C_Red     = Th ? Th->RedBlood     : FLinearColor(0.75f, 0.15f,  0.10f, 1.f);
+    const FLinearColor C_BtnHov  = Th ? Th->ButtonBgHovered : FLinearColor(0.75f, 0.15f, 0.10f, 0.25f);
+
     UCanvasPanel* Root = WidgetTree->ConstructWidget<UCanvasPanel>();
     WidgetTree->RootWidget = Root;
 
-    // Background
     UBorder* Bg = WidgetTree->ConstructWidget<UBorder>();
-    Bg->SetBrushColor(FLinearColor(0.02f, 0.03f, 0.06f, 0.96f));
+    Bg->SetBrushColor(C_Bg);
     UCanvasPanelSlot* BgSlot = Root->AddChildToCanvas(Bg);
     BgSlot->SetAnchors(FAnchors(0.f, 0.f, 1.f, 1.f));
     BgSlot->SetOffsets(FMargin(0.f));
 
-    // Center panel
+    // Bande rouge haut
+    UBorder* TopBar = WidgetTree->ConstructWidget<UBorder>();
+    TopBar->SetBrushColor(C_Red);
+    TopBar->SetVisibility(ESlateVisibility::HitTestInvisible);
+    UCanvasPanelSlot* TopSlot = Root->AddChildToCanvas(TopBar);
+    TopSlot->SetAnchors(FAnchors(0.f, 0.f, 1.f, 0.f));
+    TopSlot->SetOffsets(FMargin(0.f, 0.f, 0.f, 5.f));
+    TopSlot->SetAutoSize(true);
+
     UVerticalBox* VBox = WidgetTree->ConstructWidget<UVerticalBox>();
     UCanvasPanelSlot* VSlot = Root->AddChildToCanvas(VBox);
     VSlot->SetAnchors(FAnchors(0.5f, 0.5f, 0.5f, 0.5f));
     VSlot->SetAlignment(FVector2D(0.5f, 0.5f));
-    VSlot->SetSize(FVector2D(600.f, 520.f));
+    VSlot->SetSize(FVector2D(620.f, 540.f));
 
-    // Title
+    // Titre
     UTextBlock* Title = WidgetTree->ConstructWidget<UTextBlock>();
-    Title->SetText(FText::FromString("OPTIONS - TOUCHES"));
+    Title->SetText(FText::FromString(TEXT("BRIEFING — CONFIGURATION TOUCHES")));
     FSlateFontInfo TitleFont = Title->GetFont();
-    TitleFont.Size = 26;
-    Title->SetFont(TitleFont);
-    Title->SetColorAndOpacity(FSlateColor(FLinearColor(0.7f, 0.9f, 1.f, 1.f)));
-    UVerticalBoxSlot* TitleSlot = VBox->AddChildToVerticalBox(Title);
-    TitleSlot->SetPadding(FMargin(0.f, 0.f, 0.f, 20.f));
-    TitleSlot->SetHorizontalAlignment(HAlign_Center);
+    TitleFont.Size = 22; Title->SetFont(TitleFont);
+    Title->SetColorAndOpacity(FSlateColor(C_Gold));
+    VBox->AddChildToVerticalBox(Title)->SetPadding(FMargin(0.f, 0.f, 0.f, 18.f));
 
-    // Column headers
+    // Trait or
+    UBorder* TitleLine = WidgetTree->ConstructWidget<UBorder>();
+    TitleLine->SetBrushColor(UUIHelpers::WithAlpha(C_GoldDim, 0.5f));
+    VBox->AddChildToVerticalBox(TitleLine)->SetPadding(FMargin(0.f, 0.f, 0.f, 12.f));
+    if (UBorderSlot* BS = Cast<UBorderSlot>(TitleLine->AddChild(WidgetTree->ConstructWidget<UTextBlock>())))
+        BS->SetPadding(FMargin(0.f, 1.f));
+
+    // En-têtes
     UHorizontalBox* Headers = WidgetTree->ConstructWidget<UHorizontalBox>();
-    UVerticalBoxSlot* HeaderSlot = VBox->AddChildToVerticalBox(Headers);
-    HeaderSlot->SetPadding(FMargin(0.f, 0.f, 0.f, 8.f));
+    VBox->AddChildToVerticalBox(Headers)->SetPadding(FMargin(0.f, 0.f, 0.f, 8.f));
 
     auto MakeHeaderText = [&](const FString& Label, float Width) -> UTextBlock*
     {
         UTextBlock* T = WidgetTree->ConstructWidget<UTextBlock>();
         T->SetText(FText::FromString(Label));
-        FSlateFontInfo F = T->GetFont();
-        F.Size = 13;
-        T->SetFont(F);
-        T->SetColorAndOpacity(FSlateColor(FLinearColor(0.6f, 0.6f, 0.6f, 1.f)));
+        FSlateFontInfo F = T->GetFont(); F.Size = 12; T->SetFont(F);
+        T->SetColorAndOpacity(FSlateColor(C_GoldDim));
         UHorizontalBoxSlot* S = Headers->AddChildToHorizontalBox(T);
         S->SetSize(FSlateChildSize(ESlateSizeRule::Automatic));
         S->SetPadding(FMargin(4.f, 0.f));
         (void)Width;
         return T;
     };
-    MakeHeaderText("ACTION", 280.f);
-    MakeHeaderText("TOUCHE", 160.f);
-    MakeHeaderText("", 120.f);
+    MakeHeaderText(TEXT("ACTION"), 280.f);
+    MakeHeaderText(TEXT("TOUCHE"), 160.f);
+    MakeHeaderText(TEXT(""), 120.f);
 
-    // Scrollable row container
     UScrollBox* Scroll = WidgetTree->ConstructWidget<UScrollBox>();
     UVerticalBoxSlot* ScrollSlot = VBox->AddChildToVerticalBox(Scroll);
     ScrollSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
     ScrollSlot->SetPadding(FMargin(0.f, 0.f, 0.f, 16.f));
 
     RowContainer = WidgetTree->ConstructWidget<UVerticalBox>();
-    UScrollBoxSlot* RowScrollSlot = Cast<UScrollBoxSlot>(Scroll->AddChild(RowContainer));
+    Cast<UScrollBoxSlot>(Scroll->AddChild(RowContainer));
 
-    // Back button
+    // Bouton retour
     BtnBack = WidgetTree->ConstructWidget<UButton>();
     UTextBlock* BackLbl = WidgetTree->ConstructWidget<UTextBlock>();
-    BackLbl->SetText(FText::FromString("< Retour"));
-    FSlateFontInfo BackFont = BackLbl->GetFont();
-    BackFont.Size = 16;
-    BackLbl->SetFont(BackFont);
-    BackLbl->SetColorAndOpacity(FSlateColor(FLinearColor::White));
+    BackLbl->SetText(FText::FromString(TEXT("< RETOUR")));
+    FSlateFontInfo BackFont = BackLbl->GetFont(); BackFont.Size = 15; BackLbl->SetFont(BackFont);
+    BackLbl->SetColorAndOpacity(FSlateColor(C_Grey));
     BtnBack->AddChild(BackLbl);
-
-    FSlateBrush BackNormal;
-    BackNormal.TintColor = FSlateColor(FLinearColor(0.1f, 0.1f, 0.2f, 1.f));
-    FButtonStyle BackStyle;
-    BackStyle.SetNormal(BackNormal);
-    FSlateBrush BackHover = BackNormal;
-    BackHover.TintColor = FSlateColor(FLinearColor(0.2f, 0.2f, 0.4f, 1.f));
-    BackStyle.SetHovered(BackHover);
-    BackStyle.SetPressed(BackNormal);
-    BtnBack->SetStyle(BackStyle);
-
-    UVerticalBoxSlot* BackSlot = VBox->AddChildToVerticalBox(BtnBack);
-    BackSlot->SetHorizontalAlignment(HAlign_Left);
-    BackSlot->SetSize(FSlateChildSize(ESlateSizeRule::Automatic));
+    BtnBack->SetStyle(UUIHelpers::MakeStandardButtonStyle(Th));
+    VBox->AddChildToVerticalBox(BtnBack)->SetHorizontalAlignment(HAlign_Left);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -250,62 +257,56 @@ void UOptionsWidget::PopulateBindings(const TArray<FKeyRebindEntry>& Bindings)
     if (!RowContainer) return;
     RowContainer->ClearChildren();
 
+    UUITheme* Th = GetTheme();
+    const FLinearColor C_RowA  = Th ? UUIHelpers::WithAlpha(Th->BgPanel, 0.7f)  : FLinearColor(0.06f, 0.05f, 0.03f, 0.7f);
+    const FLinearColor C_RowB  = Th ? UUIHelpers::WithAlpha(Th->BgPanel, 0.95f) : FLinearColor(0.08f, 0.07f, 0.05f, 0.95f);
+    const FLinearColor C_White = Th ? Th->WhiteText   : FLinearColor(0.95f, 0.93f, 0.88f, 1.f);
+    const FLinearColor C_Gold  = Th ? Th->GoldTarnish : FLinearColor(0.85f, 0.70f, 0.30f, 1.f);
+    const FLinearColor C_Red   = Th ? Th->RedBlood    : FLinearColor(0.75f, 0.15f, 0.10f, 1.f);
+
     for (int32 i = 0; i < Bindings.Num(); ++i)
     {
-        // Row background
         UBorder* RowBg = WidgetTree->ConstructWidget<UBorder>();
-        RowBg->SetBrushColor(i % 2 == 0
-            ? FLinearColor(0.05f, 0.05f, 0.1f, 1.f)
-            : FLinearColor(0.07f, 0.07f, 0.13f, 1.f));
+        RowBg->SetBrushColor(i % 2 == 0 ? C_RowA : C_RowB);
 
-        UVerticalBoxSlot* RowSlot = RowContainer->AddChildToVerticalBox(RowBg);
-        RowSlot->SetPadding(FMargin(0.f, 2.f));
+        RowContainer->AddChildToVerticalBox(RowBg)->SetPadding(FMargin(0.f, 2.f));
 
         UHorizontalBox* HBox = WidgetTree->ConstructWidget<UHorizontalBox>();
-        UBorderSlot* BSlot = Cast<UBorderSlot>(RowBg->AddChild(HBox));
-        if (BSlot) BSlot->SetPadding(FMargin(8.f, 6.f));
+        if (UBorderSlot* BSlot = Cast<UBorderSlot>(RowBg->AddChild(HBox)))
+            BSlot->SetPadding(FMargin(8.f, 6.f));
 
         // Action name
         UTextBlock* ActionLbl = WidgetTree->ConstructWidget<UTextBlock>();
         ActionLbl->SetText(Bindings[i].DisplayName);
-        FSlateFontInfo F = ActionLbl->GetFont();
-        F.Size = 15;
-        ActionLbl->SetFont(F);
-        ActionLbl->SetColorAndOpacity(FSlateColor(FLinearColor::White));
+        FSlateFontInfo F = ActionLbl->GetFont(); F.Size = 14; ActionLbl->SetFont(F);
+        ActionLbl->SetColorAndOpacity(FSlateColor(C_White));
         UHorizontalBoxSlot* ActionSlot = HBox->AddChildToHorizontalBox(ActionLbl);
         ActionSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
         ActionSlot->SetVerticalAlignment(VAlign_Center);
 
-        // Current key text
+        // Touche courante
         UTextBlock* KeyTxt = WidgetTree->ConstructWidget<UTextBlock>();
-        KeyTxt->SetColorAndOpacity(FSlateColor(FLinearColor(1.f, 0.85f, 0.3f, 1.f)));
-        FSlateFontInfo KF = KeyTxt->GetFont();
-        KF.Size = 15;
-        KeyTxt->SetFont(KF);
+        KeyTxt->SetColorAndOpacity(FSlateColor(C_Gold));
+        FSlateFontInfo KF = KeyTxt->GetFont(); KF.Size = 14; KeyTxt->SetFont(KF);
         UHorizontalBoxSlot* KeySlot = HBox->AddChildToHorizontalBox(KeyTxt);
         KeySlot->SetSize(FSlateChildSize(ESlateSizeRule::Automatic));
         KeySlot->SetPadding(FMargin(16.f, 0.f));
         KeySlot->SetVerticalAlignment(VAlign_Center);
 
-        // Change button
+        // Bouton changer
         UButton* ChangeBtn = WidgetTree->ConstructWidget<UButton>();
         UTextBlock* ChangeLbl = WidgetTree->ConstructWidget<UTextBlock>();
-        FSlateFontInfo CF = ChangeLbl->GetFont();
-        CF.Size = 12;
-        ChangeLbl->SetFont(CF);
-        ChangeLbl->SetText(FText::FromString("Changer"));
-        ChangeLbl->SetColorAndOpacity(FSlateColor(FLinearColor::White));
+        FSlateFontInfo CF = ChangeLbl->GetFont(); CF.Size = 12; ChangeLbl->SetFont(CF);
+        ChangeLbl->SetText(FText::FromString(TEXT("Changer")));
+        ChangeLbl->SetColorAndOpacity(FSlateColor(C_White));
         ChangeBtn->AddChild(ChangeLbl);
-
-        FSlateBrush BtnNormal;
-        BtnNormal.TintColor = FSlateColor(FLinearColor(0.15f, 0.3f, 0.55f, 1.f));
-        FButtonStyle BtnStyle;
-        BtnStyle.SetNormal(BtnNormal);
-        FSlateBrush BtnHover = BtnNormal;
-        BtnHover.TintColor = FSlateColor(FLinearColor(0.25f, 0.45f, 0.75f, 1.f));
-        BtnStyle.SetHovered(BtnHover);
-        BtnStyle.SetPressed(BtnNormal);
-        ChangeBtn->SetStyle(BtnStyle);
+        {
+            FButtonStyle BtnStyle;
+            BtnStyle.SetNormal (UUIHelpers::MakeSolidBrush(UUIHelpers::WithAlpha(C_Red, 0.4f)));
+            BtnStyle.SetHovered(UUIHelpers::MakeSolidBrush(UUIHelpers::WithAlpha(C_Red, 0.7f)));
+            BtnStyle.SetPressed(UUIHelpers::MakeSolidBrush(C_Red));
+            ChangeBtn->SetStyle(BtnStyle);
+        }
 
         // Create a per-row handler object so each button has its own UFUNCTION + index
         UKeyBindButtonHandler* Handler = NewObject<UKeyBindButtonHandler>(this);
@@ -347,9 +348,12 @@ void UOptionsWidget::StartListening(int32 Index)
     ListeningIndex = Index;
     if (Rows.IsValidIndex(Index) && Rows[Index].ChangeLbl)
     {
-        Rows[Index].ChangeLbl->SetText(FText::FromString("Appuie une touche..."));
-        Rows[Index].ChangeLbl->SetColorAndOpacity(
-            FSlateColor(FLinearColor(1.f, 0.5f, 0.1f, 1.f)));
+        Rows[Index].ChangeLbl->SetText(FText::FromString(TEXT("Appuie une touche...")));
+        {
+            UUITheme* Th = GetTheme();
+            const FLinearColor Alert = Th ? Th->RedAlert : FLinearColor(1.f, 0.25f, 0.15f, 1.f);
+            Rows[Index].ChangeLbl->SetColorAndOpacity(FSlateColor(Alert));
+        }
     }
     if (UWorld* World = GetWorld())
     {
@@ -370,9 +374,12 @@ void UOptionsWidget::StopListening(bool bCancelled)
 {
     if (Rows.IsValidIndex(ListeningIndex) && Rows[ListeningIndex].ChangeLbl)
     {
-        Rows[ListeningIndex].ChangeLbl->SetText(FText::FromString("Changer"));
-        Rows[ListeningIndex].ChangeLbl->SetColorAndOpacity(
-            FSlateColor(FLinearColor::White));
+        Rows[ListeningIndex].ChangeLbl->SetText(FText::FromString(TEXT("Changer")));
+        {
+            UUITheme* Th = GetTheme();
+            const FLinearColor White = Th ? Th->WhiteText : FLinearColor(0.95f, 0.93f, 0.88f, 1.f);
+            Rows[ListeningIndex].ChangeLbl->SetColorAndOpacity(FSlateColor(White));
+        }
     }
     bListening     = false;
     ListeningIndex = -1;
@@ -420,6 +427,7 @@ FReply UOptionsWidget::NativeOnPreviewKeyDown(const FGeometry& MyGeometry, const
 
 void UOptionsWidget::HandleBack()
 {
+    PlayClickSound();
     if (bListening) { StopListening(true); return; }
     OnBackClicked.Broadcast();
 }
