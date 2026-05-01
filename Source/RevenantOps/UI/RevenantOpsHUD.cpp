@@ -116,13 +116,13 @@ void URevenantOpsHUD::BuildDefaultUI()
   MakeAccentBar(FName("Accent_Health"), FVector2D(8.f, 8.f), FVector2D(3.f, 76.f), FAnchors(0.f, 0.f));
 
   // TOP-CENTER : timer  (-72, 8) → 144 × 52
-  MakePanelBg(FName("Panel_Timer"), FVector2D(-72.f, 8.f), FVector2D(144.f, 52.f), FAnchors(0.5f, 0.f));
+  MakePanelBg(FName("Panel_Timer"), FVector2D(-82.f, 8.f), FVector2D(144.f, 52.f), FAnchors(0.5f, 0.f));
   {
     // Barre d'accent en bas du panneau timer
     UImage* Acc = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), FName("Accent_Timer"));
     if (Acc) {
       if (UCanvasPanelSlot* S = Root->AddChildToCanvas(Acc)) {
-        S->SetAnchors(FAnchors(0.5f, 0.f)); S->SetPosition(FVector2D(-72.f, 58.f));
+        S->SetAnchors(FAnchors(0.5f, 0.f)); S->SetPosition(FVector2D(-82.f, 58.f));
         S->SetSize(FVector2D(144.f, 3.f)); S->SetZOrder(0);
       }
       Acc->SetBrush(MakeSolid(C_Accent));
@@ -164,7 +164,7 @@ void URevenantOpsHUD::BuildDefaultUI()
   MakeBar(HealthBar,     FName("HealthBar"),     FVector2D(20.f,   22.f),  FVector2D(250.f, 18.f), FAnchors(0.f,  0.f));
   MakeBar(ShieldBar,     FName("ShieldBar"),     FVector2D(20.f,   44.f),  FVector2D(200.f, 10.f), FAnchors(0.f,  0.f));
   MakeBar(StaminaBar,    FName("StaminaBar"),    FVector2D(20.f,   58.f),  FVector2D(180.f, 12.f), FAnchors(0.f,  0.f));
-  MakeBar(ComboTimerBar, FName("ComboTimerBar"), FVector2D(-165.f, 120.f), FVector2D(150.f, 8.f),  FAnchors(1.f,  0.f));
+  MakeBar(ComboTimerBar, FName("ComboTimerBar"), FVector2D(-165.f, 128.f), FVector2D(150.f, 8.f),  FAnchors(1.f,  0.f));
   MakeBar(ReloadBar,     FName("ReloadBar"),     FVector2D(-150.f, -55.f), FVector2D(300.f, 14.f), FAnchors(0.5f, 1.f));
 
   // Couleur de la barre combo : or terni
@@ -174,7 +174,7 @@ void URevenantOpsHUD::BuildDefaultUI()
   if (ReloadBar) ReloadBar->SetFillColorAndOpacity(C_Accent);
 
   // ── Text blocks ──────────────────────────────────────────────────────────
-  MakeText(TimerText,            FName("TimerText"),            FVector2D(-60.f,   16.f),  FVector2D(120.f, 36.f), FAnchors(0.5f, 0.f));
+  MakeText(TimerText,            FName("TimerText"),            FVector2D(-70.f,   10.f),  FVector2D(120.f, 36.f), FAnchors(0.5f, 0.f));
   MakeText(ScoreText,            FName("ScoreText"),            FVector2D(-168.f,  16.f),  FVector2D(152.f, 30.f), FAnchors(1.f,  0.f));
   MakeText(WaveText,             FName("WaveText"),             FVector2D(-168.f,  52.f),  FVector2D(152.f, 24.f), FAnchors(1.f,  0.f));
   MakeText(ComboText,            FName("ComboText"),            FVector2D(-168.f,  82.f),  FVector2D(152.f, 32.f), FAnchors(1.f,  0.f));
@@ -305,7 +305,7 @@ void URevenantOpsHUD::NativeConstruct() {
   SetCanvasSlot(StaminaBar,  FVector2D(20.f,  46.f), FVector2D(180.f, 12.f), FAnchors(0.f, 0.f));
 
   // Top-center : Timer
-  SetCanvasSlot(TimerText,   FVector2D(-60.f, 20.f), FVector2D(120.f, 36.f), FAnchors(0.5f, 0.f));
+  SetCanvasSlot(TimerText,   FVector2D(-70.f, 10.f), FVector2D(120.f, 36.f), FAnchors(0.5f, 0.f));
 
   // Top-right : Score + Wave
   SetCanvasSlot(ScoreText,   FVector2D(-160.f, 20.f), FVector2D(150.f, 30.f), FAnchors(1.f, 0.f));
@@ -371,7 +371,7 @@ void URevenantOpsHUD::NativeConstruct() {
           if (UCanvasPanelSlot* S = Root->AddChildToCanvas(ComboTimerBar))
           {
             S->SetAnchors(FAnchors(1.f, 0.f));
-            S->SetPosition(FVector2D(-165.f, 122.f));
+            S->SetPosition(FVector2D(-165.f, 128.f));
             S->SetSize(FVector2D(150.f, 8.f));
             S->SetZOrder(1);
           }

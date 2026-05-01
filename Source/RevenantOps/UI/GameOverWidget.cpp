@@ -117,8 +117,7 @@ void UGameOverWidget::BuildDefaultUI() {
   {
       UImage* Line = WidgetTree->ConstructWidget<UImage>();
       Line->SetColorAndOpacity(UUIHelpers::WithAlpha(C_Red, 0.6f));
-      UCanvasPanelSlot* unused = nullptr;
-      VBox->AddChildToVerticalBox(Line)->SetPadding(FMargin(0.f, 0.f, 0.f, 20.f));
+      VBox->AddChildToVerticalBox(Line)->SetPadding(FMargin(0.f, 0.f, 0.f, 16.f));
   }
 
   // Titre (mort / victoire) — mis à jour dans ShowResults
@@ -127,12 +126,31 @@ void UGameOverWidget::BuildDefaultUI() {
   TitleText->SetFont(LargeFont);
   TitleText->SetColorAndOpacity(FSlateColor(C_Alert));
   TitleText->SetJustification(ETextJustify::Center);
-  VBox->AddChildToVerticalBox(TitleText)->SetPadding(FMargin(0.f, 0.f, 0.f, 28.f));
+  VBox->AddChildToVerticalBox(TitleText)->SetPadding(FMargin(0.f, 0.f, 0.f, 20.f));
+
+  // ── Tier rang S/A/B/C/D ─────────────────────────────────────────────────
+  {
+      // Sous-label "EVALUATION"
+      RankLabelText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("RankLabelText"));
+      RankLabelText->SetText(FText::FromString(TEXT("EVALUATION")));
+      RankLabelText->SetFont(UUIHelpers::GetFont(T, 11));
+      RankLabelText->SetColorAndOpacity(FSlateColor(C_GoldDim));
+      RankLabelText->SetJustification(ETextJustify::Center);
+      VBox->AddChildToVerticalBox(RankLabelText)->SetPadding(FMargin(0.f, 0.f, 0.f, 4.f));
+
+      // Grande lettre du rang
+      RankText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("RankText"));
+      RankText->SetText(FText::FromString(TEXT("D")));
+      RankText->SetFont(UUIHelpers::GetFont(T, 96));  // très grande
+      RankText->SetColorAndOpacity(FSlateColor(C_Grey));
+      RankText->SetJustification(ETextJustify::Center);
+      VBox->AddChildToVerticalBox(RankText)->SetPadding(FMargin(0.f, 0.f, 0.f, 20.f));
+  }
 
   // Stats
-  AddStat(FinalScoreText, TEXT("SCORE : 0"),         MedFont, C_Gold,    FMargin(0.f, 0.f, 0.f, 8.f));
-  AddStat(TotalKillsText, TEXT("ELIMINATIONS : 0"),  MedFont, C_White,   FMargin(0.f, 0.f, 0.f, 8.f));
-  AddStat(BestComboText,  TEXT("MEILLEUR COMBO : x0"),MedFont, C_GoldDim, FMargin(0.f, 0.f, 0.f, 28.f));
+  AddStat(FinalScoreText, TEXT("SCORE : 0"),          MedFont, C_Gold,    FMargin(0.f, 0.f, 0.f, 8.f));
+  AddStat(TotalKillsText, TEXT("ELIMINATIONS : 0"),   MedFont, C_White,   FMargin(0.f, 0.f, 0.f, 8.f));
+  AddStat(BestComboText,  TEXT("MEILLEUR COMBO : x0"), MedFont, C_GoldDim, FMargin(0.f, 0.f, 0.f, 28.f));
 
   // Boutons
   auto AddBtn = [&](UButton*& BtnRef, const FString& Label,
@@ -154,12 +172,29 @@ void UGameOverWidget::BuildDefaultUI() {
   AddBtn(QuitButton,        TEXT("   RETOUR AU QG"),      FLinearColor(0.f, 0.f, 0.f, 0.f),   UUIHelpers::WithAlpha(C_Grey, 0.15f), FMargin(0.f, 0.f, 0.f, 0.f));
 }
 
+FString UGameOverWidget::ComputeRank(int32 Score, int32 BestCombo)
+{
+    // Bonus combo : +500 par niveau de combo au-dessus de x1
+    const int32 ComboBonus = FMath::Max(0, BestCombo - 1) * 500;
+    const int32 Adjusted   = Score + ComboBonus;
+
+    if (Adjusted >= 5000) return TEXT("S");
+    if (Adjusted >= 3000) return TEXT("A");
+    if (Adjusted >= 1500) return TEXT("B");
+    if (Adjusted >= 500)  return TEXT("C");
+    return TEXT("D");
+}
+
 void UGameOverWidget::ShowResults(int32 FinalScore, int32 TotalKills,
                                    int32 BestCombo, bool bVictory)
 {
     UUITheme* T = GetTheme();
-    const FLinearColor C_Gold  = T ? T->GoldTarnish : FLinearColor(0.85f, 0.70f, 0.30f, 1.f);
-    const FLinearColor C_Alert = T ? T->RedAlert    : FLinearColor(1.f,   0.25f, 0.15f, 1.f);
+    const FLinearColor C_Gold   = T ? T->GoldTarnish : FLinearColor(0.85f, 0.70f, 0.30f, 1.f);
+    const FLinearColor C_White  = T ? T->WhiteText   : FLinearColor(0.95f, 0.93f, 0.88f, 1.f);
+    const FLinearColor C_GoldDim= T ? T->GoldDim     : FLinearColor(0.55f, 0.45f, 0.20f, 1.f);
+    const FLinearColor C_Grey   = T ? T->GreySoft    : FLinearColor(0.45f, 0.42f, 0.38f, 1.f);
+    const FLinearColor C_Alert  = T ? T->RedAlert    : FLinearColor(1.f,   0.25f, 0.15f, 1.f);
+    const FLinearColor C_Red    = T ? T->RedBlood    : FLinearColor(0.75f, 0.15f, 0.10f, 1.f);
 
     if (TitleText)
     {
@@ -173,6 +208,23 @@ void UGameOverWidget::ShowResults(int32 FinalScore, int32 TotalKills,
             TitleText->SetText(FText::FromString(TEXT("OPERATEUR NEUTRALISE")));
             TitleText->SetColorAndOpacity(FSlateColor(C_Alert));
         }
+    }
+
+    // ── Rang S/A/B/C/D ───────────────────────────────────────────────────
+    if (RankText)
+    {
+        const FString Rank = ComputeRank(FinalScore, BestCombo);
+        RankText->SetText(FText::FromString(Rank));
+
+        // Couleur par rang
+        FLinearColor RankColor;
+        if      (Rank == TEXT("S")) RankColor = C_Gold;    // or terni brillant
+        else if (Rank == TEXT("A")) RankColor = C_White;   // blanc cassé
+        else if (Rank == TEXT("B")) RankColor = C_GoldDim; // or éteint
+        else if (Rank == TEXT("C")) RankColor = C_Grey;    // gris
+        else                        RankColor = C_Red;     // rouge sang (D)
+
+        RankText->SetColorAndOpacity(FSlateColor(RankColor));
     }
 
     if (FinalScoreText)
