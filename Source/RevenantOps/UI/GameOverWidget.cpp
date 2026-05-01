@@ -51,14 +51,6 @@ void UGameOverWidget::BuildDefaultUI() {
   UCanvasPanel* Canvas = Cast<UCanvasPanel>(WidgetTree->RootWidget);
   if (!Canvas) return;
 
-  // Full-screen dark background (BgDeep du theme)
-  UImage* Background = WidgetTree->ConstructWidget<UImage>();
-  Background->SetColorAndOpacity(UUIHelpers::WithAlpha(C_Deep, 0.96f));
-  UCanvasPanelSlot* BgSlot = Canvas->AddChildToCanvas(Background);
-  BgSlot->SetAnchors(FAnchors(0.f, 0.f, 1.f, 1.f));
-  BgSlot->SetOffsets(FMargin(0.f, 0.f, 0.f, 0.f));
-  BgSlot->SetZOrder(0);
-
   // ── Theme ────────────────────────────────────────────────────────────────
   UUITheme* T = GetTheme();
   const FLinearColor C_Gold    = T ? T->GoldTarnish : FLinearColor(0.85f, 0.70f, 0.30f, 1.f);
@@ -69,6 +61,14 @@ void UGameOverWidget::BuildDefaultUI() {
   const FLinearColor C_Alert   = T ? T->RedAlert    : FLinearColor(1.f,   0.25f, 0.15f, 1.f);
   const FLinearColor C_Panel   = T ? T->BgPanel     : FLinearColor(0.07f, 0.06f, 0.04f, 1.f);
   const FLinearColor C_Deep    = T ? T->BgDeep      : FLinearColor(0.03f, 0.025f, 0.02f, 1.f);
+
+  // Full-screen dark background (BgDeep du theme)
+  UImage* Background = WidgetTree->ConstructWidget<UImage>();
+  Background->SetColorAndOpacity(UUIHelpers::WithAlpha(C_Deep, 0.96f));
+  UCanvasPanelSlot* BgSlot = Canvas->AddChildToCanvas(Background);
+  BgSlot->SetAnchors(FAnchors(0.f, 0.f, 1.f, 1.f));
+  BgSlot->SetOffsets(FMargin(0.f, 0.f, 0.f, 0.f));
+  BgSlot->SetZOrder(0);
 
   auto MakeBtnStyle = [&](const FLinearColor& N, const FLinearColor& H) {
       FButtonStyle S;
