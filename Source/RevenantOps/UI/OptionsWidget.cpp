@@ -307,6 +307,9 @@ void UOptionsWidget::PopulateBindings(const TArray<FKeyRebindEntry>& Bindings)
             ChangeBtn->SetStyle(BtnStyle);
         }
 
+        // Enregistre pour hover pulse (MenuWidgetBase) + son hover
+        BindButtonSounds(ChangeBtn);
+
         // Create a per-row handler object so each button has its own UFUNCTION + index
         UKeyBindButtonHandler* Handler = NewObject<UKeyBindButtonHandler>(this);
         Handler->Parent = this;
