@@ -1,6 +1,8 @@
 // Copyright RevenantOps. All Rights Reserved.
 
 #include "InventoryWidget.h"
+#include "UI/UITheme.h"
+#include "UI/UIHelpers.h"
 #include "Styling/CoreStyle.h"
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
@@ -70,6 +72,12 @@ void UInventoryWidget::BuildDefaultUI() {
   if (!WidgetTree) return;
   bUIBuilt = true;
 
+  UUITheme* T = UUIHelpers::GetDefaultTheme();
+  const FLinearColor C_Panel   = T ? T->BgPanel     : FLinearColor(0.07f, 0.06f, 0.04f, 1.f);
+  const FLinearColor C_Gold    = T ? T->GoldTarnish  : FLinearColor(0.85f, 0.70f, 0.30f, 1.f);
+  const FLinearColor C_Grey    = T ? T->GreySoft     : FLinearColor(0.45f, 0.42f, 0.38f, 1.f);
+  const FLinearColor C_White   = T ? T->WhiteText    : FLinearColor(0.95f, 0.93f, 0.88f, 1.f);
+
   UCanvasPanel* Root = WidgetTree->ConstructWidget<UCanvasPanel>();
   WidgetTree->RootWidget = Root;
 
@@ -85,7 +93,7 @@ void UInventoryWidget::BuildDefaultUI() {
 
   // ── Main panel ───────────────────────────────────────────────────────────
   UBorder* Panel = WidgetTree->ConstructWidget<UBorder>();
-  Panel->SetBrushColor(FLinearColor(0.04f, 0.04f, 0.08f, 0.92f));
+  Panel->SetBrushColor(UUIHelpers::WithAlpha(C_Panel, 0.92f));
   {
     UCanvasPanelSlot* S = Root->AddChildToCanvas(Panel);
     S->SetAnchors(FAnchors(0.5f, 0.5f, 0.5f, 0.5f));
@@ -102,17 +110,16 @@ void UInventoryWidget::BuildDefaultUI() {
     BS->SetVerticalAlignment(EVerticalAlignment::VAlign_Fill);
   }
 
-  FSlateFontInfo TitleFont = FCoreStyle::GetDefaultFontStyle("Bold",    22);
-  FSlateFontInfo SlotFont  = FCoreStyle::GetDefaultFontStyle("Bold",    11);
-  FSlateFontInfo QtyFont   = FCoreStyle::GetDefaultFontStyle("Regular", 9);
-  FSlateFontInfo InfoFont  = FCoreStyle::GetDefaultFontStyle("Regular", 14);
-  FSlateFontInfo HintFont  = FCoreStyle::GetDefaultFontStyle("Regular", 11);
+  FSlateFontInfo TitleFont = UUIHelpers::GetFont(T, 22);
+  FSlateFontInfo QtyFont   = UUIHelpers::GetMonoFont(T, 9);
+  FSlateFontInfo InfoFont  = UUIHelpers::GetFont(T, 14);
+  FSlateFontInfo HintFont  = UUIHelpers::GetFont(T, 11);
 
   // Title
   UTextBlock* Title = WidgetTree->ConstructWidget<UTextBlock>();
   Title->SetText(FText::FromString(TEXT("INVENTAIRE")));
   Title->SetFont(TitleFont);
-  Title->SetColorAndOpacity(FSlateColor(FLinearColor(1.f, 0.8f, 0.2f)));
+  Title->SetColorAndOpacity(FSlateColor(C_Gold));
   Title->SetJustification(ETextJustify::Center);
   {
     UVerticalBoxSlot* S = VBox->AddChildToVerticalBox(Title);
@@ -189,7 +196,7 @@ void UInventoryWidget::BuildDefaultUI() {
 
   // ── Separator ────────────────────────────────────────────────────────────
   UBorder* Sep = WidgetTree->ConstructWidget<UBorder>();
-  Sep->SetBrushColor(FLinearColor(0.3f, 0.3f, 0.3f, 0.5f));
+  Sep->SetBrushColor(UUIHelpers::WithAlpha(C_Grey, 0.5f));
   {
     UVerticalBoxSlot* S = VBox->AddChildToVerticalBox(Sep);
     S->SetPadding(FMargin(0.f, 14.f, 0.f, 10.f));
@@ -223,8 +230,8 @@ void UInventoryWidget::BuildDefaultUI() {
 
   // ── Item name in info panel ───────────────────────────────────────────────
   InfoNameText = WidgetTree->ConstructWidget<UTextBlock>();
-  InfoNameText->SetFont(FCoreStyle::GetDefaultFontStyle("Bold", 16));
-  InfoNameText->SetColorAndOpacity(FSlateColor(FLinearColor(1.f, 0.8f, 0.2f)));
+  InfoNameText->SetFont(UUIHelpers::GetFont(T, 16));
+  InfoNameText->SetColorAndOpacity(FSlateColor(C_Gold));
   InfoNameText->SetJustification(ETextJustify::Left);
   {
     UVerticalBoxSlot* S = InfoTextCol->AddChildToVerticalBox(InfoNameText);
@@ -234,7 +241,7 @@ void UInventoryWidget::BuildDefaultUI() {
   // ── Item description ──────────────────────────────────────────────────────
   InfoDescText = WidgetTree->ConstructWidget<UTextBlock>();
   InfoDescText->SetFont(InfoFont);
-  InfoDescText->SetColorAndOpacity(FSlateColor(FLinearColor(0.75f, 0.75f, 0.75f)));
+  InfoDescText->SetColorAndOpacity(FSlateColor(C_White));
   InfoDescText->SetAutoWrapText(true);
   {
     UVerticalBoxSlot* S = InfoTextCol->AddChildToVerticalBox(InfoDescText);
@@ -244,7 +251,7 @@ void UInventoryWidget::BuildDefaultUI() {
   // ── Controls hint ─────────────────────────────────────────────────────────
   InfoHintText = WidgetTree->ConstructWidget<UTextBlock>();
   InfoHintText->SetFont(HintFont);
-  InfoHintText->SetColorAndOpacity(FSlateColor(FLinearColor(0.5f, 0.5f, 0.5f)));
+  InfoHintText->SetColorAndOpacity(FSlateColor(C_Grey));
   InfoHintText->SetText(FText::FromString(TEXT("[E] Utiliser    [Tab/Echap] Fermer")));
   InfoHintText->SetJustification(ETextJustify::Center);
   {
@@ -319,9 +326,11 @@ void UInventoryWidget::UpdateVisuals() {
     const FInventoryItem& Item = (i < CachedItems.Num()) ? CachedItems[i] : FInventoryItem();
 
     // Bordure de selection
+    UUITheme* T2 = UUIHelpers::GetDefaultTheme();
+    const FLinearColor C_SelBorder = T2 ? T2->GoldTarnish : FLinearColor(0.85f, 0.70f, 0.30f, 1.f);
     FLinearColor Border;
     if (bSelected) {
-      Border = FLinearColor(1.f, 0.85f, 0.1f, 1.f);
+      Border = C_SelBorder;
     } else if (!Item.IsEmpty()) {
       Border = BorderColor(Item.Type) * 0.6f;
     } else {

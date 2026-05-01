@@ -561,24 +561,28 @@ void ARevenantOpsPlayerController::ShowGameOverScreen(bool bVictory) {
 }
 
 void ARevenantOpsPlayerController::ShowLeaderboard() {
-  ClearFlowWidgets();
+  DoTransition([this]()
+  {
+    ClearFlowWidgets();
 
-  if (LeaderboardWidgetClass) {
-    LeaderboardWidgetInstance =
-        CreateWidget<ULeaderboardWidget>(this, LeaderboardWidgetClass);
-    if (LeaderboardWidgetInstance) {
-      // Charger le slot du niveau courant
-      FString LbSlot = TEXT("Leaderboard");
-      if (URevenantOpsGameInstance* GI = Cast<URevenantOpsGameInstance>(GetGameInstance()))
-        if (!GI->PendingLevel.MapName.IsNone())
-          LbSlot = FString::Printf(TEXT("Leaderboard_%s"), *GI->PendingLevel.MapName.ToString());
-      LeaderboardWidgetInstance->SetSaveSlot(LbSlot);
-      LeaderboardWidgetInstance->LoadScores();
-      LeaderboardWidgetInstance->AddToViewport(10);
-      SetShowMouseCursor(true);
-      SetInputMode(FInputModeUIOnly());
+    if (LeaderboardWidgetClass) {
+      LeaderboardWidgetInstance =
+          CreateWidget<ULeaderboardWidget>(this, LeaderboardWidgetClass);
+      if (LeaderboardWidgetInstance) {
+        // Charger le slot du niveau courant
+        FString LbSlot = TEXT("Leaderboard");
+        if (URevenantOpsGameInstance* GI = Cast<URevenantOpsGameInstance>(GetGameInstance()))
+          if (!GI->PendingLevel.MapName.IsNone())
+            LbSlot = FString::Printf(TEXT("Leaderboard_%s"), *GI->PendingLevel.MapName.ToString());
+        LeaderboardWidgetInstance->SetSaveSlot(LbSlot);
+        LeaderboardWidgetInstance->LoadScores();
+        LeaderboardWidgetInstance->AddToViewport(10);
+        ActiveMenu = LeaderboardWidgetInstance;
+        SetShowMouseCursor(true);
+        SetInputMode(FInputModeUIOnly());
+      }
     }
-  }
+  });
 }
 
 void ARevenantOpsPlayerController::ClearFlowWidgets() {

@@ -1,7 +1,12 @@
 // Copyright RevenantOps. All Rights Reserved.
 #include "UI/MenuWidgetBase.h"
 #include "UI/UIHelpers.h"
+#include "UI/UITheme.h"
 #include "Components/Button.h"
+#include "Components/CanvasPanel.h"
+#include "Components/CanvasPanelSlot.h"
+#include "Components/Image.h"
+#include "Blueprint/WidgetTree.h"
 #include "Kismet/GameplayStatics.h"
 #include "Math/UnrealMathUtility.h"
 
@@ -18,6 +23,34 @@ void UMenuWidgetBase::NativeConstruct()
         SetRenderOpacity(0.f);
         FadeElapsed = 0.f;
         bFadeActive = true;
+    }
+
+    // ── Vignette permanente ───────────────────────────────────────────────────
+    // Overlay sombre full-screen (ZOrder 99, HitTestInvisible) sur chaque menu.
+    // Donne un aspect cinématique / "combat zone" sans bloquer les inputs.
+    if (UCanvasPanel* Root = Cast<UCanvasPanel>(WidgetTree ? WidgetTree->RootWidget : nullptr))
+    {
+        UUITheme* T = GetTheme();
+        // On utilise VignetteColor du thème mais on plafonne l'alpha à 0.2
+        // pour rester subtil même si le DataAsset a une valeur plus forte.
+        const FLinearColor VigColor = T ? T->VignetteColor : FLinearColor(0.f, 0.f, 0.f, 0.35f);
+        const float        VigAlpha = FMath::Min(VigColor.A, 0.20f);
+
+        if (UImage* Vig = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), FName("MenuVignette")))
+        {
+            FSlateBrush VBrush;
+            VBrush.DrawAs   = ESlateBrushDrawType::Box;
+            VBrush.TintColor = FSlateColor(FLinearColor(VigColor.R, VigColor.G, VigColor.B, VigAlpha));
+            Vig->SetBrush(VBrush);
+            Vig->SetVisibility(ESlateVisibility::HitTestInvisible);
+
+            if (UCanvasPanelSlot* S = Root->AddChildToCanvas(Vig))
+            {
+                S->SetAnchors(FAnchors(0.f, 0.f, 1.f, 1.f));
+                S->SetOffsets(FMargin(0.f));
+                S->SetZOrder(99);
+            }
+        }
     }
 }
 
