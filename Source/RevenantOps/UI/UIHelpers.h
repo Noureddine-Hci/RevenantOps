@@ -126,6 +126,14 @@ public:
     UFUNCTION(BlueprintPure, Category = "UIHelpers|Typography")
     static FSlateFontInfo GetFont(const UUITheme* Theme, int32 Size);
 
+    /**
+     *  Retourne FontMono du theme (chiffres HUD : ammo, timer, score).
+     *  Fallback → FCoreStyle "Regular" si non assigne.
+     *  La taille demandee est toujours forcee sur le resultat.
+     */
+    UFUNCTION(BlueprintPure, Category = "UIHelpers|Typography")
+    static FSlateFontInfo GetMonoFont(const UUITheme* Theme, int32 Size);
+
     // ─────────────────────────────────────────────────────────────────────────
     // THEME GLOBAL
     // ─────────────────────────────────────────────────────────────────────────

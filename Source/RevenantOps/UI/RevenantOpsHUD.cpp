@@ -13,6 +13,8 @@
 #include "Components/VerticalBox.h"
 #include "Components/VerticalBoxSlot.h"
 #include "Styling/CoreStyle.h"
+#include "UI/UITheme.h"
+#include "UI/UIHelpers.h"
 #include "HealthComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "MercenairesGameState.h"
@@ -50,36 +52,156 @@ void URevenantOpsHUD::BuildDefaultUI()
   WidgetTree->RootWidget = Root;
   if (!Root) return;
 
-  // Typed helpers (C++17 compatible)
-  auto MakeBar = [&](UProgressBar*& Out, FName Name, FVector2D Pos, FVector2D Sz, FAnchors A) {
+  // ── Theme ────────────────────────────────────────────────────────────────
+  UUITheme* T = UUIHelpers::GetDefaultTheme();
+
+  const FLinearColor C_BgPanel  = T ? T->BgPanelDim    : FLinearColor(0.05f, 0.04f, 0.03f, 0.85f);
+  const FLinearColor C_Accent   = T ? T->RedBlood       : FLinearColor(0.75f, 0.15f, 0.10f, 1.f);
+  const FLinearColor C_Gold     = T ? T->GoldTarnish    : FLinearColor(0.85f, 0.70f, 0.30f, 1.f);
+  const FLinearColor C_GoldDim  = T ? T->GoldDim        : FLinearColor(0.55f, 0.45f, 0.20f, 1.f);
+  const FLinearColor C_White    = T ? T->WhiteText      : FLinearColor(0.95f, 0.93f, 0.88f, 1.f);
+  const FLinearColor C_Grey     = T ? T->GreySoft       : FLinearColor(0.45f, 0.42f, 0.38f, 1.f);
+
+  // ── Typed helpers ────────────────────────────────────────────────────────
+  auto MakeBar = [&](UProgressBar*& Out, FName Name, FVector2D Pos, FVector2D Sz, FAnchors A, int32 Z = 1) {
     Out = WidgetTree->ConstructWidget<UProgressBar>(UProgressBar::StaticClass(), Name);
-    if (Out) { if (auto* S = Root->AddChildToCanvas(Out)) { S->SetAnchors(A); S->SetPosition(Pos); S->SetSize(Sz); } }
+    if (Out) { if (auto* S = Root->AddChildToCanvas(Out)) { S->SetAnchors(A); S->SetPosition(Pos); S->SetSize(Sz); S->SetZOrder(Z); } }
   };
-  auto MakeText = [&](UTextBlock*& Out, FName Name, FVector2D Pos, FVector2D Sz, FAnchors A) {
+  auto MakeText = [&](UTextBlock*& Out, FName Name, FVector2D Pos, FVector2D Sz, FAnchors A, int32 Z = 1) {
     Out = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), Name);
-    if (Out) { if (auto* S = Root->AddChildToCanvas(Out)) { S->SetAnchors(A); S->SetPosition(Pos); S->SetSize(Sz); } }
+    if (Out) { if (auto* S = Root->AddChildToCanvas(Out)) { S->SetAnchors(A); S->SetPosition(Pos); S->SetSize(Sz); S->SetZOrder(Z); } }
   };
-  auto MakeImg = [&](UImage*& Out, FName Name, FVector2D Pos, FVector2D Sz, FAnchors A) {
+  auto MakeImg = [&](UImage*& Out, FName Name, FVector2D Pos, FVector2D Sz, FAnchors A, int32 Z = 1) {
     Out = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), Name);
-    if (Out) { if (auto* S = Root->AddChildToCanvas(Out)) { S->SetAnchors(A); S->SetPosition(Pos); S->SetSize(Sz); } }
+    if (Out) { if (auto* S = Root->AddChildToCanvas(Out)) { S->SetAnchors(A); S->SetPosition(Pos); S->SetSize(Sz); S->SetZOrder(Z); } }
   };
+
+  // Brush solide générique
+  auto MakeSolid = [](FLinearColor C) -> FSlateBrush {
+    FSlateBrush B; B.DrawAs = ESlateBrushDrawType::Box; B.TintColor = FSlateColor(C); return B;
+  };
+
+  // ── Panneaux stencil (ZOrder 0, derrière le contenu à ZOrder 1) ──────────
+  // Panel fond + accent rouge gauche sur chaque groupe HUD
+
+  // Ajoute un UBorder de fond sombre
+  auto MakePanelBg = [&](FName Name, FVector2D Pos, FVector2D Sz, FAnchors A) {
+    UBorder* Bg = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), Name);
+    if (Bg) {
+      if (UCanvasPanelSlot* S = Root->AddChildToCanvas(Bg)) {
+        S->SetAnchors(A); S->SetPosition(Pos); S->SetSize(Sz); S->SetZOrder(0);
+      }
+      Bg->SetBrushColor(C_BgPanel);
+      Bg->SetPadding(FMargin(0.f));
+      Bg->SetVisibility(ESlateVisibility::HitTestInvisible);
+    }
+    return Bg;
+  };
+
+  // Ajoute une fine barre d'accent (2px) sur le bord gauche d'un panneau
+  auto MakeAccentBar = [&](FName Name, FVector2D Pos, FVector2D Sz, FAnchors A) {
+    UImage* Acc = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), Name);
+    if (Acc) {
+      if (UCanvasPanelSlot* S = Root->AddChildToCanvas(Acc)) {
+        S->SetAnchors(A); S->SetPosition(Pos); S->SetSize(Sz); S->SetZOrder(0);
+      }
+      Acc->SetBrush(MakeSolid(C_Accent));
+      Acc->SetVisibility(ESlateVisibility::HitTestInvisible);
+    }
+    return Acc;
+  };
+
+  // TOP-LEFT : health + stamina  (8, 8) → 278 × 76
+  MakePanelBg(FName("Panel_Health"), FVector2D(8.f, 8.f), FVector2D(278.f, 76.f), FAnchors(0.f, 0.f));
+  MakeAccentBar(FName("Accent_Health"), FVector2D(8.f, 8.f), FVector2D(3.f, 76.f), FAnchors(0.f, 0.f));
+
+  // TOP-CENTER : timer  (-72, 8) → 144 × 52
+  MakePanelBg(FName("Panel_Timer"), FVector2D(-72.f, 8.f), FVector2D(144.f, 52.f), FAnchors(0.5f, 0.f));
+  {
+    // Barre d'accent en bas du panneau timer
+    UImage* Acc = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), FName("Accent_Timer"));
+    if (Acc) {
+      if (UCanvasPanelSlot* S = Root->AddChildToCanvas(Acc)) {
+        S->SetAnchors(FAnchors(0.5f, 0.f)); S->SetPosition(FVector2D(-72.f, 58.f));
+        S->SetSize(FVector2D(144.f, 3.f)); S->SetZOrder(0);
+      }
+      Acc->SetBrush(MakeSolid(C_Accent));
+      Acc->SetVisibility(ESlateVisibility::HitTestInvisible);
+    }
+  }
+
+  // TOP-RIGHT : score + wave + combo  (-178, 8) → 170 × 142
+  MakePanelBg(FName("Panel_Score"), FVector2D(-178.f, 8.f), FVector2D(170.f, 142.f), FAnchors(1.f, 0.f));
+  {
+    // Accent rouge sur le bord droit (2px, toute la hauteur)
+    UImage* Acc = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), FName("Accent_Score"));
+    if (Acc) {
+      if (UCanvasPanelSlot* S = Root->AddChildToCanvas(Acc)) {
+        S->SetAnchors(FAnchors(1.f, 0.f)); S->SetPosition(FVector2D(-8.f, 8.f));
+        S->SetSize(FVector2D(3.f, 142.f)); S->SetZOrder(0);
+      }
+      Acc->SetBrush(MakeSolid(C_Accent));
+      Acc->SetVisibility(ESlateVisibility::HitTestInvisible);
+    }
+  }
+
+  // BOTTOM-RIGHT : ammo + weapon  (-240, -118) → 230 × 108
+  MakePanelBg(FName("Panel_Ammo"), FVector2D(-240.f, -118.f), FVector2D(230.f, 108.f), FAnchors(1.f, 1.f));
+  {
+    // Accent rouge sur le bord supérieur (2px, toute la largeur)
+    UImage* Acc = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), FName("Accent_Ammo"));
+    if (Acc) {
+      if (UCanvasPanelSlot* S = Root->AddChildToCanvas(Acc)) {
+        S->SetAnchors(FAnchors(1.f, 1.f)); S->SetPosition(FVector2D(-240.f, -118.f));
+        S->SetSize(FVector2D(230.f, 3.f)); S->SetZOrder(0);
+      }
+      Acc->SetBrush(MakeSolid(C_Accent));
+      Acc->SetVisibility(ESlateVisibility::HitTestInvisible);
+    }
+  }
 
   // ── Progress bars ────────────────────────────────────────────────────────
-  MakeBar(HealthBar,     FName("HealthBar"),     FVector2D(20.f,   20.f),  FVector2D(250.f, 18.f), FAnchors(0.f,  0.f));
-  MakeBar(ShieldBar,     FName("ShieldBar"),     FVector2D(20.f,   42.f),  FVector2D(200.f, 10.f), FAnchors(0.f,  0.f));
-  MakeBar(StaminaBar,    FName("StaminaBar"),    FVector2D(20.f,   56.f),  FVector2D(180.f, 12.f), FAnchors(0.f,  0.f));
-  MakeBar(ComboTimerBar, FName("ComboTimerBar"), FVector2D(-160.f, 116.f), FVector2D(150.f, 10.f), FAnchors(1.f,  0.f));
+  MakeBar(HealthBar,     FName("HealthBar"),     FVector2D(20.f,   22.f),  FVector2D(250.f, 18.f), FAnchors(0.f,  0.f));
+  MakeBar(ShieldBar,     FName("ShieldBar"),     FVector2D(20.f,   44.f),  FVector2D(200.f, 10.f), FAnchors(0.f,  0.f));
+  MakeBar(StaminaBar,    FName("StaminaBar"),    FVector2D(20.f,   58.f),  FVector2D(180.f, 12.f), FAnchors(0.f,  0.f));
+  MakeBar(ComboTimerBar, FName("ComboTimerBar"), FVector2D(-165.f, 120.f), FVector2D(150.f, 8.f),  FAnchors(1.f,  0.f));
   MakeBar(ReloadBar,     FName("ReloadBar"),     FVector2D(-150.f, -55.f), FVector2D(300.f, 14.f), FAnchors(0.5f, 1.f));
 
+  // Couleur de la barre combo : or terni
+  if (ComboTimerBar) ComboTimerBar->SetFillColorAndOpacity(C_Gold);
+
+  // Couleur reload bar : rouge sang
+  if (ReloadBar) ReloadBar->SetFillColorAndOpacity(C_Accent);
+
   // ── Text blocks ──────────────────────────────────────────────────────────
-  MakeText(TimerText,            FName("TimerText"),            FVector2D(-60.f,   20.f),  FVector2D(120.f, 36.f), FAnchors(0.5f, 0.f));
-  MakeText(ScoreText,            FName("ScoreText"),            FVector2D(-160.f,  20.f),  FVector2D(150.f, 30.f), FAnchors(1.f,  0.f));
-  MakeText(WaveText,             FName("WaveText"),             FVector2D(-160.f,  55.f),  FVector2D(150.f, 24.f), FAnchors(1.f,  0.f));
-  MakeText(ComboText,            FName("ComboText"),            FVector2D(-160.f,  84.f),  FVector2D(150.f, 28.f), FAnchors(1.f,  0.f));
-  MakeText(AmmoCurrentText,      FName("AmmoCurrentText"),      FVector2D(-170.f, -70.f),  FVector2D(120.f, 40.f), FAnchors(1.f,  1.f));
-  MakeText(AmmoReserveText,      FName("AmmoReserveText"),      FVector2D(-80.f,  -40.f),  FVector2D(70.f,  28.f), FAnchors(1.f,  1.f));
-  MakeText(WeaponNameText,       FName("WeaponNameText"),       FVector2D(-220.f, -105.f), FVector2D(200.f, 28.f), FAnchors(1.f,  1.f));
+  MakeText(TimerText,            FName("TimerText"),            FVector2D(-60.f,   16.f),  FVector2D(120.f, 36.f), FAnchors(0.5f, 0.f));
+  MakeText(ScoreText,            FName("ScoreText"),            FVector2D(-168.f,  16.f),  FVector2D(152.f, 30.f), FAnchors(1.f,  0.f));
+  MakeText(WaveText,             FName("WaveText"),             FVector2D(-168.f,  52.f),  FVector2D(152.f, 24.f), FAnchors(1.f,  0.f));
+  MakeText(ComboText,            FName("ComboText"),            FVector2D(-168.f,  82.f),  FVector2D(152.f, 32.f), FAnchors(1.f,  0.f));
+  MakeText(AmmoCurrentText,      FName("AmmoCurrentText"),      FVector2D(-178.f, -72.f),  FVector2D(130.f, 44.f), FAnchors(1.f,  1.f));
+  MakeText(AmmoReserveText,      FName("AmmoReserveText"),      FVector2D(-90.f,  -38.f),  FVector2D(80.f,  28.f), FAnchors(1.f,  1.f));
+  MakeText(WeaponNameText,       FName("WeaponNameText"),       FVector2D(-228.f, -112.f), FVector2D(210.f, 28.f), FAnchors(1.f,  1.f));
   MakeText(KillNotificationText, FName("KillNotificationText"), FVector2D(-120.f,  80.f),  FVector2D(240.f, 30.f), FAnchors(0.5f, 0.f));
+
+  // ── Fonts thème (FontMono pour chiffres, FontBody pour labels) ──────────
+  if (TimerText)            TimerText->SetFont(UUIHelpers::GetMonoFont(T, 28));
+  if (ScoreText)            ScoreText->SetFont(UUIHelpers::GetMonoFont(T, 22));
+  if (WaveText)             WaveText->SetFont(UUIHelpers::GetFont(T, 15));
+  if (ComboText)            ComboText->SetFont(UUIHelpers::GetMonoFont(T, 32));
+  if (AmmoCurrentText)      AmmoCurrentText->SetFont(UUIHelpers::GetMonoFont(T, 38));
+  if (AmmoReserveText)      AmmoReserveText->SetFont(UUIHelpers::GetMonoFont(T, 18));
+  if (WeaponNameText)       WeaponNameText->SetFont(UUIHelpers::GetFont(T, 15));
+  if (KillNotificationText) KillNotificationText->SetFont(UUIHelpers::GetFont(T, 20));
+
+  // ── Couleurs textes depuis le theme ─────────────────────────────────────
+  if (TimerText)            TimerText->SetColorAndOpacity(FSlateColor(C_White));
+  if (ScoreText)            ScoreText->SetColorAndOpacity(FSlateColor(C_Gold));
+  if (WaveText)             WaveText->SetColorAndOpacity(FSlateColor(C_GoldDim));
+  if (ComboText)            ComboText->SetColorAndOpacity(FSlateColor(C_Gold));
+  if (AmmoCurrentText)      AmmoCurrentText->SetColorAndOpacity(FSlateColor(C_White));
+  if (AmmoReserveText)      AmmoReserveText->SetColorAndOpacity(FSlateColor(C_Grey));
+  if (WeaponNameText)       WeaponNameText->SetColorAndOpacity(FSlateColor(C_GoldDim));
+  if (KillNotificationText) KillNotificationText->SetColorAndOpacity(FSlateColor(C_Gold));
 
   // ── Images ───────────────────────────────────────────────────────────────
   // Ancien CrosshairImage masqué — remplacé par les 4 traits
@@ -87,30 +209,20 @@ void URevenantOpsHUD::BuildDefaultUI()
   if (CrosshairImage) CrosshairImage->SetVisibility(ESlateVisibility::Collapsed);
 
   // 4 traits du viseur (positions initiales au repos, gap=4)
-  // Trait haut   : largeur=thickness, hauteur=length, au-dessus du centre
   MakeImg(CrosshairTop,    FName("CrosshairTop"),    FVector2D(-1.f, -(4.f + 10.f)), FVector2D(2.f, 10.f), FAnchors(0.5f, 0.5f));
-  // Trait bas
   MakeImg(CrosshairBottom, FName("CrosshairBottom"), FVector2D(-1.f,   4.f),          FVector2D(2.f, 10.f), FAnchors(0.5f, 0.5f));
-  // Trait gauche : largeur=length, hauteur=thickness
   MakeImg(CrosshairLeft,   FName("CrosshairLeft"),   FVector2D(-(4.f + 10.f), -1.f), FVector2D(10.f, 2.f), FAnchors(0.5f, 0.5f));
-  // Trait droit
   MakeImg(CrosshairRight,  FName("CrosshairRight"),  FVector2D(4.f,          -1.f),  FVector2D(10.f, 2.f), FAnchors(0.5f, 0.5f));
-
-  // Brush solide blanc — sans ca les UImage sont invisibles
-  FSlateBrush WhiteBrush;
-  WhiteBrush.DrawAs = ESlateBrushDrawType::Box;
-  WhiteBrush.TintColor = FSlateColor(FLinearColor::White);
 
   const FLinearColor LineColor(1.f, 1.f, 1.f, 0.9f);
   for (UImage* Line : {CrosshairTop, CrosshairBottom, CrosshairLeft, CrosshairRight}) {
     if (Line) {
-      Line->SetBrush(WhiteBrush);
+      Line->SetBrush(MakeSolid(FLinearColor::White));
       Line->SetColorAndOpacity(LineColor);
     }
   }
 
   MakeImg(HitMarkerImage,       FName("HitMarkerImage"),       FVector2D(-16.f, -16.f), FVector2D(32.f, 32.f), FAnchors(0.5f, 0.5f));
-  // Indicateur directionnel : fine barre 10×36, centrée, déplacée à 85px du centre via RenderTransform
   MakeImg(DamageDirectionImage, FName("DamageDirectionImage"), FVector2D(-5.f, -103.f), FVector2D(10.f, 36.f), FAnchors(0.5f, 0.5f));
 
   // LowHealthVignette : full-screen stretch
@@ -120,33 +232,12 @@ void URevenantOpsHUD::BuildDefaultUI()
     if (UCanvasPanelSlot* VigSlot = Root->AddChildToCanvas(LowHealthVignette)) {
       VigSlot->SetAnchors(FAnchors(0.f, 0.f, 1.f, 1.f));
       VigSlot->SetOffsets(FMargin(0.f));
+      VigSlot->SetZOrder(2);
     }
     LowHealthVignette->SetColorAndOpacity(FLinearColor(1.f, 0.f, 0.f, 0.f));
   }
 
-  // Font sizes
-  auto SetFontSize = [](UTextBlock* T, int32 Size) {
-    if (!T) return;
-    FSlateFontInfo F = T->GetFont();
-    F.Size = Size;
-    T->SetFont(F);
-  };
-  SetFontSize(TimerText,            28);
-  SetFontSize(ScoreText,            22);
-  SetFontSize(WaveText,             16);
-  SetFontSize(ComboText,            32); // gros et visible
-  SetFontSize(AmmoCurrentText,      36);
-  SetFontSize(AmmoReserveText,      18);
-  SetFontSize(WeaponNameText,       16);
-  SetFontSize(KillNotificationText, 20);
-
-  // Default tint colours
-  if (ComboText)            ComboText->SetColorAndOpacity(FSlateColor(FLinearColor(1.f, 0.8f, 0.f)));
-  if (AmmoReserveText)      AmmoReserveText->SetColorAndOpacity(FSlateColor(FLinearColor(0.6f, 0.6f, 0.6f)));
-  if (KillNotificationText) KillNotificationText->SetColorAndOpacity(FSlateColor(FLinearColor(1.f, 1.f, 0.f)));
-
   // ── Popup RE5 pickup ─────────────────────────────────────────────────────
-  // Positionné en bas au centre, HitTestInvisible = ne bloque JAMAIS l'input
   PickupPromptBG = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), FName("PickupPromptBG"));
   if (PickupPromptBG && Root)
   {
@@ -158,11 +249,11 @@ void URevenantOpsHUD::BuildDefaultUI()
       S->SetAutoSize(true);
       S->SetZOrder(5);
     }
-    PickupPromptBG->SetBrushColor(FLinearColor(0.f, 0.f, 0.f, 0.78f));
+    // Fond sombre thème + bordure or
+    PickupPromptBG->SetBrushColor(T ? T->BgPanel : FLinearColor(0.07f, 0.06f, 0.04f, 0.92f));
     PickupPromptBG->SetPadding(FMargin(14.f, 10.f));
     PickupPromptBG->SetVisibility(ESlateVisibility::Collapsed);
 
-    // Layout horizontal : [icone] [colonne texte]
     UHorizontalBox* HBox = WidgetTree->ConstructWidget<UHorizontalBox>();
     PickupPromptBG->SetContent(HBox);
     if (HBox)
@@ -181,24 +272,20 @@ void URevenantOpsHUD::BuildDefaultUI()
       UVerticalBox* VBox = WidgetTree->ConstructWidget<UVerticalBox>();
       if (VBox && HBox->AddChildToHorizontalBox(VBox))
       {
-        // "[E] Prendre" en jaune
         UTextBlock* KeyHint = WidgetTree->ConstructWidget<UTextBlock>();
         if (KeyHint)
         {
           KeyHint->SetText(FText::FromString(TEXT("[E]  Prendre")));
-          FSlateFontInfo F = FCoreStyle::GetDefaultFontStyle("Bold", 16);
-          KeyHint->SetFont(F);
-          KeyHint->SetColorAndOpacity(FSlateColor(FLinearColor(1.f, 0.88f, 0.2f)));
+          KeyHint->SetFont(UUIHelpers::GetFont(T, 16));
+          KeyHint->SetColorAndOpacity(FSlateColor(C_Gold));
           VBox->AddChildToVerticalBox(KeyHint);
         }
 
-        // Nom de l'objet en blanc
         PickupPromptName = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), FName("PickupPromptName"));
         if (PickupPromptName)
         {
-          FSlateFontInfo F = FCoreStyle::GetDefaultFontStyle("Regular", 13);
-          PickupPromptName->SetFont(F);
-          PickupPromptName->SetColorAndOpacity(FSlateColor(FLinearColor::White));
+          PickupPromptName->SetFont(UUIHelpers::GetFont(T, 13));
+          PickupPromptName->SetColorAndOpacity(FSlateColor(C_White));
           VBox->AddChildToVerticalBox(PickupPromptName);
         }
       }
@@ -254,12 +341,8 @@ void URevenantOpsHUD::NativeConstruct() {
   {
     if (UCanvasPanel* Root = Cast<UCanvasPanel>(WidgetTree->RootWidget))
     {
-      auto SetFontSize = [](UTextBlock* T, int32 Size) {
-        if (!T) return;
-        FSlateFontInfo F = T->GetFont();
-        F.Size = Size;
-        T->SetFont(F);
-      };
+      UUITheme* Th = UUIHelpers::GetDefaultTheme();
+      const FLinearColor C_Gold = Th ? Th->GoldTarnish : FLinearColor(0.85f, 0.70f, 0.30f, 1.f);
 
       if (!ComboText)
       {
@@ -270,11 +353,12 @@ void URevenantOpsHUD::NativeConstruct() {
           if (UCanvasPanelSlot* S = Root->AddChildToCanvas(ComboText))
           {
             S->SetAnchors(FAnchors(1.f, 0.f));
-            S->SetPosition(FVector2D(-160.f, 84.f));
-            S->SetSize(FVector2D(150.f, 36.f));
+            S->SetPosition(FVector2D(-168.f, 82.f));
+            S->SetSize(FVector2D(152.f, 36.f));
+            S->SetZOrder(1);
           }
-          SetFontSize(ComboText, 32);
-          ComboText->SetColorAndOpacity(FSlateColor(FLinearColor(1.f, 0.8f, 0.f)));
+          ComboText->SetFont(UUIHelpers::GetMonoFont(Th, 32));
+          ComboText->SetColorAndOpacity(FSlateColor(C_Gold));
         }
       }
 
@@ -287,9 +371,11 @@ void URevenantOpsHUD::NativeConstruct() {
           if (UCanvasPanelSlot* S = Root->AddChildToCanvas(ComboTimerBar))
           {
             S->SetAnchors(FAnchors(1.f, 0.f));
-            S->SetPosition(FVector2D(-160.f, 124.f));
-            S->SetSize(FVector2D(150.f, 10.f));
+            S->SetPosition(FVector2D(-165.f, 122.f));
+            S->SetSize(FVector2D(150.f, 8.f));
+            S->SetZOrder(1);
           }
+          ComboTimerBar->SetFillColorAndOpacity(C_Gold);
         }
       }
     }
@@ -416,6 +502,41 @@ void URevenantOpsHUD::NativeConstruct() {
           PickupPromptName->SetFont(NF);
           PickupPromptName->SetColorAndOpacity(FSlateColor(FLinearColor::White));
           VBox->AddChildToVerticalBox(PickupPromptName);
+        }
+      }
+    }
+  }
+
+  // Prompt finisher [F] — au-dessus du pickup prompt
+  if (!FinisherPromptBG)
+  {
+    UCanvasPanel* Root = Cast<UCanvasPanel>(WidgetTree ? WidgetTree->RootWidget : nullptr);
+    if (Root && WidgetTree)
+    {
+      FinisherPromptBG = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), FName("FinisherPromptBG"));
+      if (FinisherPromptBG)
+      {
+        if (UCanvasPanelSlot* S = Root->AddChildToCanvas(FinisherPromptBG))
+        {
+          S->SetAnchors(FAnchors(0.5f, 1.f, 0.5f, 1.f));
+          S->SetAlignment(FVector2D(0.5f, 1.f));
+          S->SetPosition(FVector2D(0.f, -180.f)); // au-dessus du pickup prompt
+          S->SetAutoSize(true);
+          S->SetZOrder(6);
+        }
+        FinisherPromptBG->SetBrushColor(FLinearColor(0.6f, 0.05f, 0.05f, 0.85f));
+        FinisherPromptBG->SetPadding(FMargin(18.f, 10.f));
+        FinisherPromptBG->SetVisibility(ESlateVisibility::Collapsed);
+
+        FinisherPromptText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), FName("FinisherPromptText"));
+        if (FinisherPromptText)
+        {
+          FinisherPromptText->SetText(FText::FromString(TEXT("[F]  Corps-a-corps")));
+          FSlateFontInfo FF = FinisherPromptText->GetFont();
+          FF.Size = 17;
+          FinisherPromptText->SetFont(FF);
+          FinisherPromptText->SetColorAndOpacity(FSlateColor(FLinearColor::White));
+          FinisherPromptBG->SetContent(FinisherPromptText);
         }
       }
     }
@@ -864,4 +985,16 @@ void URevenantOpsHUD::HidePickupPrompt()
 {
   if (PickupPromptBG)
     PickupPromptBG->SetVisibility(ESlateVisibility::Collapsed);
+}
+
+void URevenantOpsHUD::ShowFinisherPrompt()
+{
+  if (FinisherPromptBG)
+    FinisherPromptBG->SetVisibility(ESlateVisibility::HitTestInvisible);
+}
+
+void URevenantOpsHUD::HideFinisherPrompt()
+{
+  if (FinisherPromptBG)
+    FinisherPromptBG->SetVisibility(ESlateVisibility::Collapsed);
 }

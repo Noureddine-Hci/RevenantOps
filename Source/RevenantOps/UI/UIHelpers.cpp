@@ -128,6 +128,19 @@ FSlateFontInfo UUIHelpers::GetFont(const UUITheme* Theme, int32 Size)
     return Fi;
 }
 
+FSlateFontInfo UUIHelpers::GetMonoFont(const UUITheme* Theme, int32 Size)
+{
+    FSlateFontInfo Fi;
+    if (Theme && Theme->FontMono.HasValidFont())
+        Fi = Theme->FontMono;
+    else if (Theme && Theme->FontBody.HasValidFont())
+        Fi = Theme->FontBody; // fallback body si FontMono non assigne
+    if (!Fi.HasValidFont())
+        Fi = FCoreStyle::GetDefaultFontStyle("Regular", Size);
+    Fi.Size = Size;
+    return Fi;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // THEME GLOBAL
 // ─────────────────────────────────────────────────────────────────────────────
