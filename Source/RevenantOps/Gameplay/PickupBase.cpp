@@ -5,9 +5,14 @@
 #include "Components/StaticMeshComponent.h"
 #include "HealthComponent.h"
 #include "TimerManager.h"
+#include "Kismet/GameplayStatics.h"
 
 APickupBase::APickupBase() {
   PrimaryActorTick.bCanEverTick = true;
+
+  static ConstructorHelpers::FObjectFinder<USoundBase> DefaultSound(
+      TEXT("/Game/Mercenaires/Audio/SFX/SW_Hit"));
+  if (DefaultSound.Succeeded()) PickupSound = DefaultSound.Object;
 
   // Collision
   CollisionSphere =
@@ -103,10 +108,11 @@ void APickupBase::ApplyPickup(APawn *TargetPawn) {
   }
   }
 
-  // BP hook for effects
+  if (PickupSound)
+    UGameplayStatics::PlaySoundAtLocation(this, PickupSound, GetActorLocation());
+
   BP_OnPickedUp(TargetPawn);
 
-  // Hide or destroy
   HidePickup();
 }
 

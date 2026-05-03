@@ -130,6 +130,20 @@ protected:
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mercenaires|Audio")
   USoundBase *BackgroundMusic = nullptr;
 
+  /** Urgent music that kicks in when TimeRemaining < LowTimeThreshold */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mercenaires|Audio")
+  USoundBase *LowTimeMusic = nullptr;
+
+  /** Seconds remaining that trigger the urgent music switch */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mercenaires|Audio",
+            meta = (ClampMin = 5.f, ClampMax = 120.f))
+  float LowTimeThreshold = 30.f;
+
+  /** Music fade-in duration when match starts */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mercenaires|Audio",
+            meta = (ClampMin = 0.f, ClampMax = 5.f))
+  float MusicFadeInDuration = 2.f;
+
   /** Music volume */
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mercenaires|Audio",
             meta = (ClampMin = 0.0, ClampMax = 1.0))
@@ -138,6 +152,8 @@ protected:
   /** Audio component for background music */
   UPROPERTY()
   UAudioComponent *MusicComponent = nullptr;
+
+  bool bLowTimeMusicTriggered = false;
 
   // ========== RUNTIME STATE ==========
 

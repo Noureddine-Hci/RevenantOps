@@ -8,6 +8,7 @@
 
 class USphereComponent;
 class UStaticMeshComponent;
+class USoundBase;
 
 /**
  *  Pickup type
@@ -77,6 +78,10 @@ protected:
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Pickup|Visual",
             meta = (ClampMin = 0, ClampMax = 360))
   float RotationSpeed = 90.f;
+
+  /** Sound played when the pickup is collected */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Pickup|Audio")
+  USoundBase* PickupSound = nullptr;
 
   /** Respawn time (0 = no respawn) */
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Pickup",

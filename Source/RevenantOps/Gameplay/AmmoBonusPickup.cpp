@@ -6,9 +6,14 @@
 #include "RevenantOpsCharacter.h"
 #include "WeaponBase.h"
 #include "TimerManager.h"
+#include "Kismet/GameplayStatics.h"
 
 AAmmoBonusPickup::AAmmoBonusPickup() {
   PrimaryActorTick.bCanEverTick = true;
+
+  static ConstructorHelpers::FObjectFinder<USoundBase> DefaultSound(
+      TEXT("/Game/Mercenaires/Audio/SFX/SW_Hit"));
+  if (DefaultSound.Succeeded()) PickupSound = DefaultSound.Object;
 
   PickupMesh =
       CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PickupMesh"));
@@ -91,6 +96,9 @@ void AAmmoBonusPickup::TryPickup(ARevenantOpsCharacter* Player) {
   PendingPlayer = nullptr;
   Player->ClearPendingPickup();
   Player->HidePickupPrompt();
+
+  if (PickupSound)
+    UGameplayStatics::PlaySoundAtLocation(this, PickupSound, GetActorLocation());
 
   BP_OnPickedUp(Player, AmmoAmount);
 
