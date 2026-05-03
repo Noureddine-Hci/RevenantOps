@@ -150,7 +150,7 @@ void ARevenantOpsPlayerController::ShowTitleScreen() {
       TitleScreenWidget = CreateWidget<UTitleScreenWidget>(this, TitleScreenClass);
       if (TitleScreenWidget) {
         TitleScreenWidget->AddToViewport(10);
-        ActiveMenu = TitleScreenWidget;
+        ActiveMenu = TitleScreenWidget.Get();
         SetShowMouseCursor(true);
         SetInputMode(FInputModeUIOnly());
       }
@@ -170,7 +170,7 @@ void ARevenantOpsPlayerController::ShowOptionsScreen() {
       OptionsWidgetInstance->OnBackClicked.AddDynamic(
           this, &ARevenantOpsPlayerController::OnOptionsBack);
       OptionsWidgetInstance->AddToViewport(10);
-      ActiveMenu = OptionsWidgetInstance;
+      ActiveMenu = OptionsWidgetInstance.Get();
       SetShowMouseCursor(true);
       SetInputMode(FInputModeUIOnly());
     }
@@ -200,7 +200,7 @@ void ARevenantOpsPlayerController::ShowLevelSelectScreen() {
       LevelSelectWidgetInstance->OnBackClicked.AddDynamic(
           this, &ARevenantOpsPlayerController::OnLevelSelectBack);
       LevelSelectWidgetInstance->AddToViewport(10);
-      ActiveMenu = LevelSelectWidgetInstance;
+      ActiveMenu = LevelSelectWidgetInstance.Get();
       SetShowMouseCursor(true);
       FInputModeUIOnly InputMode;
       InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
@@ -239,7 +239,7 @@ void ARevenantOpsPlayerController::ShowCharacterSelectScreen() {
       CharacterSelectWidgetInstance->OnBackClicked.AddDynamic(
           this, &ARevenantOpsPlayerController::OnCharacterSelectBack);
       CharacterSelectWidgetInstance->AddToViewport(10);
-      ActiveMenu = CharacterSelectWidgetInstance;
+      ActiveMenu = CharacterSelectWidgetInstance.Get();
       SetShowMouseCursor(true);
       SetInputMode(FInputModeUIOnly());
     }
@@ -303,7 +303,7 @@ void ARevenantOpsPlayerController::ShowLoadoutScreen() {
         LoadoutWidgetInstance->OnLoadoutConfirmed.AddDynamic(
             this, &ARevenantOpsPlayerController::OnLoadoutConfirmed);
         LoadoutWidgetInstance->AddToViewport(10);
-        ActiveMenu = LoadoutWidgetInstance;
+        ActiveMenu = LoadoutWidgetInstance.Get();
         SetShowMouseCursor(true);
         SetInputMode(FInputModeUIOnly());
       }
@@ -607,7 +607,7 @@ void ARevenantOpsPlayerController::ShowLeaderboard() {
         LeaderboardWidgetInstance->SetSaveSlot(LbSlot);
         LeaderboardWidgetInstance->LoadScores();
         LeaderboardWidgetInstance->AddToViewport(10);
-        ActiveMenu = LeaderboardWidgetInstance;
+        ActiveMenu = LeaderboardWidgetInstance.Get();
         SetShowMouseCursor(true);
         SetInputMode(FInputModeUIOnly());
       }
