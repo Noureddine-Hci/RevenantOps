@@ -76,16 +76,17 @@ protected:
 
   // ========== DAMAGE MODIFIERS ==========
 
-  /** Global damage multiplier (0.5 = take half damage) */
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Health|Modifiers",
-            meta = (ClampMin = 0.0, ClampMax = 10.0))
-  float DamageMultiplier = 1.0f;
-
   /** If true, this actor is currently invulnerable */
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Health|Modifiers")
   bool bIsInvulnerable = false;
 
 public:
+  /** Global damage multiplier (0.5 = take half damage) */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Health|Modifiers",
+            meta = (ClampMin = 0.0, ClampMax = 10.0))
+  float DamageMultiplier = 1.0f;
+
+
   // ========== EVENTS ==========
 
   /** Broadcast when health changes */

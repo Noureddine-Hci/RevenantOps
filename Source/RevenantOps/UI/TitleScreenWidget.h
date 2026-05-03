@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Blueprint/UserWidget.h"
+#include "UI/MenuWidgetBase.h"
 #include "TitleScreenWidget.generated.h"
 
 class UButton;
@@ -16,7 +16,7 @@ class ARevenantOpsPlayerController;
  *  Bind UButton widgets named PlayButton and QuitButton in the Blueprint.
  */
 UCLASS(abstract, Blueprintable)
-class UTitleScreenWidget : public UUserWidget {
+class UTitleScreenWidget : public UMenuWidgetBase {
   GENERATED_BODY()
 
 public:

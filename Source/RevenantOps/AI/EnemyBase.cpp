@@ -521,13 +521,13 @@ void AEnemyBase::HandleDeath(UHealthComponent *HealthComponent,
   {
     if (UAnimInstance* AI = GetMesh()->GetAnimInstance())
     {
-      const float AnimLen = AI->PlaySlotAnimationAsDynamicMontage(
+      UAnimMontage* DynMontage = AI->PlaySlotAnimationAsDynamicMontage(
           DeathAnim, FName("DefaultSlot"),
           /*BlendIn=*/0.1f, /*BlendOut=*/0.f,
           /*PlayRate=*/1.f);
-      if (AnimLen > 0.f)
+      if (DynMontage)
       {
-        RagdollDelay = AnimLen;
+        RagdollDelay = DynMontage->GetPlayLength();
       }
     }
   }
