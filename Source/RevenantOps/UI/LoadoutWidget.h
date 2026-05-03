@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Blueprint/UserWidget.h"
+#include "UI/MenuWidgetBase.h"
 #include "LoadoutWidget.generated.h"
 
 class UButton;
@@ -54,7 +54,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnLoadoutConfirmed,
  *  Use arrow buttons to cycle through weapons for each slot.
  */
 UCLASS(abstract, Blueprintable)
-class ULoadoutWidget : public UUserWidget {
+class ULoadoutWidget : public UMenuWidgetBase {
   GENERATED_BODY()
 
 public:

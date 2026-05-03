@@ -230,6 +230,11 @@ protected:
   UPROPERTY() UImage*     PickupPromptIcon = nullptr;
   UPROPERTY() UTextBlock* PickupPromptName = nullptr;
 
+  // ========== FINISHER PROMPT ==========
+
+  UPROPERTY() UBorder*    FinisherPromptBG   = nullptr;
+  UPROPERTY() UTextBlock* FinisherPromptText = nullptr;
+
 public:
   /** Shows the hit marker (call from weapon hit event) */
   UFUNCTION(BlueprintCallable, Category = "HUD")
@@ -248,4 +253,10 @@ public:
 
   /** Cache le popup RE5 */
   void HidePickupPrompt();
+
+  /** Affiche le prompt de finisher corps-à-corps */
+  void ShowFinisherPrompt();
+
+  /** Cache le prompt de finisher */
+  void HideFinisherPrompt();
 };
