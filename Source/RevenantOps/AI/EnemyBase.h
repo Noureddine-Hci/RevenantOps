@@ -297,6 +297,9 @@ protected:
 
   FTimerHandle DeathCleanupTimer;
 
+  /** Timer pour déclencher le ragdoll après la death anim */
+  FTimerHandle DeathRagdollTimer;
+
 public:
   // ========== EVENTS ==========
 

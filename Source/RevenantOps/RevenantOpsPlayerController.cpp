@@ -477,10 +477,40 @@ void ARevenantOpsPlayerController::OnPlayerDied(
     P->DisableInput(this);
   }
 
-  // End the match — this will trigger OnMatchEnded via the delegate
-  if (AMercenairesGameState *GS =
-          GetWorld()->GetGameState<AMercenairesGameState>()) {
-    GS->EndMatch();
+  // ── Death animation ───────────────────────────────────────────────────────
+  // Jouer le montage de mort s'il est assigné. Le GameOver est déclenché après
+  // la durée de l'anim (ou immédiatement si aucun montage n'est assigné).
+  float DeathAnimDelay = 0.f;
+  if (ARevenantOpsCharacter* Char = Cast<ARevenantOpsCharacter>(GetPawn()))
+  {
+    if (Char->DeathMontage)
+    {
+      const float MontageLen = Char->PlayAnimMontage(Char->DeathMontage);
+      if (MontageLen > 0.f)
+      {
+        DeathAnimDelay = MontageLen;
+      }
+    }
+  }
+
+  // End the match après la death anim (ou immédiatement)
+  auto TriggerEndMatch = [this]()
+  {
+    if (AMercenairesGameState* GS = GetWorld()->GetGameState<AMercenairesGameState>())
+    {
+      GS->EndMatch();
+    }
+  };
+
+  if (DeathAnimDelay > 0.f)
+  {
+    FTimerHandle DeathMatchTimer;
+    GetWorldTimerManager().SetTimer(
+        DeathMatchTimer, TriggerEndMatch, DeathAnimDelay, /*bLoop=*/false);
+  }
+  else
+  {
+    TriggerEndMatch();
   }
 }
 

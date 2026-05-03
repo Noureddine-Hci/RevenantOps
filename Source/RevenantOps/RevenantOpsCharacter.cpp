@@ -344,6 +344,12 @@ void ARevenantOpsCharacter::StartSprint() {
 
   bIsSprinting = true;
   TargetSpeed = SprintSpeed;
+
+  // Montage optionnel de départ sprint (upper body only — slot "UpperBody")
+  if (SprintStartMontage)
+  {
+    PlayAnimMontage(SprintStartMontage);
+  }
 }
 
 void ARevenantOpsCharacter::StopSprint() {
