@@ -2,7 +2,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Blueprint/UserWidget.h"
+#include "UI/MenuWidgetBase.h"
 #include "UI/MenuTypes.h"
 #include "LevelSelectWidget.generated.h"
 
@@ -23,7 +23,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnLevelSelectBack);
  * Carousel horizontal + leaderboard par niveau en bas.
  */
 UCLASS(Blueprintable)
-class REVENANTOPS_API ULevelSelectWidget : public UUserWidget
+class REVENANTOPS_API ULevelSelectWidget : public UMenuWidgetBase
 {
     GENERATED_BODY()
 

@@ -513,9 +513,46 @@ void AEnemyBase::HandleDeath(UHealthComponent *HealthComponent,
   // Disable collision
   GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-  // Ragdoll immédiat — toujours
-  GetMesh()->SetSimulatePhysics(true);
-  GetMesh()->SetCollisionProfileName(TEXT("Ragdoll"));
+  // ── Death animation → ragdoll différé ────────────────────────────────────
+  // Si une DeathAnim est assignée, on la joue d'abord puis on passe en ragdoll
+  // après sa durée. Sinon ragdoll immédiat.
+  float RagdollDelay = 0.f;
+  if (DeathAnim)
+  {
+    if (UAnimInstance* AI = GetMesh()->GetAnimInstance())
+    {
+      UAnimMontage* DynMontage = AI->PlaySlotAnimationAsDynamicMontage(
+          DeathAnim, FName("DefaultSlot"),
+          /*BlendIn=*/0.1f, /*BlendOut=*/0.f,
+          /*PlayRate=*/1.f);
+      if (DynMontage)
+      {
+        RagdollDelay = DynMontage->GetPlayLength();
+      }
+    }
+  }
+
+  if (RagdollDelay > 0.f)
+  {
+    // Ragdoll après la fin de l'anim
+    GetWorldTimerManager().SetTimer(
+        DeathRagdollTimer,
+        [this]()
+        {
+          if (IsValid(this) && GetMesh())
+          {
+            GetMesh()->SetSimulatePhysics(true);
+            GetMesh()->SetCollisionProfileName(TEXT("Ragdoll"));
+          }
+        },
+        RagdollDelay, /*bLoop=*/false);
+  }
+  else
+  {
+    // Ragdoll immédiat (pas de DeathAnim assignée)
+    GetMesh()->SetSimulatePhysics(true);
+    GetMesh()->SetCollisionProfileName(TEXT("Ragdoll"));
+  }
 
   // Hide life bar
   if (LifeBarWidget) {

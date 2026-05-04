@@ -1,6 +1,8 @@
 // Copyright RevenantOps. All Rights Reserved.
 
 #include "LoadoutWidget.h"
+#include "UI/UITheme.h"
+#include "UI/UIHelpers.h"
 #include "Styling/CoreStyle.h"
 #include "Components/Button.h"
 #include "Components/TextBlock.h"
@@ -91,162 +93,185 @@ void ULoadoutWidget::RefreshWeaponButtons() {
 // Build UI
 // ---------------------------------------------------------------------------
 
-static UButton* MakeArrowButton(UWidgetTree* WT, const FString& Label,
-                                 FSlateFontInfo Font) {
-  UButton*    Btn  = WT->ConstructWidget<UButton>();
-  UTextBlock* Text = WT->ConstructWidget<UTextBlock>();
-  Text->SetText(FText::FromString(Label));
-  Text->SetFont(Font);
-  Text->SetColorAndOpacity(FSlateColor(FLinearColor(1.f, 0.8f, 0.2f)));
-  Btn->AddChild(Text);
+static UButton* LW_MakeArrowButton(UWidgetTree* WT, const FString& Label,
+                                    FSlateFontInfo Font,
+                                    const FLinearColor& AccentColor)
+{
+    UButton*    Btn  = WT->ConstructWidget<UButton>();
+    UTextBlock* Text = WT->ConstructWidget<UTextBlock>();
+    Text->SetText(FText::FromString(Label));
+    Text->SetFont(Font);
+    Text->SetColorAndOpacity(FSlateColor(AccentColor));
+    Btn->AddChild(Text);
 
-  FButtonStyle Style = Btn->GetStyle();
-  FSlateColor Transparent(FLinearColor(0, 0, 0, 0));
-  Style.Normal.TintColor  = Transparent;
-  Style.Hovered.TintColor = FSlateColor(FLinearColor(1.f, 0.8f, 0.2f, 0.2f));
-  Style.Pressed.TintColor = FSlateColor(FLinearColor(1.f, 0.8f, 0.2f, 0.4f));
-  Btn->SetStyle(Style);
-  return Btn;
+    FButtonStyle Style = Btn->GetStyle();
+    Style.Normal.TintColor  = FSlateColor(FLinearColor(0.f, 0.f, 0.f, 0.f));
+    Style.Hovered.TintColor = FSlateColor(UUIHelpers::WithAlpha(AccentColor, 0.2f));
+    Style.Pressed.TintColor = FSlateColor(UUIHelpers::WithAlpha(AccentColor, 0.4f));
+    Btn->SetStyle(Style);
+    return Btn;
 }
 
 /** Build a selector row:  [←]  WeaponName  [→]  */
-static UHorizontalBox* MakeSlotRow(UWidgetTree *WT, FSlateFontInfo ArrowFont,
-                                    FSlateFontInfo NameFont,
-                                    UTextBlock *&OutNameText,
-                                    UButton *&OutLeft, UButton *&OutRight) {
-  UHorizontalBox *HBox = WT->ConstructWidget<UHorizontalBox>();
+static UHorizontalBox* LW_MakeSlotRow(UWidgetTree* WT,
+                                       FSlateFontInfo ArrowFont, FSlateFontInfo NameFont,
+                                       const FLinearColor& AccentColor,
+                                       const FLinearColor& TextColor,
+                                       UTextBlock*& OutNameText,
+                                       UButton*& OutLeft, UButton*& OutRight)
+{
+    UHorizontalBox* HBox = WT->ConstructWidget<UHorizontalBox>();
 
-  OutLeft = MakeArrowButton(WT, TEXT("  <  "), ArrowFont);
-  UHorizontalBoxSlot *LS = HBox->AddChildToHorizontalBox(OutLeft);
-  LS->SetHorizontalAlignment(EHorizontalAlignment::HAlign_Center);
-  LS->SetVerticalAlignment(EVerticalAlignment::VAlign_Center);
+    OutLeft = LW_MakeArrowButton(WT, TEXT("  <  "), ArrowFont, AccentColor);
+    UHorizontalBoxSlot* LS = HBox->AddChildToHorizontalBox(OutLeft);
+    LS->SetHorizontalAlignment(HAlign_Center);
+    LS->SetVerticalAlignment(VAlign_Center);
 
-  OutNameText = WT->ConstructWidget<UTextBlock>();
-  OutNameText->SetFont(NameFont);
-  OutNameText->SetJustification(ETextJustify::Center);
-  OutNameText->SetColorAndOpacity(FSlateColor(FLinearColor(1.f, 1.f, 1.f)));
-  UHorizontalBoxSlot *NS = HBox->AddChildToHorizontalBox(OutNameText);
-  NS->SetHorizontalAlignment(EHorizontalAlignment::HAlign_Center);
-  NS->SetVerticalAlignment(EVerticalAlignment::VAlign_Center);
-  NS->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
-  NS->SetPadding(FMargin(12, 0));
+    OutNameText = WT->ConstructWidget<UTextBlock>();
+    OutNameText->SetFont(NameFont);
+    OutNameText->SetJustification(ETextJustify::Center);
+    OutNameText->SetColorAndOpacity(FSlateColor(TextColor));
+    UHorizontalBoxSlot* NS = HBox->AddChildToHorizontalBox(OutNameText);
+    NS->SetHorizontalAlignment(HAlign_Center);
+    NS->SetVerticalAlignment(VAlign_Center);
+    NS->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+    NS->SetPadding(FMargin(12.f, 0.f));
 
-  OutRight = MakeArrowButton(WT, TEXT("  >  "), ArrowFont);
-  UHorizontalBoxSlot *RS = HBox->AddChildToHorizontalBox(OutRight);
-  RS->SetHorizontalAlignment(EHorizontalAlignment::HAlign_Center);
-  RS->SetVerticalAlignment(EVerticalAlignment::VAlign_Center);
+    OutRight = LW_MakeArrowButton(WT, TEXT("  >  "), ArrowFont, AccentColor);
+    HBox->AddChildToHorizontalBox(OutRight)->SetVerticalAlignment(VAlign_Center);
 
-  return HBox;
+    return HBox;
 }
 
-void ULoadoutWidget::BuildDefaultUI() {
-  if (!WidgetTree) return;
-  bDefaultUIBuilt = true;
+void ULoadoutWidget::BuildDefaultUI()
+{
+    if (!WidgetTree) return;
+    bDefaultUIBuilt = true;
 
-  UCanvasPanel *Canvas = WidgetTree->ConstructWidget<UCanvasPanel>();
-  WidgetTree->RootWidget = Canvas;
+    // ── Theme ────────────────────────────────────────────────────────────────
+    UUITheme* T = GetTheme();
+    const FLinearColor C_Bg      = T ? T->BgDeep      : FLinearColor(0.03f, 0.025f, 0.02f, 1.f);
+    const FLinearColor C_Gold    = T ? T->GoldTarnish  : FLinearColor(0.85f, 0.70f,  0.30f, 1.f);
+    const FLinearColor C_GoldDim = T ? T->GoldDim      : FLinearColor(0.55f, 0.45f,  0.20f, 1.f);
+    const FLinearColor C_White   = T ? T->WhiteText    : FLinearColor(0.95f, 0.93f,  0.88f, 1.f);
+    const FLinearColor C_Grey    = T ? T->GreySoft     : FLinearColor(0.45f, 0.42f,  0.38f, 1.f);
+    const FLinearColor C_Red     = T ? T->RedBlood     : FLinearColor(0.75f, 0.15f,  0.10f, 1.f);
+    const FLinearColor C_Panel   = T ? T->BgPanel      : FLinearColor(0.07f, 0.06f,  0.04f, 1.f);
 
-  // Background
-  UImage *Bg = WidgetTree->ConstructWidget<UImage>();
-  Bg->SetColorAndOpacity(FLinearColor(0.02f, 0.02f, 0.05f, 0.95f));
-  UCanvasPanelSlot *BgSlot = Canvas->AddChildToCanvas(Bg);
-  BgSlot->SetAnchors(FAnchors(0.f, 0.f, 1.f, 1.f));
-  BgSlot->SetOffsets(FMargin(0.f));
-  BgSlot->SetZOrder(0);
+    UCanvasPanel* Canvas = WidgetTree->ConstructWidget<UCanvasPanel>();
+    WidgetTree->RootWidget = Canvas;
 
-  // Centered vertical container
-  UVerticalBox *VBox    = WidgetTree->ConstructWidget<UVerticalBox>();
-  UCanvasPanelSlot *VS  = Canvas->AddChildToCanvas(VBox);
-  VS->SetAnchors(FAnchors(0.5f, 0.5f, 0.5f, 0.5f));
-  VS->SetAlignment(FVector2D(0.5f, 0.5f));
-  VS->SetAutoSize(true);
-  VS->SetZOrder(1);
+    // Fond plein écran
+    UImage* Bg = WidgetTree->ConstructWidget<UImage>();
+    Bg->SetColorAndOpacity(C_Bg);
+    UCanvasPanelSlot* BgSlot = Canvas->AddChildToCanvas(Bg);
+    BgSlot->SetAnchors(FAnchors(0.f, 0.f, 1.f, 1.f));
+    BgSlot->SetOffsets(FMargin(0.f));
+    BgSlot->SetZOrder(0);
 
-  FSlateFontInfo TitleFont  = FCoreStyle::GetDefaultFontStyle("Bold",    32);
-  FSlateFontInfo LabelFont  = FCoreStyle::GetDefaultFontStyle("Bold",    16);
-  FSlateFontInfo ArrowFont  = FCoreStyle::GetDefaultFontStyle("Bold",    22);
-  FSlateFontInfo WeaponFont = FCoreStyle::GetDefaultFontStyle("Regular", 20);
-  FSlateFontInfo StatsFont  = FCoreStyle::GetDefaultFontStyle("Regular", 13);
-  FSlateFontInfo BtnFont    = FCoreStyle::GetDefaultFontStyle("Regular", 18);
+    // Bande rouge haut
+    UImage* TopBar = WidgetTree->ConstructWidget<UImage>();
+    TopBar->SetColorAndOpacity(C_Red);
+    UCanvasPanelSlot* TopSlot = Canvas->AddChildToCanvas(TopBar);
+    TopSlot->SetAnchors(FAnchors(0.f, 0.f, 1.f, 0.f));
+    TopSlot->SetOffsets(FMargin(0.f, 0.f, 0.f, 5.f));
+    TopSlot->SetAutoSize(true);
+    TopSlot->SetZOrder(1);
 
-  FLinearColor YellowColor(1.f, 0.8f, 0.2f);
-  FLinearColor CyanColor  (0.4f, 0.9f, 1.f);
+    // Conteneur central
+    UVerticalBox* VBox = WidgetTree->ConstructWidget<UVerticalBox>();
+    UCanvasPanelSlot* VS = Canvas->AddChildToCanvas(VBox);
+    VS->SetAnchors(FAnchors(0.5f, 0.5f, 0.5f, 0.5f));
+    VS->SetAlignment(FVector2D(0.5f, 0.5f));
+    VS->SetAutoSize(true);
+    VS->SetZOrder(2);
 
-  auto AddLabel = [&](UVerticalBox *Box, const FString &Str,
-                      FSlateFontInfo Font, FLinearColor Color,
-                      FMargin Pad) {
-    UTextBlock *T = WidgetTree->ConstructWidget<UTextBlock>();
-    T->SetText(FText::FromString(Str));
-    T->SetFont(Font);
-    T->SetColorAndOpacity(FSlateColor(Color));
-    T->SetJustification(ETextJustify::Center);
-    UVerticalBoxSlot *Slot = Box->AddChildToVerticalBox(T);
-    Slot->SetHorizontalAlignment(EHorizontalAlignment::HAlign_Center);
-    Slot->SetPadding(Pad);
-  };
+    FSlateFontInfo TitleFont  = UUIHelpers::GetFont(T, 28);
+    FSlateFontInfo LabelFont  = UUIHelpers::GetFont(T, 14);
+    FSlateFontInfo ArrowFont  = UUIHelpers::GetFont(T, 20);
+    FSlateFontInfo WeaponFont = UUIHelpers::GetFont(T, 18);
+    FSlateFontInfo StatsFont  = UUIHelpers::GetFont(T, 12);
+    FSlateFontInfo BtnFont    = UUIHelpers::GetFont(T, 16);
 
-  // Title
-  AddLabel(VBox, TEXT("CHOISISSEZ VOS ARMES"), TitleFont, YellowColor,
-           FMargin(0, 0, 0, 30));
+    auto AddLabel = [&](const FString& Str, FSlateFontInfo Font,
+                        const FLinearColor& Color, FMargin Pad)
+    {
+        UTextBlock* Tb = WidgetTree->ConstructWidget<UTextBlock>();
+        Tb->SetText(FText::FromString(Str));
+        Tb->SetFont(Font);
+        Tb->SetColorAndOpacity(FSlateColor(Color));
+        Tb->SetJustification(ETextJustify::Center);
+        UVerticalBoxSlot* S = VBox->AddChildToVerticalBox(Tb);
+        S->SetHorizontalAlignment(HAlign_Center);
+        S->SetPadding(Pad);
+    };
 
-  // ─── PRIMAIRE ───
-  AddLabel(VBox, TEXT("PRIMAIRE"), LabelFont, CyanColor, FMargin(0, 0, 0, 6));
+    // Titre "ARMURERIE"
+    AddLabel(TEXT("ARMURERIE — CHOIX DES ARMES"), TitleFont, C_Gold, FMargin(0.f, 0.f, 0.f, 28.f));
 
-  UButton *BtnPL = nullptr, *BtnPR = nullptr;
-  UHorizontalBox *PRow = MakeSlotRow(WidgetTree, ArrowFont, WeaponFont,
-                                      PrimaryNameText, BtnPL, BtnPR);
-  BtnPL->OnClicked.AddDynamic(this, &ULoadoutWidget::OnPrimaryLeft);
-  BtnPR->OnClicked.AddDynamic(this, &ULoadoutWidget::OnPrimaryRight);
-  UVerticalBoxSlot *PRSlot = VBox->AddChildToVerticalBox(PRow);
-  PRSlot->SetHorizontalAlignment(EHorizontalAlignment::HAlign_Center);
-  PRSlot->SetPadding(FMargin(0, 0, 0, 4));
+    // ─── PRIMAIRE ───
+    AddLabel(TEXT("PRIMAIRE"), LabelFont, C_GoldDim, FMargin(0.f, 0.f, 0.f, 6.f));
 
-  PrimaryStatsText = WidgetTree->ConstructWidget<UTextBlock>();
-  PrimaryStatsText->SetFont(StatsFont);
-  PrimaryStatsText->SetJustification(ETextJustify::Center);
-  PrimaryStatsText->SetColorAndOpacity(FSlateColor(FLinearColor(0.7f, 0.7f, 0.7f)));
-  UVerticalBoxSlot *PSSlot = VBox->AddChildToVerticalBox(PrimaryStatsText);
-  PSSlot->SetHorizontalAlignment(EHorizontalAlignment::HAlign_Center);
-  PSSlot->SetPadding(FMargin(0, 0, 0, 24));
+    UButton *BtnPL = nullptr, *BtnPR = nullptr;
+    UHorizontalBox* PRow = LW_MakeSlotRow(WidgetTree, ArrowFont, WeaponFont,
+                                           C_Gold, C_White,
+                                           PrimaryNameText, BtnPL, BtnPR);
+    BtnPL->OnClicked.AddDynamic(this, &ULoadoutWidget::OnPrimaryLeft);
+    BtnPR->OnClicked.AddDynamic(this, &ULoadoutWidget::OnPrimaryRight);
+    BindButtonSounds(BtnPL); BindButtonSounds(BtnPR);
+    VBox->AddChildToVerticalBox(PRow)->SetPadding(FMargin(0.f, 0.f, 0.f, 4.f));
 
-  // ─── SECONDAIRE ───
-  AddLabel(VBox, TEXT("SECONDAIRE"), LabelFont, CyanColor, FMargin(0, 0, 0, 6));
+    PrimaryStatsText = WidgetTree->ConstructWidget<UTextBlock>();
+    PrimaryStatsText->SetFont(StatsFont);
+    PrimaryStatsText->SetJustification(ETextJustify::Center);
+    PrimaryStatsText->SetColorAndOpacity(FSlateColor(C_Grey));
+    VBox->AddChildToVerticalBox(PrimaryStatsText)->SetPadding(FMargin(0.f, 0.f, 0.f, 22.f));
 
-  UButton *BtnSL = nullptr, *BtnSR = nullptr;
-  UHorizontalBox *SRow = MakeSlotRow(WidgetTree, ArrowFont, WeaponFont,
-                                      SecondaryNameText, BtnSL, BtnSR);
-  BtnSL->OnClicked.AddDynamic(this, &ULoadoutWidget::OnSecondaryLeft);
-  BtnSR->OnClicked.AddDynamic(this, &ULoadoutWidget::OnSecondaryRight);
-  UVerticalBoxSlot *SRSlot = VBox->AddChildToVerticalBox(SRow);
-  SRSlot->SetHorizontalAlignment(EHorizontalAlignment::HAlign_Center);
-  SRSlot->SetPadding(FMargin(0, 0, 0, 4));
+    // ─── SECONDAIRE ───
+    AddLabel(TEXT("SECONDAIRE"), LabelFont, C_GoldDim, FMargin(0.f, 0.f, 0.f, 6.f));
 
-  SecondaryStatsText = WidgetTree->ConstructWidget<UTextBlock>();
-  SecondaryStatsText->SetFont(StatsFont);
-  SecondaryStatsText->SetJustification(ETextJustify::Center);
-  SecondaryStatsText->SetColorAndOpacity(FSlateColor(FLinearColor(0.7f, 0.7f, 0.7f)));
-  UVerticalBoxSlot *SSSlot = VBox->AddChildToVerticalBox(SecondaryStatsText);
-  SSSlot->SetHorizontalAlignment(EHorizontalAlignment::HAlign_Center);
-  SSSlot->SetPadding(FMargin(0, 0, 0, 32));
+    UButton *BtnSL = nullptr, *BtnSR = nullptr;
+    UHorizontalBox* SRow = LW_MakeSlotRow(WidgetTree, ArrowFont, WeaponFont,
+                                           C_Gold, C_White,
+                                           SecondaryNameText, BtnSL, BtnSR);
+    BtnSL->OnClicked.AddDynamic(this, &ULoadoutWidget::OnSecondaryLeft);
+    BtnSR->OnClicked.AddDynamic(this, &ULoadoutWidget::OnSecondaryRight);
+    BindButtonSounds(BtnSL); BindButtonSounds(BtnSR);
+    VBox->AddChildToVerticalBox(SRow)->SetPadding(FMargin(0.f, 0.f, 0.f, 4.f));
 
-  // ─── CONFIRMER ───
-  ConfirmButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(),
-                                                       TEXT("ConfirmButton"));
-  UTextBlock *ConfirmText = WidgetTree->ConstructWidget<UTextBlock>();
-  ConfirmText->SetText(FText::FromString(TEXT("CONFIRMER")));
-  ConfirmText->SetFont(BtnFont);
-  ConfirmText->SetJustification(ETextJustify::Center);
-  ConfirmButton->AddChild(ConfirmText);
-  ConfirmButton->OnClicked.AddDynamic(this, &ULoadoutWidget::ConfirmLoadout);
-  UVerticalBoxSlot *ConfSlot = VBox->AddChildToVerticalBox(ConfirmButton);
-  ConfSlot->SetHorizontalAlignment(EHorizontalAlignment::HAlign_Center);
+    SecondaryStatsText = WidgetTree->ConstructWidget<UTextBlock>();
+    SecondaryStatsText->SetFont(StatsFont);
+    SecondaryStatsText->SetJustification(ETextJustify::Center);
+    SecondaryStatsText->SetColorAndOpacity(FSlateColor(C_Grey));
+    VBox->AddChildToVerticalBox(SecondaryStatsText)->SetPadding(FMargin(0.f, 0.f, 0.f, 30.f));
 
-  // Auto-select first two weapons
-  if (AvailableWeapons.Num() >= 2) {
-    PrimaryWeaponIndex   = 0;
-    SecondaryWeaponIndex = 1;
-  }
-  RefreshWeaponButtons();
+    // ─── CONFIRMER ───
+    ConfirmButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("ConfirmButton"));
+    {
+        FButtonStyle BtnStyle;
+        BtnStyle.SetNormal (UUIHelpers::MakeSolidBrush(UUIHelpers::WithAlpha(C_Red, 0.85f)));
+        BtnStyle.SetHovered(UUIHelpers::MakeSolidBrush(C_Red));
+        BtnStyle.SetPressed(UUIHelpers::MakeSolidBrush(UUIHelpers::WithAlpha(C_Red, 0.6f)));
+        BtnStyle.NormalPadding  = FMargin(40.f, 12.f);
+        BtnStyle.PressedPadding = FMargin(40.f, 13.f, 40.f, 11.f);
+        ConfirmButton->SetStyle(BtnStyle);
+    }
+    UTextBlock* ConfirmText = WidgetTree->ConstructWidget<UTextBlock>();
+    ConfirmText->SetText(FText::FromString(TEXT(">> CONFIRMER LE CHARGEMENT")));
+    ConfirmText->SetFont(BtnFont);
+    ConfirmText->SetJustification(ETextJustify::Center);
+    ConfirmText->SetColorAndOpacity(FSlateColor(C_White));
+    ConfirmButton->AddChild(ConfirmText);
+    ConfirmButton->OnClicked.AddDynamic(this, &ULoadoutWidget::ConfirmLoadout);
+    BindButtonSounds(ConfirmButton);
+    VBox->AddChildToVerticalBox(ConfirmButton)->SetHorizontalAlignment(HAlign_Center);
+
+    if (AvailableWeapons.Num() >= 2)
+    {
+        PrimaryWeaponIndex   = 0;
+        SecondaryWeaponIndex = 1;
+    }
+    RefreshWeaponButtons();
 }
 
 // ---------------------------------------------------------------------------
@@ -269,6 +294,7 @@ void ULoadoutWidget::SelectWeapon(int32 WeaponIndex, int32 SlotIndex) {
 }
 
 void ULoadoutWidget::ConfirmLoadout() {
+  PlayClickSound();
   TSubclassOf<AWeaponBase> Primary   = nullptr;
   TSubclassOf<AWeaponBase> Secondary = nullptr;
 

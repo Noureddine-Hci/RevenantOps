@@ -29,6 +29,18 @@ void AMercenairesGameState::Tick(float DeltaSeconds) {
 
   OnTimerChanged.Broadcast(TimeRemaining);
 
+  // Switch to urgent music when time is low
+  if (!bLowTimeMusicTriggered && LowTimeMusic && TimeRemaining <= LowTimeThreshold)
+  {
+    bLowTimeMusicTriggered = true;
+    if (MusicComponent)
+      MusicComponent->FadeOut(1.f, 0.f);
+    MusicComponent = UGameplayStatics::SpawnSound2D(
+        this, LowTimeMusic, 0.f, 1.f, 0.f, nullptr, false, false);
+    if (MusicComponent)
+      MusicComponent->FadeIn(1.f, MusicVolume);
+  }
+
   // Combo decay
   if (ComboMultiplier > 1) {
     ComboTimeRemaining -= DeltaSeconds;
@@ -48,10 +60,20 @@ void AMercenairesGameState::StartMatch() {
   TotalKills = 0;
   BestCombo = 1;
   bMatchActive = true;
+  bLowTimeMusicTriggered = false;
 
-  // Start background music
-  if (BackgroundMusic) {
-    MusicComponent = UGameplayStatics::SpawnSound2D(this, BackgroundMusic, MusicVolume, 1.f, 0.f, nullptr, false, false);
+  // Start background music with fade-in
+  if (BackgroundMusic)
+  {
+    MusicComponent = UGameplayStatics::SpawnSound2D(
+        this, BackgroundMusic, 0.f, 1.f, 0.f, nullptr, false, false);
+    if (MusicComponent)
+    {
+      if (MusicFadeInDuration > 0.f)
+        MusicComponent->FadeIn(MusicFadeInDuration, MusicVolume);
+      else
+        MusicComponent->SetVolumeMultiplier(MusicVolume);
+    }
   }
 
   OnMatchStateChanged.Broadcast(true);
@@ -62,11 +84,10 @@ void AMercenairesGameState::StartMatch() {
 
 void AMercenairesGameState::EndMatch() {
   bMatchActive = false;
+  bLowTimeMusicTriggered = false;
 
-  // Stop background music
-  if (MusicComponent) {
+  if (MusicComponent)
     MusicComponent->FadeOut(2.f, 0.f);
-  }
 
   OnMatchStateChanged.Broadcast(false);
 }

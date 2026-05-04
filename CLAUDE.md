@@ -245,6 +245,45 @@ with unreal.ScopedEditorTransaction('...') as _:
 abp.add_node_asset_override(None, anim_asset)
 ```
 
+## Etat Phase 19 — Pickups adaptatifs + Caisses destructibles (COMPLETE 2026-04-26)
+
+### Systeme de pickups unifie
+- `IPickupInterface` : interface UE5 (GetPickupIcon, GetPickupDisplayName, GetPickupDisplayAmount, TryPickupInteract)
+  - Icone lue automatiquement depuis le BP — plus de DropIcon a renseigner manuellement
+- `AHealthPickup` : soins en % de vie max (HealPercent = 0.25/0.5/1.0), prompt E + icone
+- `AAmmoBonusPickup` : refacto public API, StartLifetimeTimer() separe de BeginPlay
+- `RevenantOpsCharacter` :
+  - `PendingInteractable` (AActor*) remplace PendingPickup + PendingHealthPickup
+  - `ClearPendingPickup()` evite l'ambiguite nullptr sur les surcharges
+  - `GetWeaponInventory()` expose WeaponInventory en lecture seule
+
+### Drops ennemis adaptatifs
+- `FAmmoDropEntry` : DropIcon/DropDisplayName supprimes (viennent du BP via IPickupInterface)
+- `EnemyBase::HandleDeath` : filtre par EAmmoType selon armes du joueur
+
+### Caisses destructibles ameliorees
+- `FCrateLootEntry` : DropChance + Weight + AmmoTypeFilter par entree
+- `ELootMode::Independent` : chaque entree tiree selon DropChance (soins/munitions)
+- `ELootMode::PickOne` : 1 seule entree choisie par tirage pondere (Weight) — caisses armes
+- Etat endommage : DamagedMaterial + BP_OnDamagedState quand HP < DamagedThreshold
+- Filtre adaptatif AmmoTypeFilter sur chaque entree
+
+### Talents
+- `UTalentDefinition` : UPrimaryDataAsset (ReloadSpeed, DamageResistance, AmmoCapacity, MoveSpeed, MaxHealth, Stamina)
+- `ApplyTalents()` sur ARevenantOpsCharacter
+
+### Portrait 3D CharacterSelect
+- `ACharacterPreviewActor` : SceneCapture2D + RT 512x910
+- `CharacterSelectWidget` : grille inventaire 3x3 + talents + portrait live
+
+### Patterns importants appris
+- `SetPendingPickup(nullptr)` = AMBIGUITE sur surcharges → toujours `ClearPendingPickup()`
+- Proprietes post-spawn (DropLifetime) : doivent etre settees avant StartLifetimeTimer(), pas dans BeginPlay
+- Membres protected → public si accessed depuis EnemyBase/DestructibleObject
+- Dernier commit : affb9a0 (merge main)
+
+---
+
 ## Etat Phase 17 — Inventaire RE5 + Viseur CS (COMPLETE 2026-04-13)
 - `FInventoryItem` struct : type, DisplayName, Description, Quantity, WeaponClass, HealAmount, TimeBonusSeconds, ItemIcon
 - `UInventoryWidget` : 9 slots 3x3, navigation ZQSD/flèches, Tab ouvre/ferme, E utilise

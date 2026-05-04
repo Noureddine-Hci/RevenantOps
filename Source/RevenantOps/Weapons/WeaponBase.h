@@ -320,6 +320,10 @@ protected:
   UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Weapon|Sockets")
   FName AttachSocketName = FName("hand_r");
 
+  /** Position/rotation offset appliqué après l'attach au socket — ajuster par BP */
+  UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Weapon|Sockets")
+  FTransform WeaponAttachOffset = FTransform::Identity;
+
   // ========== STATE ==========
 
   /** Current weapon state */
@@ -457,6 +461,8 @@ public:
 
   int32 GetMaxReserveAmmo() const { return MaxReserveAmmo; }
   EAmmoType GetWeaponAmmoType() const { return WeaponAmmoType; }
+  EWeaponCategory GetWeaponCategory() const { return WeaponCategory; }
+  FTransform GetWeaponAttachOffset() const { return WeaponAttachOffset; }
   void SetMaxReserveAmmo(int32 NewMax)
   {
     MaxReserveAmmo = FMath::Max(1, NewMax);

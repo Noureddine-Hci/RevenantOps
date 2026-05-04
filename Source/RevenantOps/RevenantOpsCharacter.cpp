@@ -55,9 +55,11 @@ ARevenantOpsCharacter::ARevenantOpsCharacter() {
   // Camera boom (over-the-shoulder RE4 style)
   CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
   CameraBoom->SetupAttachment(RootComponent);
-  CameraBoom->TargetArmLength = 600.0f;
-  CameraBoom->SocketOffset = FVector(0.f, 80.f, 70.f); // Right shoulder, slightly above
+  CameraBoom->TargetArmLength = 280.f;
+  CameraBoom->SocketOffset = FVector(0.f, 65.f, 55.f);
   CameraBoom->bUsePawnControlRotation = true;
+  CameraBoom->bDoCollisionTest = true;
+  CameraBoom->ProbeSize = 8.f;
   CameraBoom->bEnableCameraLag = true;
   CameraBoom->CameraLagSpeed = 15.f;
   CameraBoom->bEnableCameraRotationLag = true;
@@ -344,6 +346,12 @@ void ARevenantOpsCharacter::StartSprint() {
 
   bIsSprinting = true;
   TargetSpeed = SprintSpeed;
+
+  // Montage optionnel de départ sprint (upper body only — slot "UpperBody")
+  if (SprintStartMontage)
+  {
+    PlayAnimMontage(SprintStartMontage);
+  }
 }
 
 void ARevenantOpsCharacter::StopSprint() {
@@ -586,11 +594,11 @@ void ARevenantOpsCharacter::UpdateCameraFOV(float DeltaTime) {
     return;
   }
 
-  // Default OTS offsets
-  const FVector HipOffset(0.f, 80.f, 70.f);
-  const FVector ADSOffset(0.f, 60.f, 65.f); // Tighter for ADS
-  const float HipArmLength = 350.f;
-  const float ADSArmLength = 250.f;
+  // Default OTS offsets — RE5 style over-shoulder
+  const FVector HipOffset(0.f, 65.f, 55.f);
+  const FVector ADSOffset(0.f, 50.f, 60.f);
+  const float HipArmLength = 280.f;
+  const float ADSArmLength = 180.f;
 
   float TargetFOV = DefaultFOV;
   FVector TargetOffset = HipOffset;
@@ -803,6 +811,10 @@ void ARevenantOpsCharacter::AttachWeaponToSocket(AWeaponBase *Weapon) {
   Weapon->AttachToComponent(GetMesh(),
                             FAttachmentTransformRules::SnapToTargetNotIncludingScale,
                             WeaponAttachSocket);
+
+  // Applique l'offset défini dans le BP de l'arme (position/rotation dans la main)
+  const FTransform& Offset = Weapon->GetWeaponAttachOffset();
+  Weapon->SetActorRelativeTransform(Offset);
 }
 
 // ========== WEAPON INPUT HANDLERS ==========

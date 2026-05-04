@@ -2,12 +2,12 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Blueprint/UserWidget.h"
+#include "UI/MenuWidgetBase.h"
 #include "UI/MenuTypes.h"
-#include "UI/CharacterPreviewActor.h"
 #include "Gameplay/TalentDefinition.h"
 #include "CharacterSelectWidget.generated.h"
 
+class ACharacterPreviewActor;
 class UButton;
 class UTextBlock;
 class UVerticalBox;
@@ -20,7 +20,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCharacterChosen, FCharacterInfo, 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnCharacterSelectBack);
 
 UCLASS(Blueprintable)
-class REVENANTOPS_API UCharacterSelectWidget : public UUserWidget
+class REVENANTOPS_API UCharacterSelectWidget : public UMenuWidgetBase
 {
     GENERATED_BODY()
 

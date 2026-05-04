@@ -133,6 +133,17 @@ protected:
 	UPROPERTY()
 	TObjectPtr<ULeaderboardWidget> LeaderboardWidgetInstance;
 
+	// ========== TRANSITIONS ──────────────────────────────────────────────────
+	// Widget de menu actuellement affiché (pour le fade-out avant transition)
+	TWeakObjectPtr<class UMenuWidgetBase> ActiveMenu;
+
+	/**
+	 *  Si un widget de menu est actif, le fade-out (0.15s) puis exécute Fn.
+	 *  Sinon exécute Fn immédiatement.
+	 *  Utiliser au début de chaque ShowXxxScreen().
+	 */
+	void DoTransition(TFunction<void()> Fn);
+
 	// ========== INVENTORY ==========
 
 	/** Inventory widget class (assign WBP_Inventory in BP) */

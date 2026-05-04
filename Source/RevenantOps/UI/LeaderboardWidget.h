@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Blueprint/UserWidget.h"
+#include "UI/MenuWidgetBase.h"
 #include "ScoreEntry.h"
 #include "LeaderboardWidget.generated.h"
 
@@ -16,7 +16,7 @@ class UVerticalBox;
  *  Persists between sessions via SaveGame.
  */
 UCLASS(abstract, Blueprintable)
-class ULeaderboardWidget : public UUserWidget {
+class ULeaderboardWidget : public UMenuWidgetBase {
   GENERATED_BODY()
 
 public:

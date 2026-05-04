@@ -95,6 +95,10 @@ public:
 
   // ── Proprietes configurables (dans le BP ou au spawn) ───────────────────
 
+  /** Son joue quand le joueur ramasse les munitions */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AmmoPickup|Audio")
+  USoundBase* PickupSound = nullptr;
+
   /** Icone affichee dans le popup — a assigner UNE FOIS dans le BP */
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AmmoPickup")
   TObjectPtr<UTexture2D> ItemIcon = nullptr;

@@ -2,7 +2,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Blueprint/UserWidget.h"
+#include "UI/MenuWidgetBase.h"
 #include "UI/MenuTypes.h"
 #include "OptionsWidget.generated.h"
 
@@ -36,7 +36,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnOptionsBack);
  * If User Settings aren't enabled, rows are shown read-only with DefaultKey.
  */
 UCLASS(abstract, Blueprintable)
-class REVENANTOPS_API UOptionsWidget : public UUserWidget
+class REVENANTOPS_API UOptionsWidget : public UMenuWidgetBase
 {
     GENERATED_BODY()
 

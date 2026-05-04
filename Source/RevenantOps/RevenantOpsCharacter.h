@@ -164,6 +164,19 @@ protected:
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|Dodge")
   UAnimMontage *DodgeMontage;
 
+public:
+  // ========== ANIMATIONS ==========
+
+  /** Montage joué à la mort du joueur (chute en avant) */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
+  UAnimMontage* DeathMontage = nullptr;
+
+  /** Montage joué en début de sprint (optionnel — transitions upper body) */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
+  UAnimMontage* SprintStartMontage = nullptr;
+
+protected:
+
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|Dodge",
             meta = (ClampMin = 0, ClampMax = 2000))
   float DodgeLaunchForce = 800.f;

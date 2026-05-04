@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Blueprint/UserWidget.h"
+#include "UI/MenuWidgetBase.h"
 #include "GameOverWidget.generated.h"
 
 class UButton;
@@ -14,7 +14,7 @@ class UTextBlock;
  *  Shows final score, kill count, best combo, and replay/quit options.
  */
 UCLASS(abstract, Blueprintable)
-class UGameOverWidget : public UUserWidget {
+class UGameOverWidget : public UMenuWidgetBase {
   GENERATED_BODY()
 
 public:
@@ -26,9 +26,23 @@ public:
   UFUNCTION(BlueprintCallable, Category = "UI|GameOver")
   void ShowResults(int32 FinalScore, int32 TotalKills, int32 BestCombo, bool bVictory = false);
 
+  /**
+   *  Calcule le rang S/A/B/C/D selon le score et le combo.
+   *  S ≥ 5000 | A ≥ 3000 | B ≥ 1500 | C ≥ 500 | D < 500
+   */
+  static FString ComputeRank(int32 Score, int32 BestCombo);
+
 protected:
   UPROPERTY(meta = (BindWidgetOptional))
   UTextBlock *TitleText;
+
+  /** Grande lettre du rang (S / A / B / C / D) */
+  UPROPERTY(meta = (BindWidgetOptional))
+  UTextBlock *RankText;
+
+  /** Sous-label "EVALUATION" au-dessus de la lettre */
+  UPROPERTY(meta = (BindWidgetOptional))
+  UTextBlock *RankLabelText;
 
   UPROPERTY(meta = (BindWidgetOptional))
   UTextBlock *FinalScoreText;
