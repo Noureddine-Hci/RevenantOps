@@ -4,10 +4,10 @@
 #include "CoreMinimal.h"
 #include "UI/MenuWidgetBase.h"
 #include "UI/MenuTypes.h"
-#include "UI/CharacterPreviewActor.h"
 #include "Gameplay/TalentDefinition.h"
 #include "CharacterSelectWidget.generated.h"
 
+class ACharacterPreviewActor;
 class UButton;
 class UTextBlock;
 class UVerticalBox;

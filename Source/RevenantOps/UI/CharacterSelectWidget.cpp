@@ -1,5 +1,6 @@
 ﻿// Copyright RevenantOps. All Rights Reserved.
 #include "UI/CharacterSelectWidget.h"
+#include "UI/CharacterPreviewActor.h"
 #include "UI/UITheme.h"
 #include "UI/UIHelpers.h"
 #include "Components/Button.h"

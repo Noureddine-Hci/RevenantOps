@@ -132,10 +132,16 @@ bool ARevenantOpsPlayerController::ShouldUseTouchControls() const
 void ARevenantOpsPlayerController::DoTransition(TFunction<void()> Fn)
 {
     if (UMenuWidgetBase* W = ActiveMenu.Get())
+    {
+        // Capture W avant de reset, puis fade — le lambda Fn va resetter ActiveMenu
+        ActiveMenu.Reset();
         W->FadeOutThen(0.15f, MoveTemp(Fn));
+    }
     else
+    {
+        ActiveMenu.Reset();
         Fn();
-    ActiveMenu.Reset();
+    }
 }
 
 void ARevenantOpsPlayerController::ShowTitleScreen() {
@@ -263,12 +269,17 @@ void ARevenantOpsPlayerController::OnCharacterChosen(FCharacterInfo CharacterInf
   }
   // Charger le niveau directement (pas d'écran de loadout)
   bLoadoutConfirmed = true;
+  ClearFlowWidgets(); // Toujours nettoyer les widgets, même si GI est null
   if (URevenantOpsGameInstance* GI = Cast<URevenantOpsGameInstance>(GetGameInstance()))
   {
     GI->bPendingMatchStart = true;
     FName LevelName = GI->PendingLevel.MapName.IsNone() ? FName("Lvl_ThirdPerson") : GI->PendingLevel.MapName;
-    ClearFlowWidgets();
     UGameplayStatics::OpenLevel(this, LevelName);
+  }
+  else
+  {
+    // Fallback si GameInstance non trouvé
+    UGameplayStatics::OpenLevel(this, FName("Lvl_ThirdPerson"));
   }
 }
 

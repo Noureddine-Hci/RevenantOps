@@ -10,7 +10,7 @@
 
 TSharedRef<SWidget> USplashScreenWidget::RebuildWidget()
 {
-    if (!IsDesignTime())
+    if (!IsDesignTime() && WidgetTree && !WidgetTree->RootWidget)
         BuildUI();
     return Super::RebuildWidget();
 }
@@ -24,16 +24,22 @@ void USplashScreenWidget::NativeConstruct()
 
 void USplashScreenWidget::BuildUI()
 {
-    RootOverlay  = NewObject<UOverlay>(this, TEXT("RootOverlay"));
-    BgImage      = NewObject<UImage>(this, TEXT("BgImage"));
-    LogoSizeBox  = NewObject<USizeBox>(this, TEXT("LogoSizeBox"));
-    LogoImage    = NewObject<UImage>(this, TEXT("LogoImage"));
-    SubTextBlock = NewObject<UTextBlock>(this, TEXT("SubTextBlock"));
+    if (!WidgetTree) return;
+
+    RootOverlay  = WidgetTree->ConstructWidget<UOverlay>(UOverlay::StaticClass(),       TEXT("RootOverlay"));
+    BgImage      = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(),            TEXT("BgImage"));
+    LogoSizeBox  = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(),        TEXT("LogoSizeBox"));
+    LogoImage    = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(),            TEXT("LogoImage"));
+    SubTextBlock = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(),    TEXT("SubTextBlock"));
+
+    WidgetTree->RootWidget = RootOverlay;
 
     BgImage->SetColorAndOpacity(FLinearColor::Black);
+    BgImage->SetVisibility(ESlateVisibility::HitTestInvisible);
 
     LogoSizeBox->SetWidthOverride(LogoSize.X);
     LogoSizeBox->SetHeightOverride(LogoSize.Y);
+    LogoSizeBox->AddChild(LogoImage);
 
     if (UOverlaySlot* BgSlot = RootOverlay->AddChildToOverlay(BgImage))
     {
