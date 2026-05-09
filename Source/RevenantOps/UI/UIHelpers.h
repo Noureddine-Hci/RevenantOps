@@ -10,6 +10,8 @@
 
 class UUITheme;
 class UTexture2D;
+class UInputAction;
+class ULocalPlayer;
 
 /**
  *  UUIHelpers — fonctions statiques Blueprint-callable pour creer des brushes,
@@ -133,6 +135,38 @@ public:
      */
     UFUNCTION(BlueprintPure, Category = "UIHelpers|Typography")
     static FSlateFontInfo GetMonoFont(const UUITheme* Theme, int32 Size);
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // INPUT — TOUCHES DYNAMIQUES
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     *  Retourne true si la touche donnée est mappée à l'InputAction pour ce joueur.
+     *  Utiliser dans NativeOnKeyDown pour honorer les remappages joueur.
+     *
+     *  Usage :
+     *    if (UUIHelpers::IsKeyMappedToAction(GetOwningLocalPlayer(), InKeyEvent.GetKey(), UseAction))
+     *        { ... }
+     */
+    static bool IsKeyMappedToAction(ULocalPlayer* LocalPlayer,
+                                    const FKey& Key,
+                                    UInputAction* Action);
+
+    /**
+     *  Retourne le label de la première touche mappée à une InputAction
+     *  pour le joueur local donné, formaté entre crochets : "[E]", "[Tab]", etc.
+     *
+     *  Fallback : retourne Fallback (ex: "[E]") si LocalPlayer est null,
+     *  si le subsystème Enhanced Input n'est pas dispo, ou si aucune touche
+     *  n'est mappée à cette action.
+     *
+     *  Usage :
+     *    FString Label = UUIHelpers::GetKeyLabel(GetOwningLocalPlayer(), UseAction, TEXT("[E]"));
+     *    BtnUseLabel->SetText(FText::FromString(Label + TEXT(" Utiliser")));
+     */
+    static FString GetKeyLabel(ULocalPlayer* LocalPlayer,
+                               UInputAction* Action,
+                               const FString& Fallback = TEXT("[?]"));
 
     // ─────────────────────────────────────────────────────────────────────────
     // THEME GLOBAL

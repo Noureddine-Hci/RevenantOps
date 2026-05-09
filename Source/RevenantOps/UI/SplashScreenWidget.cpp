@@ -7,6 +7,8 @@
 #include "Components/OverlaySlot.h"
 #include "Components/SizeBox.h"
 #include "Engine/Texture2D.h"
+#include "Blueprint/WidgetTree.h"
+#include "GameFramework/PlayerController.h"
 
 TSharedRef<SWidget> USplashScreenWidget::RebuildWidget()
 {
@@ -18,6 +20,20 @@ TSharedRef<SWidget> USplashScreenWidget::RebuildWidget()
 void USplashScreenWidget::NativeConstruct()
 {
     Super::NativeConstruct();
+
+    // Nécessaire pour recevoir NativeOnKeyDown
+    SetIsFocusable(true);
+    SetKeyboardFocus();
+
+    // Mode UI pour que la souris soit active et les clics reçus
+    if (APlayerController* PC = GetOwningPlayer())
+    {
+        PC->SetShowMouseCursor(true);
+        FInputModeUIOnly Mode;
+        Mode.SetWidgetToFocus(TakeWidget());
+        PC->SetInputMode(Mode);
+    }
+
     if (SplashSequence.Num() > 0)
         LoadEntry(0);
 }
@@ -65,6 +81,10 @@ void USplashScreenWidget::LoadEntry(int32 Index)
     CurrentIndex = Index;
     State        = ESplashState::FadeIn;
     StateTimer   = 0.f;
+
+    // Réacquérir le focus à chaque nouvelle entrée pour que NativeOnKeyDown/MouseButtonDown
+    // continuent de fonctionner même sur le dernier splash
+    SetKeyboardFocus();
 
     const FSplashEntry& Entry = SplashSequence[Index];
     if (LogoImage)
@@ -128,6 +148,7 @@ void USplashScreenWidget::SetLogoOpacity(float Alpha)
 
 void USplashScreenWidget::FinishSequence()
 {
+    if (State == ESplashState::Done) return; // garde anti double-broadcast
     State = ESplashState::Done;
     OnSequenceDone.Broadcast();
 }
@@ -140,12 +161,14 @@ void USplashScreenWidget::SkipAll()
 
 FReply USplashScreenWidget::NativeOnMouseButtonDown(const FGeometry& Geo, const FPointerEvent& Event)
 {
-    AdvanceToNext();
+    if (State != ESplashState::Done)
+        AdvanceToNext();
     return FReply::Handled();
 }
 
 FReply USplashScreenWidget::NativeOnKeyDown(const FGeometry& Geo, const FKeyEvent& Event)
 {
-    AdvanceToNext();
+    if (State != ESplashState::Done)
+        AdvanceToNext();
     return FReply::Handled();
 }

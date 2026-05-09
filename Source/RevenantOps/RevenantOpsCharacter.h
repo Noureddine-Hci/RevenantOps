@@ -6,6 +6,7 @@
 #include "GameFramework/Character.h"
 #include "Logging/LogMacros.h"
 #include "Gameplay/InventoryItem.h"
+#include "Gameplay/ItemDefinition.h"
 #include "Gameplay/TalentDefinition.h"
 #include "RevenantOpsCharacter.generated.h"
 
@@ -17,6 +18,7 @@ class AWeaponBase;
 class UHealthComponent;
 class AAmmoBonusPickup;
 class AHealthPickup;
+class AInventoryDropPickup;
 // IPickupInterface — utilisee dans InteractPressed via Execute_
 struct FInputActionValue;
 
@@ -93,6 +95,11 @@ protected:
   UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input",
             meta = (AllowPrivateAccess = "true"))
   UInputAction *InteractAction;
+
+  /** Melee attack (touche F) */
+  UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input",
+            meta = (AllowPrivateAccess = "true"))
+  UInputAction *MeleeAction;
 
   // ========== MOVEMENT SPEEDS ==========
 
@@ -225,10 +232,35 @@ protected:
 
   // ========== CAMERA ==========
 
+  /** Vitesse d'interpolation de la rotation vers le vecteur de visée (armé) */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera",
+            meta = (ClampMin = 1.f, ClampMax = 30.f))
+  float AimRotationInterpSpeed = 10.f;
+
   /** Default FOV */
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera",
             meta = (ClampMin = 60, ClampMax = 130))
   float DefaultFOV = 90.f;
+
+  // ── Offsets caméra (modifiables dans le BP) ──────────────────────────────
+
+  /** Offset épaule en mode normal (hip) */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera|Offsets")
+  FVector CameraHipOffset = FVector(0.f, 80.f, 25.f);
+
+  /** Offset épaule en mode visée (ADS) */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera|Offsets")
+  FVector CameraADSOffset = FVector(0.f, 60.f, 20.f);
+
+  /** Longueur du bras en mode normal */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera|Offsets",
+            meta = (ClampMin = 50.f, ClampMax = 600.f))
+  float CameraHipArmLength = 280.f;
+
+  /** Longueur du bras en mode visée */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera|Offsets",
+            meta = (ClampMin = 50.f, ClampMax = 600.f))
+  float CameraADSArmLength = 175.f;
 
   /** Sprint FOV */
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera",
@@ -372,6 +404,13 @@ protected:
   void UpdateCameraFOV(float DeltaTime);
   /** Updates AimPitch, AimYaw, MovementDirection each tick for ABP */
   void UpdateAnimationValues();
+
+  /**
+   * Gère la rotation du personnage selon l'état armé :
+   * - Armé (hors sprint) : le personnage fait face au curseur (bUseControllerRotationYaw)
+   * - Sprint / non-armé : orient-to-movement (naturel)
+   */
+  void UpdateAimRotation(float DeltaTime);
   bool ConsumeStamina(float Amount);
   void StartSlide();
   void EndSlide();
@@ -382,6 +421,49 @@ protected:
   UFUNCTION()
   void OnDamageReceived(UHealthComponent *Comp, float Health, float HealthDelta,
                         const AController *InstigatedBy);
+
+  // ========== MELEE ==========
+
+  /** Dégâts de la frappe au corps à corps */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Melee",
+            meta = (ClampMin = 1.f, ClampMax = 200.f))
+  float MeleeDamage = 30.f;
+
+  /** Portée de la sphère de détection de la mêlée */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Melee",
+            meta = (ClampMin = 50.f, ClampMax = 400.f))
+  float MeleeRange = 180.f;
+
+  /** Temps de recharge entre deux frappes */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Melee",
+            meta = (ClampMin = 0.1f, ClampMax = 5.f))
+  float MeleeCooldown = 0.8f;
+
+  /** Montage animé joué lors de la frappe */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Melee")
+  UAnimMontage* MeleeMontage = nullptr;
+
+  float LastMeleeTime = -100.f;
+
+  void MeleeAttackPressed();
+
+  // ========== IFRAMES ==========
+
+  /** Durée d'invincibilité après avoir reçu des dégâts (secondes) */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|IFrames",
+            meta = (ClampMin = 0.f, ClampMax = 3.f))
+  float InvincibilityDuration = 0.5f;
+
+  UPROPERTY(BlueprintReadOnly, Category = "Combat|IFrames")
+  bool bInvincible = false;
+
+  FTimerHandle IFrameTimer;
+
+  void EndInvincibility();
+
+public:
+  virtual float TakeDamage(float DamageAmount, const FDamageEvent& DamageEvent,
+                            AController* EventInstigator, AActor* DamageCauser) override;
 
 public:
   // ========== WEAPON LOGIC ==========
@@ -443,6 +525,54 @@ public:
   /** Uses item at SlotIndex (applies heal/time bonus, removes consumable) */
   UFUNCTION(BlueprintCallable, Category = "Inventory")
   void UseInventoryItem(int32 SlotIndex);
+
+  /**
+   *  Jette l'item du slot sur le terrain (spawn AInventoryDropPickup).
+   *  Les armes ne peuvent pas être jetées.
+   *  Vide le slot de l'inventaire.
+   */
+  UFUNCTION(BlueprintCallable, Category = "Inventory")
+  void DropInventoryItem(int32 SlotIndex);
+
+  /**
+   *  Combine deux slots de l'inventaire selon les règles RE5 :
+   *  - Health + Health  → soin cumulé (Petit+Petit=Moyen, tout+tout→Grand si dépassé)
+   *  - Ammo + Ammo (même type) → fusion de quantités
+   *  - Ammo + Arme (même type) → recharge directe du chargeur
+   *  - Weapon + anything → interdit (retourne false)
+   *  Retourne true si la combinaison a réussi.
+   */
+  UFUNCTION(BlueprintCallable, Category = "Inventory")
+  bool CombineInventoryItems(int32 SlotA, int32 SlotB);
+
+  /**
+   *  Remplit les slots libres de l'inventaire depuis un tableau de FStartingItem.
+   *  À appeler après SpawnDefaultWeapons (slots armes 0-1 déjà pris).
+   *  Les items de type Weapon dans StartingItems sont ignorés (gérés par les armes).
+   */
+  UFUNCTION(BlueprintCallable, Category = "Inventory")
+  void InitStartingInventory(const TArray<FStartingItem>& Items);
+
+  // ── Système munitions RE5 ────────────────────────────────────────────────
+
+  /** Retourne la quantité de munitions d'un type dans l'inventaire */
+  UFUNCTION(BlueprintCallable, Category = "Inventory|Ammo")
+  int32 GetInventoryAmmo(EAmmoType Type) const;
+
+  /**
+   * Consomme jusqu'à Amount munitions du type donné.
+   * Retourne la quantité réellement consommée (peut être < Amount si stock faible).
+   */
+  UFUNCTION(BlueprintCallable, Category = "Inventory|Ammo")
+  int32 ConsumeInventoryAmmo(EAmmoType Type, int32 Amount);
+
+  /**
+   * Ajoute des munitions dans l'inventaire (empile sur le slot existant ou crée un nouveau slot).
+   * MaxAmount = plafond du stack (ex: 120 pour les pistolets, 0 = pas de plafond).
+   */
+  UFUNCTION(BlueprintCallable, Category = "Inventory|Ammo")
+  void AddInventoryAmmo(EAmmoType Type, int32 Amount, UTexture2D* Icon = nullptr,
+                        FText Name = FText::GetEmpty(), int32 MaxAmount = 999);
 
 public:
   /** Enregistre n'importe quel pickup IPickupInterface actif */

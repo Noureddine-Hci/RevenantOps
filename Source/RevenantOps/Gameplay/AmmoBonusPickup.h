@@ -6,6 +6,7 @@
 #include "GameFramework/Actor.h"
 #include "Gameplay/AmmoTypes.h"
 #include "Gameplay/PickupInterface.h"
+#include "Gameplay/ItemDefinition.h"
 #include "AmmoBonusPickup.generated.h"
 
 class USphereComponent;
@@ -80,8 +81,10 @@ protected:
 public:
   // ── IPickupInterface ─────────────────────────────────────────────────────
 
-  virtual UTexture2D*  GetPickupIcon_Implementation()          const override { return ItemIcon; }
-  virtual FText        GetPickupDisplayName_Implementation()   const override { return DisplayName; }
+  virtual UTexture2D*  GetPickupIcon_Implementation()        const override
+    { return (ItemDefinition && ItemDefinition->ItemIcon) ? ItemDefinition->ItemIcon.Get() : ItemIcon.Get(); }
+  virtual FText        GetPickupDisplayName_Implementation() const override
+    { return (ItemDefinition && !ItemDefinition->DisplayName.IsEmpty()) ? ItemDefinition->DisplayName : DisplayName; }
   virtual int32        GetPickupDisplayAmount_Implementation() const override { return AmmoAmount; }
   virtual void         TryPickupInteract_Implementation(ARevenantOpsCharacter* Player) override;
 
@@ -99,12 +102,22 @@ public:
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AmmoPickup|Audio")
   USoundBase* PickupSound = nullptr;
 
-  /** Icone affichee dans le popup — a assigner UNE FOIS dans le BP */
+  /**
+   *  DataAsset source de vérité (DA_Item_Ammo_Pistol, etc.).
+   *  Si assigné : TargetAmmoType, ItemIcon et DisplayName viennent du DA.
+   *  Si null    : fallback sur les champs manuels ci-dessous.
+   */
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AmmoPickup")
+  TObjectPtr<UItemDefinition> ItemDefinition = nullptr;
+
+  /** Icone affichee dans le popup (ignorée si ItemDefinition assigné) */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AmmoPickup",
+            meta = (EditCondition = "ItemDefinition == nullptr", EditConditionHides))
   TObjectPtr<UTexture2D> ItemIcon = nullptr;
 
-  /** Nom affiche dans le popup */
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AmmoPickup")
+  /** Nom affiche dans le popup (ignoré si ItemDefinition assigné) */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AmmoPickup",
+            meta = (EditCondition = "ItemDefinition == nullptr", EditConditionHides))
   FText DisplayName = FText::FromString("Munitions");
 
   /** Quantite de munitions donnee */
@@ -117,8 +130,9 @@ public:
             meta = (ClampMin = 0, ClampMax = 300))
   float RespawnTime = 45.f;
 
-  /** Type d'arme ciblee (None = arme active, sinon filtre par type) */
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AmmoPickup|Drop")
+  /** Type d'arme ciblee (ignoré si ItemDefinition assigné) */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AmmoPickup|Drop",
+            meta = (EditCondition = "ItemDefinition == nullptr", EditConditionHides))
   EAmmoType TargetAmmoType = EAmmoType::None;
 
   /** Duree de vie du drop ennemi (0 = pickup statique permanent) */

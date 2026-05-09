@@ -184,7 +184,7 @@ public:
 
 	/** Shows the title screen */
 	UFUNCTION(BlueprintCallable, Category = "Mercenaires|Flow")
-	void ShowTitleScreen();
+	void ShowTitleScreen(bool bInstant = false);
 
 	/** Relance immédiatement le dernier niveau joué */
 	UFUNCTION(BlueprintCallable, Category = "Mercenaires|Flow")
@@ -268,6 +268,14 @@ protected:
 	/** Handler when player uses an item in the inventory */
 	UFUNCTION()
 	void OnInventoryItemUsed(int32 SlotIndex);
+
+	/** Handler when player drops an item from inventory (spawn world pickup) */
+	UFUNCTION()
+	void OnInventoryItemDropped(int32 SlotIndex);
+
+	/** Handler when player combines two inventory slots */
+	UFUNCTION()
+	void OnInventoryItemsCombined(int32 SlotA, int32 SlotB);
 
 	/** Guard against double loadout confirmation */
 	bool bLoadoutConfirmed = false;

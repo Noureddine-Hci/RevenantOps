@@ -3,6 +3,7 @@
 
 #include "CoreMinimal.h"
 #include "Engine/Texture2D.h"
+#include "Gameplay/AmmoTypes.h"
 #include "InventoryItem.generated.h"
 
 UENUM(BlueprintType)
@@ -41,6 +42,10 @@ struct REVENANTOPS_API FInventoryItem {
   /** Time bonus in seconds (for TimeBonus type) */
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory")
   float TimeBonusSeconds = 0.f;
+
+  /** Type de munitions (pour les slots Ammo) */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory")
+  EAmmoType AmmoType = EAmmoType::None;
 
   /** Icone affichee dans le slot (optionnel — fallback sur couleur de type) */
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory")

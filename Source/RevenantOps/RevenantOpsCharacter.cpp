@@ -21,8 +21,11 @@
 #include "UI/RevenantOpsHUD.h"
 #include "Gameplay/AmmoBonusPickup.h"
 #include "Gameplay/HealthPickup.h"
+#include "Gameplay/InventoryDropPickup.h"
 #include "Gameplay/PickupInterface.h"
 #include "Gameplay/WeaponPickup.h"
+#include "Kismet/GameplayStatics.h"
+#include "AI/EnemyBase.h"
 
 ARevenantOpsCharacter::ARevenantOpsCharacter() {
   PrimaryActorTick.bCanEverTick = true;
@@ -52,14 +55,15 @@ ARevenantOpsCharacter::ARevenantOpsCharacter() {
   GetCharacterMovement()->MaxWalkSpeedCrouched = CrouchMoveSpeed;
   GetCharacterMovement()->SetCrouchedHalfHeight(58.f);
 
-  // Camera boom (over-the-shoulder RE4 style)
+  // Camera boom (over-the-shoulder RE4/RE5 style)
   CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
   CameraBoom->SetupAttachment(RootComponent);
-  CameraBoom->TargetArmLength = 280.f;
-  CameraBoom->SocketOffset = FVector(0.f, 65.f, 55.f);
+  CameraBoom->TargetArmLength = CameraHipArmLength;
+  CameraBoom->SocketOffset   = CameraHipOffset;
   CameraBoom->bUsePawnControlRotation = true;
   CameraBoom->bDoCollisionTest = true;
-  CameraBoom->ProbeSize = 8.f;
+  CameraBoom->ProbeSize = 12.f;
+  CameraBoom->ProbeChannel = ECC_Camera;
   CameraBoom->bEnableCameraLag = true;
   CameraBoom->CameraLagSpeed = 15.f;
   CameraBoom->bEnableCameraRotationLag = true;
@@ -183,6 +187,7 @@ void ARevenantOpsCharacter::Tick(float DeltaTime) {
   UpdateStamina(DeltaTime);
   UpdateCameraFOV(DeltaTime);
   UpdateAnimationValues();
+  UpdateAimRotation(DeltaTime);
 
   // Auto-end slide if speed drops too low
   if (bIsSliding) {
@@ -268,6 +273,12 @@ void ARevenantOpsCharacter::SetupPlayerInputComponent(
     if (InteractAction) {
       EIC->BindAction(InteractAction, ETriggerEvent::Triggered, this,
                       &ARevenantOpsCharacter::InteractPressed);
+    }
+
+    // Melee attack
+    if (MeleeAction) {
+      EIC->BindAction(MeleeAction, ETriggerEvent::Started, this,
+                      &ARevenantOpsCharacter::MeleeAttackPressed);
     }
 
   } else {
@@ -594,11 +605,11 @@ void ARevenantOpsCharacter::UpdateCameraFOV(float DeltaTime) {
     return;
   }
 
-  // Default OTS offsets — RE5 style over-shoulder
-  const FVector HipOffset(0.f, 65.f, 55.f);
-  const FVector ADSOffset(0.f, 50.f, 60.f);
-  const float HipArmLength = 280.f;
-  const float ADSArmLength = 180.f;
+  // Offsets lus depuis les UPROPERTY — modifiables dans le BP sans recompiler
+  const FVector HipOffset    = CameraHipOffset;
+  const FVector ADSOffset    = CameraADSOffset;
+  const float   HipArmLength = CameraHipArmLength;
+  const float   ADSArmLength = CameraADSArmLength;
 
   float TargetFOV = DefaultFOV;
   FVector TargetOffset = HipOffset;
@@ -632,6 +643,119 @@ void ARevenantOpsCharacter::UpdateCameraFOV(float DeltaTime) {
   const float NewArmLen =
       FMath::FInterpTo(CurrentArmLen, TargetArmLen, DeltaTime, FOVInterpSpeed);
   CameraBoom->TargetArmLength = NewArmLen;
+}
+
+void ARevenantOpsCharacter::UpdateAimRotation(float DeltaTime)
+{
+  const bool bShouldOrientToAim = bIsArmed && !bIsSprinting && !bIsDodging;
+
+  if (bShouldOrientToAim)
+  {
+    // Le personnage fait face à la direction de visée
+    bUseControllerRotationYaw = true;
+    GetCharacterMovement()->bOrientRotationToMovement = false;
+  }
+  else
+  {
+    // Rotation naturelle vers la direction de déplacement
+    bUseControllerRotationYaw = false;
+    GetCharacterMovement()->bOrientRotationToMovement = true;
+  }
+}
+
+// =============================================================================
+// MELEE
+// =============================================================================
+
+void ARevenantOpsCharacter::MeleeAttackPressed()
+{
+  const float Now = GetWorld()->GetTimeSeconds();
+  if (Now - LastMeleeTime < MeleeCooldown) return;
+  if (bIsSprinting || bIsSliding) return;
+
+  LastMeleeTime = Now;
+
+  // Montage animé
+  if (MeleeMontage)
+    PlayAnimMontage(MeleeMontage);
+
+  // ── Sweep de zone devant le joueur (contrôle de foule) ────────────────────
+  // Large sphère centrée sur le joueur — touche plusieurs ennemis à la fois
+  const FVector TraceCenter = GetActorLocation() + GetActorForwardVector() * (MeleeRange * 0.5f);
+  const float   SphereRadius = MeleeRange * 0.6f;   // zone généreuse
+
+  TArray<FHitResult> Hits;
+  FCollisionQueryParams Params;
+  Params.AddIgnoredActor(this);
+
+  GetWorld()->SweepMultiByChannel(
+    Hits, GetActorLocation(), TraceCenter,
+    FQuat::Identity,
+    ECC_Pawn,
+    FCollisionShape::MakeSphere(SphereRadius),
+    Params
+  );
+
+  // Dédupliquer les acteurs (plusieurs bones du même ennemi peuvent être touchés)
+  TSet<AActor*> AlreadyHit;
+
+  for (const FHitResult& Hit : Hits)
+  {
+    AActor* Target = Hit.GetActor();
+    if (!Target || AlreadyHit.Contains(Target)) continue;
+    if (!Target->ActorHasTag(FName("Enemy"))) continue;
+
+    AlreadyHit.Add(Target);
+
+    AEnemyBase* Enemy = Cast<AEnemyBase>(Target);
+
+    if (Enemy && Enemy->IsVulnerableToFinisher())
+    {
+      // ── FINISHER : ennemi touché en zone vitale ───────────────────────────
+      Enemy->ApplyFinisher(MeleeDamage, GetController(), this);
+    }
+    else
+    {
+      // ── Coup normal : dégâts de base + petit stun ────────────────────────
+      UGameplayStatics::ApplyDamage(Target, MeleeDamage, GetController(), this, nullptr);
+
+      if (Enemy)
+        Enemy->ApplyStun(0.6f);
+    }
+  }
+}
+
+// =============================================================================
+// IFRAMES
+// =============================================================================
+
+float ARevenantOpsCharacter::TakeDamage(float DamageAmount,
+                                         const FDamageEvent& DamageEvent,
+                                         AController* EventInstigator,
+                                         AActor* DamageCauser)
+{
+  // Invincibilité active : ignorer les dégâts
+  if (bInvincible) return 0.f;
+
+  const float Damage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+
+  // Démarrer la fenêtre d'invincibilité
+  if (InvincibilityDuration > 0.f && Damage > 0.f)
+  {
+    bInvincible = true;
+    GetWorldTimerManager().SetTimer(
+      IFrameTimer, this,
+      &ARevenantOpsCharacter::EndInvincibility,
+      InvincibilityDuration, false
+    );
+  }
+
+  return Damage;
+}
+
+void ARevenantOpsCharacter::EndInvincibility()
+{
+  bInvincible = false;
 }
 
 // =============================================================================
@@ -701,6 +825,15 @@ void ARevenantOpsCharacter::SpawnDefaultWeapons() {
     Slot.WeaponClass = WeaponInventory[i]->GetClass();
     Slot.ItemIcon    = WeaponInventory[i]->GetWeaponIcon();
   }
+
+  // ── RE5 : munitions en inventaire seulement via StartingItems / pickups ─────
+  // SpawnDefaultWeapons ne crée plus de slots munitions automatiquement.
+  // Les armes démarrent avec leur chargeur plein, sans réserve.
+  // La réserve vient de InitStartingInventory (DA_Item_Ammo_*) ou de pickups au sol.
+  for (AWeaponBase* Weapon : WeaponInventory)
+  {
+    if (Weapon) Weapon->SetMaxReserveAmmo(0); // réserve dans l'inventaire, pas dans l'arme
+  }
 }
 
 bool ARevenantOpsCharacter::AddItemToInventory(const FInventoryItem& Item) {
@@ -721,9 +854,13 @@ void ARevenantOpsCharacter::UseInventoryItem(int32 SlotIndex) {
   switch (Item.Type) {
     case EInventoryItemType::Health:
       if (HealthComp) {
-        HealthComp->Heal(Item.HealAmount);
+        // Si HealAmount non configuré dans le DA, fallback 25% HP max
+        const float Amount = (Item.HealAmount > 0.f)
+            ? Item.HealAmount
+            : HealthComp->GetMaxHealth() * 0.25f;
+        HealthComp->Heal(Amount);
       }
-      Item = FInventoryItem(); // consume
+      Item = FInventoryItem(); // consomme le slot
       break;
 
     case EInventoryItemType::TimeBonus:
@@ -744,6 +881,218 @@ void ARevenantOpsCharacter::UseInventoryItem(int32 SlotIndex) {
     default:
       break;
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Drop inventaire → spawn monde
+// ─────────────────────────────────────────────────────────────────────────────
+
+void ARevenantOpsCharacter::DropInventoryItem(int32 SlotIndex)
+{
+    if (!Inventory.IsValidIndex(SlotIndex)) return;
+    const FInventoryItem Item = Inventory[SlotIndex];
+    if (Item.IsEmpty()) return;
+
+    // Les armes ne peuvent pas être jetées
+    if (Item.Type == EInventoryItemType::Weapon) return;
+
+    // Spawn devant le joueur, légèrement décalé
+    const FVector Offset   = GetActorForwardVector() * 120.f + FVector(0.f, 0.f, 20.f);
+    const FVector SpawnLoc = GetActorLocation() + Offset;
+
+    FActorSpawnParameters Params;
+    Params.SpawnCollisionHandlingOverride =
+        ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+    AInventoryDropPickup* Drop = GetWorld()->SpawnActor<AInventoryDropPickup>(
+        AInventoryDropPickup::StaticClass(), SpawnLoc, FRotator::ZeroRotator, Params);
+
+    if (Drop)
+    {
+        Drop->Initialize(Item);
+    }
+
+    // Vider le slot
+    Inventory[SlotIndex] = FInventoryItem();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Combine inventaire style RE5
+// ─────────────────────────────────────────────────────────────────────────────
+
+bool ARevenantOpsCharacter::CombineInventoryItems(int32 SlotA, int32 SlotB)
+{
+    if (SlotA == SlotB) return false;
+    if (!Inventory.IsValidIndex(SlotA) || !Inventory.IsValidIndex(SlotB)) return false;
+
+    FInventoryItem& A = Inventory[SlotA];
+    FInventoryItem& B = Inventory[SlotB];
+    if (A.IsEmpty() || B.IsEmpty()) return false;
+
+    // ── Armes : jamais combinables ───────────────────────────────────────────
+    if (A.Type == EInventoryItemType::Weapon || B.Type == EInventoryItemType::Weapon)
+        return false;
+
+    // ── Soin + Soin ──────────────────────────────────────────────────────────
+    if (A.Type == EInventoryItemType::Health && B.Type == EInventoryItemType::Health)
+    {
+        const float MaxHP  = HealthComp ? HealthComp->GetMaxHealth() : 100.f;
+
+        // HealAmount = 0 → fallback 25% max
+        const float HealA  = (A.HealAmount > 0.f) ? A.HealAmount : MaxHP * 0.25f;
+        const float HealB  = (B.HealAmount > 0.f) ? B.HealAmount : MaxHP * 0.25f;
+        const float Total  = FMath::Min(HealA + HealB, MaxHP);
+
+        // Tier visuel selon le total
+        FString TierName;
+        if (Total >= MaxHP * 0.85f)      TierName = TEXT("Grand Soin");
+        else if (Total >= MaxHP * 0.45f) TierName = TEXT("Soin Moyen");
+        else                              TierName = TEXT("Petit Soin");
+
+        A.HealAmount  = Total;
+        A.DisplayName = FText::FromString(TierName);
+        // Garde l'icône de A (ou de B si A n'en a pas)
+        if (!A.ItemIcon && B.ItemIcon) A.ItemIcon = B.ItemIcon;
+
+        B = FInventoryItem(); // consomme le slot B
+        return true;
+    }
+
+    // ── Munitions + Munitions (même type) → empilage ─────────────────────────
+    if (A.Type == EInventoryItemType::Ammo && B.Type == EInventoryItemType::Ammo
+        && A.AmmoType == B.AmmoType)
+    {
+        A.Quantity += B.Quantity;
+        B = FInventoryItem();
+        return true;
+    }
+
+    // ── Munitions + Arme (inventaire) → recharge chargeur ───────────────────
+    // Déterminer qui est l'ammo et qui est l'arme
+    const bool AisAmmo   = (A.Type == EInventoryItemType::Ammo);
+    const bool BisAmmo   = (B.Type == EInventoryItemType::Ammo);
+    const bool AisWeapon = (A.Type == EInventoryItemType::Weapon);
+    const bool BisWeapon = (B.Type == EInventoryItemType::Weapon);
+
+    // (Cette branche ne sera jamais atteinte car on bloque les Weapon ci-dessus,
+    //  mais on la garde si on change la règle plus tard)
+    if ((AisAmmo && BisWeapon) || (BisAmmo && AisWeapon))
+    {
+        FInventoryItem* AmmoItem   = AisAmmo   ? &A : &B;
+        FInventoryItem* WeaponItem = AisWeapon ? &A : &B;
+        const int32     AmmoSlot   = AisAmmo   ? SlotA : SlotB;
+
+        for (AWeaponBase* Weapon : WeaponInventory)
+        {
+            if (!Weapon) continue;
+            if (WeaponItem->WeaponClass && Weapon->GetClass() != WeaponItem->WeaponClass) continue;
+            if (Weapon->GetWeaponAmmoType() != AmmoItem->AmmoType) continue;
+
+            const int32 Added = Weapon->AddDirectlyToMagazine(AmmoItem->Quantity);
+            AmmoItem->Quantity -= Added;
+            if (AmmoItem->Quantity <= 0) Inventory[AmmoSlot] = FInventoryItem();
+            return Added > 0;
+        }
+        return false;
+    }
+
+    // ── Munitions (inventaire) + Arme équipée courante ───────────────────────
+    // Si on combine un slot Ammo avec le slot Weapon de l'arme équipée :
+    // → recharge directe du chargeur de l'arme équipée.
+    if (AisAmmo && !B.IsEmpty() && B.Type == EInventoryItemType::Ammo)
+        return false; // déjà géré ci-dessus
+
+    return false;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Inventaire de départ (FStartingItem → FInventoryItem)
+// ─────────────────────────────────────────────────────────────────────────────
+
+void ARevenantOpsCharacter::InitStartingInventory(const TArray<FStartingItem>& Items)
+{
+    for (const FStartingItem& Entry : Items)
+    {
+        if (!Entry.Definition || !Entry.Definition->IsValid()) continue;
+
+        // Les armes sont gérées par SpawnDefaultWeapons — pas de doublon
+        if (Entry.Definition->ItemType == EInventoryItemType::Weapon) continue;
+
+        // Pour les munitions : empiler dans le slot existant via AddInventoryAmmo
+        if (Entry.Definition->ItemType == EInventoryItemType::Ammo &&
+            Entry.Definition->AmmoType != EAmmoType::None)
+        {
+            AddInventoryAmmo(
+                Entry.Definition->AmmoType,
+                Entry.Quantity,
+                Entry.Definition->ItemIcon.Get(),
+                Entry.Definition->DisplayName);
+            continue;
+        }
+
+        // Tous les autres types (Health, TimeBonus) : slot normal
+        FInventoryItem NewItem = Entry.Definition->MakeInventoryItem(Entry.Quantity);
+        AddItemToInventory(NewItem);
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Système munitions RE5
+// ─────────────────────────────────────────────────────────────────────────────
+
+int32 ARevenantOpsCharacter::GetInventoryAmmo(EAmmoType Type) const
+{
+  if (Type == EAmmoType::None) return 0;
+  for (const FInventoryItem& Item : Inventory)
+  {
+    if (Item.Type == EInventoryItemType::Ammo && Item.AmmoType == Type)
+      return Item.Quantity;
+  }
+  return 0;
+}
+
+int32 ARevenantOpsCharacter::ConsumeInventoryAmmo(EAmmoType Type, int32 Amount)
+{
+  if (Type == EAmmoType::None || Amount <= 0) return 0;
+  for (FInventoryItem& Item : Inventory)
+  {
+    if (Item.Type == EInventoryItemType::Ammo && Item.AmmoType == Type)
+    {
+      const int32 Taken = FMath::Min(Amount, Item.Quantity);
+      Item.Quantity -= Taken;
+      if (Item.Quantity <= 0)
+        Item = FInventoryItem(); // vide le slot
+      return Taken;
+    }
+  }
+  return 0;
+}
+
+void ARevenantOpsCharacter::AddInventoryAmmo(EAmmoType Type, int32 Amount,
+                                              UTexture2D* Icon, FText Name, int32 MaxAmount)
+{
+  if (Type == EAmmoType::None || Amount <= 0) return;
+
+  // Chercher un slot existant du même type pour empiler
+  for (FInventoryItem& Item : Inventory)
+  {
+    if (Item.Type == EInventoryItemType::Ammo && Item.AmmoType == Type)
+    {
+      Item.Quantity = (MaxAmount > 0)
+                    ? FMath::Min(Item.Quantity + Amount, MaxAmount)
+                    : Item.Quantity + Amount;
+      return;
+    }
+  }
+
+  // Pas de slot existant — créer un nouveau
+  FInventoryItem NewItem;
+  NewItem.Type        = EInventoryItemType::Ammo;
+  NewItem.AmmoType    = Type;
+  NewItem.Quantity    = (MaxAmount > 0) ? FMath::Min(Amount, MaxAmount) : Amount;
+  NewItem.ItemIcon    = Icon;
+  NewItem.DisplayName = Name.IsEmpty() ? FText::FromString(TEXT("Munitions")) : Name;
+  AddItemToInventory(NewItem);
 }
 
 void ARevenantOpsCharacter::UpdateAnimationValues()

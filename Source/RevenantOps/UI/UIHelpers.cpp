@@ -3,6 +3,9 @@
 #include "UI/UITheme.h"
 #include "Engine/Texture2D.h"
 #include "Math/UnrealMathUtility.h"
+#include "InputAction.h"
+#include "EnhancedInputSubsystems.h"
+#include "Engine/LocalPlayer.h"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // BRUSHES
@@ -139,6 +142,49 @@ FSlateFontInfo UUIHelpers::GetMonoFont(const UUITheme* Theme, int32 Size)
         Fi = FCoreStyle::GetDefaultFontStyle("Regular", Size);
     Fi.Size = Size;
     return Fi;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// INPUT — TOUCHES DYNAMIQUES
+// ─────────────────────────────────────────────────────────────────────────────
+
+bool UUIHelpers::IsKeyMappedToAction(ULocalPlayer* LocalPlayer,
+                                     const FKey& Key,
+                                     UInputAction* Action)
+{
+    if (!LocalPlayer || !Action) return false;
+
+    const UEnhancedInputLocalPlayerSubsystem* EIS =
+        LocalPlayer->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>();
+    if (!EIS) return false;
+
+    TArray<FKey> Keys = EIS->QueryKeysMappedToAction(Action);
+    return Keys.Contains(Key);
+}
+
+FString UUIHelpers::GetKeyLabel(ULocalPlayer* LocalPlayer,
+                                UInputAction* Action,
+                                const FString& Fallback)
+{
+    if (!LocalPlayer || !Action)
+        return Fallback;
+
+    const UEnhancedInputLocalPlayerSubsystem* EIS =
+        LocalPlayer->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>();
+    if (!EIS)
+        return Fallback;
+
+    TArray<FKey> Keys = EIS->QueryKeysMappedToAction(Action);
+    if (Keys.IsEmpty())
+        return Fallback;
+
+    // Préférer une touche clavier/souris (pas gamepad) si disponible
+    const FKey* BestKey = Keys.FindByPredicate(
+        [](const FKey& K){ return !K.IsGamepadKey(); });
+    if (!BestKey)
+        BestKey = &Keys[0];
+
+    return FString::Printf(TEXT("[%s]"), *BestKey->GetDisplayName().ToString());
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -79,12 +79,34 @@ void AHealthPickup::TryPickup(ARevenantOpsCharacter* Player)
 {
     if (!Player) return;
 
-    if (UHealthComponent* HC = Player->FindComponentByClass<UHealthComponent>())
-    {
-        if (HC->GetHealthPercent() >= 1.f) return; // déjà plein
+    UHealthComponent* HC = Player->FindComponentByClass<UHealthComponent>();
 
-        float HealAmount = HC->GetMaxHealth() * HealPercent;
-        HC->Heal(HealAmount);
+    // ── Chemin RE5 : soin dans l'inventaire ───────────────────────────────
+    if (ItemDefinition && ItemDefinition->ItemType == EInventoryItemType::Health)
+    {
+        // Calcule le HealAmount si le DA laisse 0 (on calcule depuis HealPercent)
+        FInventoryItem NewItem = ItemDefinition->MakeInventoryItem(1);
+        if (NewItem.HealAmount <= 0.f && HC)
+            NewItem.HealAmount = HC->GetMaxHealth() * HealPercent;
+
+        if (Player->AddItemToInventory(NewItem))
+        {
+            // Succès → ramassé dans l'inventaire, pas de soin immédiat
+            PendingPlayer = nullptr;
+            Player->ClearPendingPickup();
+            Player->HidePickupPrompt();
+            BP_OnPickedUp(Player);
+            HidePickup();
+            return;
+        }
+        // Inventaire plein → fallback soin immédiat ci-dessous
+    }
+
+    // ── Chemin classique : soin immédiat ──────────────────────────────────
+    if (HC)
+    {
+        if (HC->GetHealthPercent() >= 1.f) return;
+        HC->Heal(HC->GetMaxHealth() * HealPercent);
     }
 
     PendingPlayer = nullptr;

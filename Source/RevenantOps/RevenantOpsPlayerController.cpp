@@ -29,6 +29,7 @@
 #include "AI/EnemyWaveSpawner.h"
 #include "Kismet/GameplayStatics.h"
 #include "Gameplay/RevenantOpsGameInstance.h"
+#include "MainMenuGameMode.h"
 
 void ARevenantOpsPlayerController::BeginPlay()
 {
@@ -84,7 +85,12 @@ void ARevenantOpsPlayerController::ReceivedPlayer()
 	}
 	else if (TitleScreenClass)
 	{
-		ShowTitleScreen();
+		// Si le GameMode a une séquence splash, ne pas afficher le TitleScreen maintenant —
+		// il sera affiché par MainMenuGameMode::OnSplashDone() une fois le splash terminé.
+		AMainMenuGameMode* GMM = Cast<AMainMenuGameMode>(GetWorld()->GetAuthGameMode());
+		const bool bSplashPending = GMM && GMM->SplashWidgetClass && !GMM->SplashSequence.IsEmpty();
+		if (!bSplashPending)
+			ShowTitleScreen();
 	}
 }
 
@@ -144,8 +150,8 @@ void ARevenantOpsPlayerController::DoTransition(TFunction<void()> Fn)
     }
 }
 
-void ARevenantOpsPlayerController::ShowTitleScreen() {
-  DoTransition([this]()
+void ARevenantOpsPlayerController::ShowTitleScreen(bool bInstant) {
+  DoTransition([this, bInstant]()
   {
     if (URevenantOpsGameInstance* GI = Cast<URevenantOpsGameInstance>(GetGameInstance()))
       GI->bPendingMatchStart = false;
@@ -155,6 +161,8 @@ void ARevenantOpsPlayerController::ShowTitleScreen() {
     if (TitleScreenClass) {
       TitleScreenWidget = CreateWidget<UTitleScreenWidget>(this, TitleScreenClass);
       if (TitleScreenWidget) {
+        if (bInstant)
+          TitleScreenWidget->FadeInDuration = 0.f; // pas de fondu quand on vient du splash
         TitleScreenWidget->AddToViewport(10);
         ActiveMenu = TitleScreenWidget.Get();
         SetShowMouseCursor(true);
@@ -255,15 +263,16 @@ void ARevenantOpsPlayerController::ShowCharacterSelectScreen() {
 void ARevenantOpsPlayerController::OnCharacterChosen(FCharacterInfo CharacterInfo) {
   if (URevenantOpsGameInstance* GI = Cast<URevenantOpsGameInstance>(GetGameInstance())) {
     GI->PendingCharacter = CharacterInfo;
-    // Pré-remplir les armes du loadout depuis l'inventaire par défaut du personnage
+    // Pré-remplir les armes depuis les StartingItems du personnage
     GI->PendingPrimaryWeapon   = nullptr;
     GI->PendingSecondaryWeapon = nullptr;
-    for (const FInventoryItem& Item : CharacterInfo.DefaultInventory)
+    for (const FStartingItem& Entry : CharacterInfo.StartingItems)
     {
-      if (Item.Type == EInventoryItemType::Weapon && Item.WeaponClass)
+      if (Entry.Definition && Entry.Definition->ItemType == EInventoryItemType::Weapon
+          && Entry.Definition->WeaponClass)
       {
-        if (!GI->PendingPrimaryWeapon)        GI->PendingPrimaryWeapon   = Item.WeaponClass;
-        else if (!GI->PendingSecondaryWeapon) GI->PendingSecondaryWeapon = Item.WeaponClass;
+        if (!GI->PendingPrimaryWeapon)        GI->PendingPrimaryWeapon   = Entry.Definition->WeaponClass;
+        else if (!GI->PendingSecondaryWeapon) GI->PendingSecondaryWeapon = Entry.Definition->WeaponClass;
       }
     }
   }
@@ -410,15 +419,9 @@ void ARevenantOpsPlayerController::StartMercenairesMatch() {
         MercChar->SpawnDefaultWeapons();
       }
 
-      // Inventaire complet du personnage (items non-armes)
-      if (GI->PendingCharacter.DefaultInventory.Num() > 0)
-      {
-        for (const FInventoryItem& Item : GI->PendingCharacter.DefaultInventory)
-        {
-          if (Item.Type != EInventoryItemType::Weapon && !Item.IsEmpty())
-            MercChar->AddItemToInventory(Item);
-        }
-      }
+      // Inventaire de départ via StartingItems (DA_Item_*)
+      if (GI->PendingCharacter.StartingItems.Num() > 0)
+        MercChar->InitStartingInventory(GI->PendingCharacter.StartingItems);
     }
   }
 
@@ -693,9 +696,13 @@ void ARevenantOpsPlayerController::ToggleInventory() {
       InventoryWidgetInstance->RefreshSlots(Char->GetInventoryItems());
     }
 
-    // Bind use delegate
+    // Bind delegates
     InventoryWidgetInstance->OnItemUsed.AddDynamic(
         this, &ARevenantOpsPlayerController::OnInventoryItemUsed);
+    InventoryWidgetInstance->OnItemDropped.AddDynamic(
+        this, &ARevenantOpsPlayerController::OnInventoryItemDropped);
+    InventoryWidgetInstance->OnItemCombined.AddDynamic(
+        this, &ARevenantOpsPlayerController::OnInventoryItemsCombined);
     InventoryWidgetInstance->OnClosed.AddDynamic(
         this, &ARevenantOpsPlayerController::ToggleInventory);
 
@@ -730,5 +737,35 @@ void ARevenantOpsPlayerController::OnInventoryItemUsed(int32 SlotIndex) {
     if (InventoryWidgetInstance) {
       InventoryWidgetInstance->RefreshSlots(Char->GetInventoryItems());
     }
+  }
+}
+
+void ARevenantOpsPlayerController::OnInventoryItemDropped(int32 SlotIndex)
+{
+  ARevenantOpsCharacter* Char = Cast<ARevenantOpsCharacter>(GetPawn());
+  if (!Char) return;
+
+  Char->DropInventoryItem(SlotIndex); // spawn monde + vide le slot
+
+  // Refresh UI
+  if (InventoryWidgetInstance)
+    InventoryWidgetInstance->RefreshSlots(Char->GetInventoryItems());
+}
+
+void ARevenantOpsPlayerController::OnInventoryItemsCombined(int32 SlotA, int32 SlotB)
+{
+  ARevenantOpsCharacter* Char = Cast<ARevenantOpsCharacter>(GetPawn());
+  if (!Char) return;
+
+  const bool bSuccess = Char->CombineInventoryItems(SlotA, SlotB);
+
+  // Refresh UI dans tous les cas (succès ou non — pour sortir du mode combine)
+  if (InventoryWidgetInstance)
+    InventoryWidgetInstance->RefreshSlots(Char->GetInventoryItems());
+
+  if (!bSuccess)
+  {
+    UE_LOG(LogRevenantOps, Warning,
+        TEXT("[Inventory] Combine impossible : slots %d et %d incompatibles"), SlotA, SlotB);
   }
 }

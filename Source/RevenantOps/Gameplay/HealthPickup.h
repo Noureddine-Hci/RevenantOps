@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Gameplay/PickupBase.h"
 #include "Gameplay/PickupInterface.h"
+#include "Gameplay/ItemDefinition.h"
 #include "HealthPickup.generated.h"
 
 class ARevenantOpsCharacter;
@@ -40,6 +41,14 @@ protected:
     /** Nom affiché dans le popup (ex: "Kit de Soin", "Médicament", "Trousse de Premiers Secours") */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HealthPickup")
     FText PickupDisplayName = FText::FromString("Kit de Soin");
+
+    /**
+     *  DataAsset qui décrit ce pickup comme item inventaire (DA_Item_Health_*).
+     *  Si assigné → le soin va dans l'inventaire pour être utilisé plus tard.
+     *  Si null   → soin immédiat (comportement classique, rétrocompatible).
+     */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HealthPickup")
+    TObjectPtr<UItemDefinition> ItemDefinition = nullptr;
 
     /** Joueur actuellement en zone — raw ptr (pas de UPROPERTY pour éviter CDO crash) */
     ARevenantOpsCharacter* PendingPlayer = nullptr;

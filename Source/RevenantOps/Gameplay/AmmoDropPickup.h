@@ -4,6 +4,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Gameplay/AmmoTypes.h"
+#include "Gameplay/ItemDefinition.h"
 #include "AmmoDropPickup.generated.h"
 
 class USphereComponent;
@@ -32,8 +33,17 @@ protected:
     UStaticMeshComponent* PickupMesh;
 
 public:
-    /** Type de munitions donné au joueur */
+    /**
+     *  DataAsset source de vérité pour ce pickup (DA_Item_Ammo_Pistol, etc.).
+     *  Si assigné : AmmoType, icône et nom viennent du DA — plus rien à configurer manuellement.
+     *  Si null    : fallback sur AmmoType + AmmoAmount ci-dessous (rétrocompatible).
+     */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AmmoDrop")
+    TObjectPtr<UItemDefinition> ItemDefinition = nullptr;
+
+    /** Type de munitions (ignoré si ItemDefinition est assigné) */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AmmoDrop",
+              meta = (EditCondition = "ItemDefinition == nullptr", EditConditionHides))
     EAmmoType AmmoType = EAmmoType::Pistol;
 
     /** Quantité de munitions */

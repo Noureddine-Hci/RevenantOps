@@ -1,5 +1,6 @@
 ﻿// Copyright RevenantOps. All Rights Reserved.
 #include "UI/CharacterSelectWidget.h"
+#include "Gameplay/ItemDefinition.h"
 #include "UI/CharacterPreviewActor.h"
 #include "UI/UITheme.h"
 #include "UI/UIHelpers.h"
@@ -75,6 +76,8 @@ void UCharacterSelectWidget::NativeConstruct()
         SP.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
         PreviewActor = W->SpawnActor<ACharacterPreviewActor>(
             ClassToSpawn, FVector(0.f, 0.f, 50000.f), FRotator::ZeroRotator, SP);
+        if (PreviewActor)
+            PreviewActor->InitCapture();
     }
 
     if (!CachedCharacters.IsEmpty())
@@ -382,6 +385,7 @@ void UCharacterSelectWidget::RefreshInfo()
                 Brush.ImageType = ESlateBrushImageType::FullColor;
                 Brush.TintColor = FSlateColor(FLinearColor::White);
                 PortraitImage->SetBrush(Brush);
+                PortraitImage->SetColorAndOpacity(FLinearColor::White); // reset couleur sombre initiale
             }
         }
         else if (Info.Thumbnail)
@@ -402,7 +406,10 @@ void UCharacterSelectWidget::RefreshInfo()
         const FLinearColor C_PanelMid = FLinearColor(0.10f, 0.09f, 0.07f, 1.f);
         const FLinearColor C_Grey     = T ? T->GreySoft : FLinearColor(0.45f, 0.42f, 0.38f, 1.f);
 
-        const TArray<FInventoryItem>& Items = Info.DefaultInventory;
+        // Convertir les StartingItems en FInventoryItem pour l'affichage
+        TArray<FInventoryItem> Items;
+        for (const FStartingItem& SI : Info.StartingItems)
+            if (SI.Definition) Items.Add(SI.Definition->MakeInventoryItem(SI.Quantity));
         const int32 MaxSlots = 9;
         for (int32 i = 0; i < MaxSlots; ++i)
         {

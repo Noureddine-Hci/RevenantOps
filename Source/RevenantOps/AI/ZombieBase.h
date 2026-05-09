@@ -56,6 +56,17 @@ protected:
   /** True while performing a melee attack */
   bool bIsAttacking = false;
 
+  /**
+   * Délai de préparation de l'attaque avant l'application des dégâts (secondes).
+   * Pendant ce temps, le joueur peut contre-attaquer ou esquiver.
+   * 0 = dégâts immédiats (comportement précédent).
+   */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Zombie|Combat",
+            meta = (ClampMin = 0.f, ClampMax = 2.f))
+  float AttackWindupTime = 0.4f;
+
+  FTimerHandle AttackWindupTimer;
+
   // ========== ZOMBIE AI ==========
 
   /** Performs a melee attack on the target player. Virtual so subclasses can override (e.g. exploder). */

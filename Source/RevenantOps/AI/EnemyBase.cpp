@@ -1,6 +1,7 @@
 // Copyright RevenantOps. All Rights Reserved.
 
 #include "EnemyBase.h"
+#include "Engine/DamageEvents.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/WidgetComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -12,11 +13,15 @@
 #include "WeaponBase.h"
 #include "RevenantOpsCharacter.h"
 #include "Gameplay/MercenairesGameState.h"
+#include "Gameplay/InventoryDropPickup.h"
 #include "RevenantOpsPlayerController.h"
 #include "UI/RevenantOpsHUD.h"
 
 AEnemyBase::AEnemyBase() {
   PrimaryActorTick.bCanEverTick = true;
+
+  // Tag utilisé par le joueur pour la détection de mêlée
+  Tags.Add(FName("Enemy"));
 
   // AI Controller auto-possession
   AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
@@ -586,44 +591,100 @@ void AEnemyBase::HandleDeath(UHealthComponent *HealthComponent,
   // ── Ammo drops adaptatifs ─────────────────────────────────────────────────
   if (AmmoDrop.Num() > 0)
   {
-    // Collecter les types d'armes que le joueur possède actuellement
+    // Collecter les types de toutes les armes du loadout du joueur
     TSet<EAmmoType> PlayerAmmoTypes;
     if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
     {
       if (ARevenantOpsCharacter* MercChar = Cast<ARevenantOpsCharacter>(PC->GetPawn()))
       {
-        // Arme active
-        if (AWeaponBase* W = MercChar->GetCurrentWeapon())
-          PlayerAmmoTypes.Add(W->GetWeaponAmmoType());
-        // On pourrait aussi boucler sur toutes les armes — ici arme active suffit
-        // pour ne dropper que ce qui est utile immédiatement
+        for (AWeaponBase* W : MercChar->GetWeaponInventory())
+          if (W) PlayerAmmoTypes.Add(W->GetWeaponAmmoType());
       }
     }
 
     for (const FAmmoDropEntry& Drop : AmmoDrop)
     {
-      if (Drop.DropChance <= 0.f || !Drop.DropClass) continue;
+      if (Drop.DropChance <= 0.f) continue;
+
+      // Résoudre le type effectif (DA prioritaire)
+      const EAmmoType EffectiveType = (Drop.ItemDefinition && Drop.ItemDefinition->AmmoType != EAmmoType::None)
+          ? Drop.ItemDefinition->AmmoType : Drop.AmmoType;
 
       // Ne dropper que si le joueur a une arme de ce type
-      if (!PlayerAmmoTypes.Contains(Drop.AmmoType)) continue;
+      if (!PlayerAmmoTypes.Contains(EffectiveType)) continue;
 
-      if (FMath::FRand() <= Drop.DropChance)
+      if (FMath::FRand() > Drop.DropChance) continue;
+
+      FVector SpawnLoc = GetActorLocation() + FVector(
+          FMath::RandRange(-50.f, 50.f), FMath::RandRange(-50.f, 50.f), 30.f);
+      FActorSpawnParameters SP;
+      SP.SpawnCollisionHandlingOverride =
+          ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+      // Résoudre icône et nom (ItemDefinition prioritaire)
+      UTexture2D* Icon     = nullptr;
+      FText       DispName = Drop.DropDisplayName;
+
+      if (Drop.ItemDefinition)
       {
-        FVector SpawnLoc = GetActorLocation() + FVector(
-            FMath::RandRange(-50.f, 50.f), FMath::RandRange(-50.f, 50.f), 30.f);
-        FActorSpawnParameters SP;
-        SP.SpawnCollisionHandlingOverride =
-            ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+        Icon = Drop.ItemDefinition->ItemIcon.Get();
+        if (!Drop.ItemDefinition->DisplayName.IsEmpty())
+          DispName = Drop.ItemDefinition->DisplayName;
+      }
+      else if (Drop.DropIcon)
+      {
+        Icon = Drop.DropIcon.Get();
+      }
 
+      // Nom fallback lisible si rien n'est configuré
+      if (DispName.IsEmpty())
+      {
+        static const TMap<EAmmoType, FString> AmmoNames = {
+          { EAmmoType::Pistol,  TEXT("Munitions Pistolet")      },
+          { EAmmoType::Rifle,   TEXT("Munitions Fusil")         },
+          { EAmmoType::Shotgun, TEXT("Munitions Fusil à Pompe") },
+          { EAmmoType::SMG,     TEXT("Munitions SMG")           },
+          { EAmmoType::Sniper,  TEXT("Munitions Sniper")        },
+        };
+        const FString* Found = AmmoNames.Find(EffectiveType);
+        DispName = FText::FromString(Found ? *Found : TEXT("Munitions"));
+      }
+
+      // Si un BP pickup custom est assigné → l'utiliser (pour mesh/VFX spécifiques)
+      if (Drop.DropClass)
+      {
         if (AAmmoBonusPickup* DropActor = GetWorld()->SpawnActor<AAmmoBonusPickup>(
                 Drop.DropClass, SpawnLoc, FRotator::ZeroRotator, SP))
         {
-          DropActor->AmmoAmount      = Drop.AmmoAmount;
-          DropActor->TargetAmmoType  = Drop.AmmoType;
-          DropActor->DropLifetime    = Drop.Lifetime;
-          DropActor->RespawnTime     = 0.f;
-          // ItemIcon et DisplayName viennent automatiquement des defaults du BP
+          DropActor->AmmoAmount     = Drop.AmmoAmount;
+          DropActor->TargetAmmoType = EffectiveType;
+          DropActor->DropLifetime   = Drop.Lifetime;
+          DropActor->RespawnTime    = 0.f;
+          // Passer l'ItemDefinition → icône + nom viennent du DA automatiquement
+          if (Drop.ItemDefinition)
+            DropActor->ItemDefinition = Drop.ItemDefinition;
+          else
+          {
+            if (Icon)     DropActor->ItemIcon    = Icon;
+            if (!DispName.IsEmpty()) DropActor->DisplayName = DispName;
+          }
           DropActor->StartLifetimeTimer();
+        }
+      }
+      else
+      {
+        // Spawn un AInventoryDropPickup générique
+        if (AInventoryDropPickup* DropActor = GetWorld()->SpawnActor<AInventoryDropPickup>(
+                AInventoryDropPickup::StaticClass(), SpawnLoc, FRotator::ZeroRotator, SP))
+        {
+          FInventoryItem AmmoItem;
+          AmmoItem.Type        = EInventoryItemType::Ammo;
+          AmmoItem.AmmoType    = EffectiveType;
+          AmmoItem.Quantity    = Drop.AmmoAmount;
+          AmmoItem.DisplayName = DispName;
+          AmmoItem.ItemIcon    = Icon;
+          DropActor->Initialize(AmmoItem);
+          DropActor->Lifetime  = Drop.Lifetime;
         }
       }
     }
@@ -689,3 +750,178 @@ void AEnemyBase::HandleDamage(UHealthComponent *HealthComponent, float Health,
 }
 
 void AEnemyBase::DeathCleanup() { Destroy(); }
+
+float AEnemyBase::TakeDamage(float DamageAmount, const FDamageEvent& DamageEvent,
+                              AController* InInstigator, AActor* DamageCauser)
+{
+  const float Damage = Super::TakeDamage(DamageAmount, DamageEvent, InInstigator, DamageCauser);
+
+  if (bIsDead || Damage <= 0.f) return Damage;
+
+  // Détecter la zone via le nom d'os (si physics asset présent)
+  // + fallback automatique sur la hauteur du point d'impact
+  if (DamageEvent.IsOfType(FPointDamageEvent::ClassID))
+  {
+    const FPointDamageEvent& PointEvent = static_cast<const FPointDamageEvent&>(DamageEvent);
+    const FName  BoneName  = PointEvent.HitInfo.BoneName;
+    const FVector HitPoint = PointEvent.HitInfo.ImpactPoint;
+
+    // Priorité 1 : nom d'os (physics asset présent)
+    if (!BoneName.IsNone() && BoneName != NAME_None)
+    {
+      HandleBoneHit(BoneName);
+    }
+    else
+    {
+      // Priorité 2 : position Z relative à la capsule
+      // Head  = 80%+ de la hauteur totale
+      // Leg   = 0–40% de la hauteur totale
+      // Arm   = 55–80% ET hors de l'axe central (côté)
+      const float CapsuleHalfHeight = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+      const float BaseZ    = GetActorLocation().Z - CapsuleHalfHeight;
+      const float FullH    = CapsuleHalfHeight * 2.f;
+      const float HitRatio = FMath::Clamp((HitPoint.Z - BaseZ) / FullH, 0.f, 1.f);
+
+      // Distance horizontale du point d'impact par rapport au centre de la capsule
+      const FVector2D HitFlat(HitPoint.X, HitPoint.Y);
+      const FVector2D ActorFlat(GetActorLocation().X, GetActorLocation().Y);
+      const float     SideDist = FVector2D::Distance(HitFlat, ActorFlat);
+      const float     CapsuleRadius = GetCapsuleComponent()->GetScaledCapsuleRadius();
+
+      if (HitRatio >= 0.78f)
+      {
+        HandleBoneHit(FName("head"));
+      }
+      else if (HitRatio <= 0.40f)
+      {
+        HandleBoneHit(FName("thigh_l")); // → Leg
+      }
+      else if (SideDist > CapsuleRadius * 0.5f && HitRatio >= 0.55f)
+      {
+        HandleBoneHit(FName("upperarm_l")); // → Arm
+      }
+      // Zone centrale (torse) = pas de finisher
+    }
+  }
+
+  return Damage;
+}
+
+void AEnemyBase::HandleBoneHit(const FName& BoneName)
+{
+  if (bIsDead) return;
+
+  const FString Bone = BoneName.ToString().ToLower();
+
+  // Tête
+  if (Bone.Contains(TEXT("head")) || Bone.Contains(TEXT("neck")))
+  {
+    OpenFinisherWindow(EFinisherZone::Head);
+    return;
+  }
+
+  // Bras
+  if (Bone.Contains(TEXT("arm"))  || Bone.Contains(TEXT("hand"))  ||
+      Bone.Contains(TEXT("wrist")) || Bone.Contains(TEXT("elbow")) ||
+      Bone.Contains(TEXT("shoulder")))
+  {
+    OpenFinisherWindow(EFinisherZone::Arm);
+    return;
+  }
+
+  // Jambes
+  if (Bone.Contains(TEXT("thigh")) || Bone.Contains(TEXT("calf"))  ||
+      Bone.Contains(TEXT("leg"))   || Bone.Contains(TEXT("knee"))  ||
+      Bone.Contains(TEXT("foot"))  || Bone.Contains(TEXT("ankle")))
+  {
+    OpenFinisherWindow(EFinisherZone::Leg);
+  }
+}
+
+void AEnemyBase::OpenFinisherWindow(EFinisherZone Zone)
+{
+  ActiveFinisherZone = Zone;
+
+  // Jouer une anim de stagger (HitReact) pour signaler la vulnérabilité
+  if (HitReactAnim)
+  {
+    if (UAnimInstance* AI = GetMesh()->GetAnimInstance())
+    {
+      AI->PlaySlotAnimationAsDynamicMontage(HitReactAnim, FName("DefaultSlot"), 0.1f, 0.2f, 1.f);
+    }
+  }
+
+  // Ralentir l'ennemi pendant la fenêtre (feedback visuel du stagger)
+  GetCharacterMovement()->MaxWalkSpeed *= 0.4f;
+
+  // Timer de fermeture automatique
+  GetWorldTimerManager().SetTimer(
+    FinisherWindowTimer,
+    this, &AEnemyBase::CloseFinisherWindow,
+    FinisherWindowDuration, false
+  );
+
+  BP_OnFinisherWindowOpened(Zone);
+}
+
+void AEnemyBase::CloseFinisherWindow()
+{
+  ActiveFinisherZone = EFinisherZone::None;
+
+  // Restaurer la vitesse
+  if (!bIsStunned)
+    GetCharacterMovement()->MaxWalkSpeed = GetCharacterMovement()->GetMaxSpeed();
+}
+
+void AEnemyBase::ApplyFinisher(float BaseDamage, AController* DamageInstigator, AActor* Causer)
+{
+  const EFinisherZone Zone = ActiveFinisherZone;
+
+  // Fermer la fenêtre immédiatement
+  GetWorldTimerManager().ClearTimer(FinisherWindowTimer);
+  CloseFinisherWindow();
+
+  // Dégâts amplifiés
+  UGameplayStatics::ApplyDamage(this, BaseDamage * FinisherDamageMultiplier,
+                                 DamageInstigator, Causer, nullptr);
+
+  // Stun post-finisher
+  ApplyStun(FinisherStunDuration);
+
+  BP_OnFinisherExecuted(Zone);
+}
+
+void AEnemyBase::ApplyStun(float Duration)
+{
+  if (bIsDead || Duration <= 0.f) return;
+
+  bIsStunned = true;
+
+  // Sauvegarder la vitesse normale avant de l'annuler
+  const float SavedSpeed = GetCharacterMovement()->MaxWalkSpeed;
+
+  // Immobiliser
+  GetCharacterMovement()->MaxWalkSpeed = 0.f;
+  if (AAIController* AIC = Cast<AAIController>(GetController()))
+    AIC->StopMovement();
+
+  // Jouer la hit react comme animation de stun
+  if (HitReactAnim)
+  {
+    if (UAnimInstance* AI = GetMesh()->GetAnimInstance())
+      AI->PlaySlotAnimationAsDynamicMontage(HitReactAnim, FName("DefaultSlot"), 0.1f, 0.2f, 1.f);
+  }
+
+  // Annuler et relancer le timer si un stun est déjà actif (refresh)
+  GetWorldTimerManager().SetTimer(
+    StunTimer,
+    [this, SavedSpeed]()
+    {
+      bIsStunned = false;
+      // Restaurer la vitesse seulement si pas encore en fenêtre de finisher
+      if (ActiveFinisherZone == EFinisherZone::None)
+        GetCharacterMovement()->MaxWalkSpeed = SavedSpeed;
+    },
+    Duration, false
+  );
+}

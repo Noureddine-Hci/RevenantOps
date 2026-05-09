@@ -61,7 +61,14 @@ void AAmmoBonusPickup::OnOverlapBegin(
 
   PendingPlayer = Player;
   Player->SetPendingPickup(this);
-  Player->ShowPickupPrompt(ItemIcon, DisplayName, AmmoAmount);
+
+  // Lire icône et nom depuis DA si assigné, sinon champs manuels
+  UTexture2D* PromptIcon = (ItemDefinition && ItemDefinition->ItemIcon.Get())
+      ? ItemDefinition->ItemIcon.Get() : ItemIcon.Get();
+  FText PromptName = (ItemDefinition && !ItemDefinition->DisplayName.IsEmpty())
+      ? ItemDefinition->DisplayName : DisplayName;
+
+  Player->ShowPickupPrompt(PromptIcon, PromptName, AmmoAmount);
 }
 
 void AAmmoBonusPickup::OnOverlapEnd(
@@ -83,15 +90,27 @@ void AAmmoBonusPickup::TryPickupInteract_Implementation(ARevenantOpsCharacter* P
 void AAmmoBonusPickup::TryPickup(ARevenantOpsCharacter* Player) {
   if (!Player) return;
 
-  AWeaponBase* Weapon = Player->GetCurrentWeapon();
-  if (Weapon)
+  // Lire type/icône/nom depuis le DA si présent, sinon champs manuels
+  EAmmoType   TypeToAdd      = TargetAmmoType;
+  UTexture2D* EffectiveIcon  = ItemIcon.Get();
+  FText       EffectiveName  = DisplayName;
+
+  if (ItemDefinition && ItemDefinition->AmmoType != EAmmoType::None)
   {
-    // Si TargetAmmoType est défini, ne donner des munitions que si l'arme correspond
-    bool bTypeMatch = (TargetAmmoType == EAmmoType::None)
-                   || (Weapon->GetWeaponAmmoType() == TargetAmmoType);
-    if (bTypeMatch)
-      Weapon->AddReserveAmmo(AmmoAmount);
+    TypeToAdd     = ItemDefinition->AmmoType;
+    EffectiveIcon = ItemDefinition->ItemIcon.Get();
+    EffectiveName = ItemDefinition->DisplayName;
   }
+
+  // Fallback : si toujours None, on prend l'arme courante
+  if (TypeToAdd == EAmmoType::None)
+  {
+    if (AWeaponBase* Weapon = Player->GetCurrentWeapon())
+      TypeToAdd = Weapon->GetWeaponAmmoType();
+  }
+
+  if (TypeToAdd != EAmmoType::None)
+    Player->AddInventoryAmmo(TypeToAdd, AmmoAmount, EffectiveIcon, EffectiveName);
 
   PendingPlayer = nullptr;
   Player->ClearPendingPickup();

@@ -272,13 +272,13 @@ void URevenantOpsHUD::BuildDefaultUI()
       UVerticalBox* VBox = WidgetTree->ConstructWidget<UVerticalBox>();
       if (VBox && HBox->AddChildToHorizontalBox(VBox))
       {
-        UTextBlock* KeyHint = WidgetTree->ConstructWidget<UTextBlock>();
-        if (KeyHint)
+        PickupPromptKeyHint = WidgetTree->ConstructWidget<UTextBlock>();
+        if (PickupPromptKeyHint)
         {
-          KeyHint->SetText(FText::FromString(TEXT("[E]  Prendre")));
-          KeyHint->SetFont(UUIHelpers::GetFont(T, 16));
-          KeyHint->SetColorAndOpacity(FSlateColor(C_Gold));
-          VBox->AddChildToVerticalBox(KeyHint);
+          PickupPromptKeyHint->SetText(FText::FromString(TEXT("[E]  Prendre")));
+          PickupPromptKeyHint->SetFont(UUIHelpers::GetFont(T, 16));
+          PickupPromptKeyHint->SetColorAndOpacity(FSlateColor(C_Gold));
+          VBox->AddChildToVerticalBox(PickupPromptKeyHint);
         }
 
         PickupPromptName = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), FName("PickupPromptName"));
@@ -324,6 +324,15 @@ void URevenantOpsHUD::NativeConstruct() {
 
   // Top-center (sous timer) : KillNotification
   SetCanvasSlot(KillNotificationText, FVector2D(-120.f, 80.f), FVector2D(240.f, 30.f), FAnchors(0.5f, 0.f));
+
+  // Mettre à jour le label de touche "Prendre" selon le mapping Enhanced Input
+  if (PickupPromptKeyHint)
+  {
+    const FString KeyInteract = UUIHelpers::GetKeyLabel(
+        GetOwningLocalPlayer(), InteractAction, TEXT("[E]"));
+    PickupPromptKeyHint->SetText(
+        FText::FromString(KeyInteract + TEXT("  Prendre")));
+  }
 
   // Cache character reference
   if (APawn *Pawn = GetOwningPlayerPawn()) {
@@ -486,13 +495,14 @@ void URevenantOpsHUD::NativeConstruct() {
         if (UHorizontalBoxSlot* HS = Cast<UHorizontalBoxSlot>(HBox->AddChild(VBox)))
           HS->SetVerticalAlignment(VAlign_Center);
 
-        UTextBlock* PressLabel = WidgetTree->ConstructWidget<UTextBlock>();
-        PressLabel->SetText(FText::FromString(TEXT("[E]  Prendre")));
-        FSlateFontInfo PF = PressLabel->GetFont();
+        if (!PickupPromptKeyHint)  // garde : ne pas créer deux fois si déjà construit
+          PickupPromptKeyHint = WidgetTree->ConstructWidget<UTextBlock>();
+        PickupPromptKeyHint->SetText(FText::FromString(TEXT("[E]  Prendre")));
+        FSlateFontInfo PF = PickupPromptKeyHint->GetFont();
         PF.Size = 17;
-        PressLabel->SetFont(PF);
-        PressLabel->SetColorAndOpacity(FSlateColor(FLinearColor(1.f, 0.95f, 0.3f)));
-        VBox->AddChildToVerticalBox(PressLabel);
+        PickupPromptKeyHint->SetFont(PF);
+        PickupPromptKeyHint->SetColorAndOpacity(FSlateColor(FLinearColor(1.f, 0.95f, 0.3f)));
+        VBox->AddChildToVerticalBox(PickupPromptKeyHint);
 
         PickupPromptName = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), FName("PickupPromptName"));
         if (PickupPromptName)

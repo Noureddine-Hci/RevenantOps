@@ -197,13 +197,27 @@ void AWeaponBase::StartADS() { bIsADS = true; }
 
 void AWeaponBase::StopADS() { bIsADS = false; }
 
+int32 AWeaponBase::GetCurrentReserveAmmo() const
+{
+  if (ARevenantOpsCharacter* Char = Cast<ARevenantOpsCharacter>(OwnerPawn))
+    return Char->GetInventoryAmmo(WeaponAmmoType);
+  return CurrentReserveAmmo;
+}
+
 bool AWeaponBase::CanFire() const {
   return CurrentState == EWeaponState::Idle && CurrentAmmo > 0;
 }
 
 bool AWeaponBase::CanReload() const {
-  return CurrentState == EWeaponState::Idle && CurrentAmmo < MagazineSize &&
-         CurrentReserveAmmo > 0;
+  if (CurrentState != EWeaponState::Idle || CurrentAmmo >= MagazineSize)
+    return false;
+
+  // RE5 : les munitions de réserve sont dans l'inventaire du personnage
+  if (ARevenantOpsCharacter* Char = Cast<ARevenantOpsCharacter>(OwnerPawn))
+    return Char->GetInventoryAmmo(WeaponAmmoType) > 0;
+
+  // Fallback legacy (armes sans owner char)
+  return CurrentReserveAmmo > 0;
 }
 
 float AWeaponBase::GetCurrentSpread() const {
@@ -488,17 +502,28 @@ void AWeaponBase::UpdateSpread(float DeltaTime) {
 
 void AWeaponBase::FinishReload() {
   const int32 AmmoNeeded = MagazineSize - CurrentAmmo;
-  const int32 AmmoToLoad = FMath::Min(AmmoNeeded, CurrentReserveAmmo);
 
-  CurrentAmmo += AmmoToLoad;
-  CurrentReserveAmmo -= AmmoToLoad;
+  // RE5 : consommer depuis l'inventaire du personnage
+  int32 AmmoLoaded = 0;
+  if (ARevenantOpsCharacter* Char = Cast<ARevenantOpsCharacter>(OwnerPawn))
+  {
+    AmmoLoaded = Char->ConsumeInventoryAmmo(WeaponAmmoType, AmmoNeeded);
+  }
+  else
+  {
+    // Fallback legacy
+    AmmoLoaded = FMath::Min(AmmoNeeded, CurrentReserveAmmo);
+    CurrentReserveAmmo -= AmmoLoaded;
+  }
+
+  CurrentAmmo += AmmoLoaded;
 
   SetWeaponState(EWeaponState::Idle);
 
   // Notify Blueprint
   BP_OnReloadFinish();
 
-  // Broadcast ammo change
+  // Broadcast ammo change — le HUD lira la réserve via GetCurrentReserveAmmo()
   OnAmmoChanged.Broadcast(CurrentAmmo, MagazineSize);
 }
 

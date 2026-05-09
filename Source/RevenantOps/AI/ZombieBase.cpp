@@ -79,6 +79,9 @@ void AZombieBase::UpdateZombieCombat(float DeltaTime) {
     return;
   }
 
+  // Stun : immobilisé, aucune action
+  if (bIsStunned) return;
+
   // Decrement cooldown timer
   MeleeAttackTimer = FMath::Max(0.f, MeleeAttackTimer - DeltaTime);
 
@@ -118,9 +121,27 @@ void AZombieBase::PerformMeleeAttack() {
     }
   }
 
-  // Apply melee damage to the player
-  UGameplayStatics::ApplyDamage(TargetPlayer, MeleeDamage, GetController(),
-                                this, nullptr);
+  // Apply melee damage après le délai de windup
+  // (donne une fenêtre au joueur pour réagir / esquiver / contre-attaquer)
+  if (AttackWindupTime > 0.f)
+  {
+    APawn* CapturedTarget = TargetPlayer;
+    GetWorldTimerManager().SetTimer(AttackWindupTimer,
+      [this, CapturedTarget]()
+      {
+        if (!bIsDead && IsValid(CapturedTarget))
+        {
+          UGameplayStatics::ApplyDamage(CapturedTarget, MeleeDamage,
+                                        GetController(), this, nullptr);
+        }
+      },
+      AttackWindupTime, false);
+  }
+  else
+  {
+    UGameplayStatics::ApplyDamage(TargetPlayer, MeleeDamage, GetController(),
+                                  this, nullptr);
+  }
 
   // Notify Blueprint for effects (animation, sound, VFX)
   BP_OnMeleeAttack();

@@ -7,6 +7,8 @@
 #include "Animation/AnimSequenceBase.h"
 #include "Gameplay/AmmoTypes.h"
 #include "Gameplay/AmmoBonusPickup.h"
+#include "Gameplay/ItemDefinition.h"
+#include "Engine/Texture2D.h"
 #include "EnemyBase.generated.h"
 
 /**
@@ -19,30 +21,45 @@ struct FAmmoDropEntry
 {
     GENERATED_BODY()
 
-    /** Type de munitions à dropper */
+    /**
+     *  DataAsset de l'item (DA_Item_Ammo_Pistol, etc.).
+     *  Si assigné : type, icône et nom viennent du DA — seuls Chance/Quantité/Durée restent visibles.
+     *  Si null    : remplir AmmoType + les champs optionnels ci-dessous manuellement.
+     */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AmmoDrop")
+    TObjectPtr<UItemDefinition> ItemDefinition = nullptr;
+
+    /** Type de munitions (ignoré si ItemDefinition assigné) */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AmmoDrop",
+              meta = (EditCondition = "ItemDefinition == nullptr", EditConditionHides))
     EAmmoType AmmoType = EAmmoType::Pistol;
 
-    /** Probabilité de drop (0 = jamais, 1 = toujours) */
+    /** Probabilité de drop — 0 = jamais, 1 = toujours */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AmmoDrop",
               meta = (ClampMin = 0.f, ClampMax = 1.f))
     float DropChance = 0.3f;
 
-    /** Quantité de munitions donnée au pickup */
+    /** Quantité de munitions */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AmmoDrop",
               meta = (ClampMin = 1, ClampMax = 120))
     int32 AmmoAmount = 12;
 
-    /** Durée de vie du pickup avant disparition (secondes) */
+    /** Durée de vie avant disparition (secondes) */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AmmoDrop",
               meta = (ClampMin = 5.f, ClampMax = 60.f))
     float Lifetime = 12.f;
 
-    /**
-     *  BP du pickup a spawner.
-     *  L'icone et le nom sont lus automatiquement depuis le BP via IPickupInterface.
-     *  Assigner BP_AmmoBonusPickup_Pistol, BP_AmmoBonusPickup_Rifle, etc.
-     */
+    /** Icône manuelle (ignorée si ItemDefinition assigné) */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AmmoDrop",
+              meta = (EditCondition = "ItemDefinition == nullptr", EditConditionHides))
+    TObjectPtr<UTexture2D> DropIcon = nullptr;
+
+    /** Nom manuel (ignoré si ItemDefinition assigné — nom auto sinon) */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AmmoDrop",
+              meta = (EditCondition = "ItemDefinition == nullptr", EditConditionHides))
+    FText DropDisplayName;
+
+    /** BP pickup custom pour le mesh/VFX (optionnel — générique si null) */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AmmoDrop")
     TSubclassOf<AAmmoBonusPickup> DropClass;
 };
@@ -52,6 +69,18 @@ class AWeaponBase;
 class UWidgetComponent;
 class UBehaviorTree;
 class USoundBase;
+
+/**
+ * Zone corporelle touchée qui ouvre la fenêtre de finisher.
+ */
+UENUM(BlueprintType)
+enum class EFinisherZone : uint8
+{
+  None   UMETA(DisplayName = "None"),
+  Head   UMETA(DisplayName = "Head"),
+  Arm    UMETA(DisplayName = "Arm"),
+  Leg    UMETA(DisplayName = "Leg"),
+};
 
 /**
  *  Enemy behavior profile - determines combat style
@@ -238,6 +267,37 @@ protected:
   /** Guard against double-death (e.g. rapid damage in same frame) */
   bool bIsDead = false;
 
+  // ========== STUN ==========
+
+  /** True while the enemy is stunned (can't attack or move) */
+  UPROPERTY(BlueprintReadOnly, Category = "Enemy|State")
+  bool bIsStunned = false;
+
+  FTimerHandle StunTimer;
+
+  // ========== FINISHER SYSTEM ==========
+
+  /** Zone touchée ouvrant le finisher (None si pas disponible) */
+  UPROPERTY(BlueprintReadOnly, Category = "Enemy|Finisher")
+  EFinisherZone ActiveFinisherZone = EFinisherZone::None;
+
+  /** Durée de la fenêtre de finisher après le tir (secondes) */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Finisher",
+            meta = (ClampMin = 0.5f, ClampMax = 10.f))
+  float FinisherWindowDuration = 3.f;
+
+  /** Multiplicateur de dégâts de mêlée quand le finisher est disponible */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Finisher",
+            meta = (ClampMin = 1.f, ClampMax = 10.f))
+  float FinisherDamageMultiplier = 3.f;
+
+  /** Durée du stun appliqué après un finisher réussi */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Finisher",
+            meta = (ClampMin = 0.f, ClampMax = 10.f))
+  float FinisherStunDuration = 2.5f;
+
+  FTimerHandle FinisherWindowTimer;
+
   // ========== HIT FLASH ==========
 
   /** Dynamic material instances for hit flash effect */
@@ -331,6 +391,52 @@ public:
   /** Force alert the enemy to a specific location */
   UFUNCTION(BlueprintCallable, Category = "Enemy")
   void AlertToLocation(const FVector &Location);
+
+  /**
+   * Stun l'ennemi pendant Duration secondes.
+   * Pendant le stun : mouvement arrêté, attaques bloquées.
+   */
+  UFUNCTION(BlueprintCallable, Category = "Enemy")
+  void ApplyStun(float Duration);
+
+  /** Retourne true si une fenêtre de finisher est active */
+  UFUNCTION(BlueprintCallable, Category = "Enemy|Finisher")
+  bool IsVulnerableToFinisher() const { return ActiveFinisherZone != EFinisherZone::None; }
+
+  /** Retourne la zone de finisher active */
+  UFUNCTION(BlueprintCallable, Category = "Enemy|Finisher")
+  EFinisherZone GetFinisherZone() const { return ActiveFinisherZone; }
+
+  /**
+   * Applique un finisher de mêlée (dégâts × FinisherDamageMultiplier + stun).
+   * Appelé par RevenantOpsCharacter::MeleeAttackPressed quand bVulnerable.
+   */
+  void ApplyFinisher(float BaseDamage, AController* DamageInstigator, AActor* Causer);
+
+protected:
+  /**
+   * Détecte la zone corporelle touchée depuis le nom de l'os.
+   * Appelé dans TakeDamage override.
+   */
+  void HandleBoneHit(const FName& BoneName);
+
+  /** Ouvre la fenêtre de finisher pour la zone donnée */
+  void OpenFinisherWindow(EFinisherZone Zone);
+
+  /** Ferme la fenêtre (appelé par timer ou après finisher) */
+  void CloseFinisherWindow();
+
+  // Override TakeDamage pour détecter les zones corporelles
+  virtual float TakeDamage(float DamageAmount, const FDamageEvent& DamageEvent,
+                            AController* InInstigator, AActor* DamageCauser) override;
+
+  /** Hook Blueprint : fenêtre de finisher ouverte (afficher icône/effet) */
+  UFUNCTION(BlueprintImplementableEvent, Category = "Enemy|Finisher")
+  void BP_OnFinisherWindowOpened(EFinisherZone Zone);
+
+  /** Hook Blueprint : finisher exécuté */
+  UFUNCTION(BlueprintImplementableEvent, Category = "Enemy|Finisher")
+  void BP_OnFinisherExecuted(EFinisherZone Zone);
 
   /** Notify from squad that player is at a location */
   UFUNCTION(BlueprintCallable, Category = "Enemy")

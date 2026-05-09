@@ -65,7 +65,7 @@ protected:
     UFUNCTION()
     void OnSplashDone();
 
-    void ShowMainMenu();
+    void ShowMainMenu(bool bInstant = false);
     void StartMenuMusic();
 
 private:

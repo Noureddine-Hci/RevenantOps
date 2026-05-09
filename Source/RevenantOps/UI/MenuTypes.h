@@ -7,6 +7,7 @@
 #include "Animation/AnimInstance.h"
 #include "Gameplay/TalentDefinition.h"
 #include "Gameplay/InventoryItem.h"
+#include "Gameplay/ItemDefinition.h"
 #include "MenuTypes.generated.h"
 
 /** Describes a playable level shown in the level select screen */
@@ -58,9 +59,13 @@ struct FCharacterInfo
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Menu|Character")
     TArray<TObjectPtr<UTalentDefinition>> Talents;
 
-    /** Inventaire de départ du personnage (armes + objets) — affiché dans la sélection */
+    /**
+     *  Items de départ du personnage — assigner des DA_Item_* depuis le Content Browser.
+     *  Les armes sont gérées séparément via DefaultWeaponClasses du PlayerController.
+     *  Exemples : DA_Item_Ammo_Pistol ×60, DA_Item_Health_Small ×1
+     */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Menu|Character")
-    TArray<FInventoryItem> DefaultInventory;
+    TArray<FStartingItem> StartingItems;
 };
 
 /**

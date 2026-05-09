@@ -91,14 +91,29 @@ void AAmmoDropPickup::OnOverlapBegin(UPrimitiveComponent*, AActor* OtherActor,
     ARevenantOpsCharacter* Player = Cast<ARevenantOpsCharacter>(OtherActor);
     if (!Player) return;
 
-    // Ajoute les munitions à l'arme active si elle correspond au type
-    bool bPickedUp = false;
-    if (AWeaponBase* Wpn = Player->GetCurrentWeapon())
+    // Lire le type et l'icône depuis le DA si disponible, sinon fallback sur les champs manuels
+    EAmmoType  EffectiveType   = AmmoType;
+    UTexture2D* EffectiveIcon  = nullptr;
+    FText       EffectiveName  = FText::GetEmpty();
+
+    if (ItemDefinition && ItemDefinition->AmmoType != EAmmoType::None)
     {
-        if (Wpn->GetWeaponAmmoType() == AmmoType)
+        EffectiveType  = ItemDefinition->AmmoType;
+        EffectiveIcon  = ItemDefinition->ItemIcon.Get();
+        EffectiveName  = ItemDefinition->DisplayName;
+    }
+
+    if (EffectiveType == EAmmoType::None) return;
+
+    // Ajouter uniquement si le joueur a une arme de ce type
+    bool bPickedUp = false;
+    for (AWeaponBase* Wpn : Player->GetWeaponInventory())
+    {
+        if (Wpn && Wpn->GetWeaponAmmoType() == EffectiveType)
         {
-            Wpn->AddReserveAmmo(AmmoAmount);
+            Player->AddInventoryAmmo(EffectiveType, AmmoAmount, EffectiveIcon, EffectiveName);
             bPickedUp = true;
+            break;
         }
     }
 

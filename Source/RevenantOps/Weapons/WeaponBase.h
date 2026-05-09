@@ -415,9 +415,9 @@ public:
   UFUNCTION(BlueprintCallable, Category = "Weapon")
   int32 GetCurrentAmmo() const { return CurrentAmmo; }
 
-  /** Gets current reserve ammo */
+  /** Gets current reserve ammo (RE5 : lit depuis l'inventaire si owner est un ARevenantOpsCharacter) */
   UFUNCTION(BlueprintCallable, Category = "Weapon")
-  int32 GetCurrentReserveAmmo() const { return CurrentReserveAmmo; }
+  int32 GetCurrentReserveAmmo() const;
 
   /** Gets weapon display name */
   UFUNCTION(BlueprintCallable, Category = "Weapon")
@@ -475,6 +475,20 @@ public:
     CurrentReserveAmmo = FMath::Min(CurrentReserveAmmo + Amount, MaxReserveAmmo);
     OnAmmoChanged.Broadcast(CurrentAmmo, MagazineSize);
   }
+
+  /** Ajoute directement des munitions dans le chargeur (combine inventaire → arme). */
+  UFUNCTION(BlueprintCallable, Category = "Weapon")
+  int32 AddDirectlyToMagazine(int32 Amount)
+  {
+    const int32 Space    = MagazineSize - CurrentAmmo;
+    const int32 Added    = FMath::Min(Amount, Space);
+    CurrentAmmo += Added;
+    OnAmmoChanged.Broadcast(CurrentAmmo, MagazineSize);
+    return Added; // retourne la quantité réellement ajoutée
+  }
+
+  /** Retourne les munitions actuelles dans le chargeur */
+  int32 GetCurrentMagazineAmmo() const { return CurrentAmmo; }
 
 protected:
   // ========== INTERNAL ==========

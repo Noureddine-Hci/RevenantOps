@@ -64,7 +64,10 @@
       "Bash(findstr /i \"mappingcontext addmapping imc beginplay setupplayer\" \"C:\\\\Users\\\\jilan\\\\source\\\\repos\\\\RevenantOps\\\\Source\\\\RevenantOps\\\\RevenantOpsCharacter.cpp\")",
       "Bash(findstr /i \"Mapping\" \"C:\\\\Users\\\\jilan\\\\source\\\\repos\\\\RevenantOps\\\\Source\\\\RevenantOps\\\\RevenantOpsCharacter.cpp\")",
       "Bash(\"C:\\\\Program Files\\\\Microsoft Visual Studio\\\\2022\\\\Community\\\\MSBuild\\\\Current\\\\Bin\\\\MSBuild.exe\" RevenantOps.sln /t:Build /p:Configuration=\"Development Editor\" /p:Platform=Win64 /m /nologo)",
-      "Bash(cmd /c \"cd /d C:\\\\Users\\\\jilan\\\\source\\\\repos\\\\RevenantOps && \\\\\"C:\\\\Program Files\\\\Microsoft Visual Studio\\\\2022\\\\Community\\\\MSBuild\\\\Current\\\\Bin\\\\MSBuild.exe\\\\\" RevenantOps.sln /t:Build /p:Configuration=\\\\\"Development Editor\\\\\" /p:Platform=Win64 /m /nologo 2>&1 | tail -40\")"
+      "Bash(cmd /c \"cd /d C:\\\\Users\\\\jilan\\\\source\\\\repos\\\\RevenantOps && \\\\\"C:\\\\Program Files\\\\Microsoft Visual Studio\\\\2022\\\\Community\\\\MSBuild\\\\Current\\\\Bin\\\\MSBuild.exe\\\\\" RevenantOps.sln /t:Build /p:Configuration=\\\\\"Development Editor\\\\\" /p:Platform=Win64 /m /nologo 2>&1 | tail -40\")",
+      "Bash(cmd.exe /c '\"C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/MSBuild.exe\" RevenantOps.sln /t:Build /p:Configuration=\"Development Editor\" /p:Platform=Win64 /v:minimal /nologo 2>&1')",
+      "Bash(cmd.exe /c '\"/j/Epic Games/UE_5.7/Engine/Build/BatchFiles/Build.bat\" RevenantOpsEditor Win64 Development \"C:/Users/jilan/source/repos/RevenantOps/RevenantOps.uproject\" -WaitMutex 2>&1')",
+      "Bash(\"/j/Epic Games/UE_5.7/Engine/Build/BatchFiles/Build.bat\" RevenantOpsEditor Win64 Development \"/c/Users/jilan/source/repos/RevenantOps/RevenantOps.uproject\" -WaitMutex)"
     ]
   },
   "enableAllProjectMcpServers": true,

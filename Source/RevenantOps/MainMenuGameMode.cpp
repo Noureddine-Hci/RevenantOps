@@ -35,9 +35,8 @@ void AMainMenuGameMode::BeginPlay()
     else
     {
         ShowMainMenu();
+        StartMenuMusic();
     }
-
-    StartMenuMusic();
 }
 
 void AMainMenuGameMode::OnSplashDone()
@@ -47,15 +46,16 @@ void AMainMenuGameMode::OnSplashDone()
         SplashWidget->RemoveFromParent();
         SplashWidget = nullptr;
     }
-    ShowMainMenu();
+    ShowMainMenu(/*bInstant=*/true);
+    StartMenuMusic();
 }
 
-void AMainMenuGameMode::ShowMainMenu()
+void AMainMenuGameMode::ShowMainMenu(bool bInstant)
 {
     if (ARevenantOpsPlayerController* PC =
             Cast<ARevenantOpsPlayerController>(GetWorld()->GetFirstPlayerController()))
     {
-        PC->ShowTitleScreen();
+        PC->ShowTitleScreen(bInstant);
     }
 }
 

@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 #include "Components/CanvasPanelSlot.h"
+#include "InputAction.h"
 #include "RevenantOpsHUD.generated.h"
 
 class UProgressBar;
@@ -226,9 +227,14 @@ protected:
   // ========== PICKUP PROMPT RE5 ==========
 
   /** Conteneur du popup — HitTestInvisible, ne bloque jamais l'input */
-  UPROPERTY() UBorder*    PickupPromptBG   = nullptr;
-  UPROPERTY() UImage*     PickupPromptIcon = nullptr;
-  UPROPERTY() UTextBlock* PickupPromptName = nullptr;
+  UPROPERTY() UBorder*    PickupPromptBG      = nullptr;
+  UPROPERTY() UImage*     PickupPromptIcon    = nullptr;
+  UPROPERTY() UTextBlock* PickupPromptName    = nullptr;
+  UPROPERTY() UTextBlock* PickupPromptKeyHint = nullptr; // "[E]  Prendre" — mis à jour dynamiquement
+
+  /** Action "interagir / ramasser" — assigner IA_Interact dans le WBP Class Defaults */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HUD|Input")
+  TObjectPtr<UInputAction> InteractAction;
 
   // ========== FINISHER PROMPT ==========
 
