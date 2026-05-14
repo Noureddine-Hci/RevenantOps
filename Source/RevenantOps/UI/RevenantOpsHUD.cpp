@@ -572,6 +572,8 @@ void URevenantOpsHUD::NativeTick(const FGeometry &MyGeometry,
   UpdateReloadBar();
   UpdateDamageDirection(InDeltaTime);
   UpdateKillNotification(InDeltaTime);
+  UpdateMatchStartMessage(InDeltaTime);
+  UpdateDamageNumbers(InDeltaTime);
 }
 
 // =============================================================================
@@ -1007,4 +1009,143 @@ void URevenantOpsHUD::HideFinisherPrompt()
 {
   if (FinisherPromptBG)
     FinisherPromptBG->SetVisibility(ESlateVisibility::Collapsed);
+}
+
+// =============================================================================
+// MATCH START MESSAGE
+// =============================================================================
+
+void URevenantOpsHUD::ShowMatchStartMessage(const FText& Message)
+{
+  if (!WidgetTree) return;
+
+  // Créer le TextBlock si pas encore fait
+  if (!MatchStartText)
+  {
+    MatchStartText = WidgetTree->ConstructWidget<UTextBlock>(
+        UTextBlock::StaticClass(), FName("MatchStartText"));
+    if (!MatchStartText) return;
+
+    // Style : gros, centré, blanc cassé
+    FSlateFontInfo Font = FCoreStyle::GetDefaultFontStyle("Bold", 52);
+    MatchStartText->SetFont(Font);
+    MatchStartText->SetColorAndOpacity(FSlateColor(FLinearColor(0.95f, 0.93f, 0.88f, 1.f)));
+    MatchStartText->SetJustification(ETextJustify::Center);
+    MatchStartText->SetShadowOffset(FVector2D(2.f, 2.f));
+    MatchStartText->SetShadowColorAndOpacity(FLinearColor(0.f, 0.f, 0.f, 0.8f));
+
+    // Attacher au canvas racine
+    if (UCanvasPanel* Root = Cast<UCanvasPanel>(WidgetTree->RootWidget))
+    {
+      Root->AddChildToCanvas(MatchStartText);
+      // Ancré au centre, décalé légèrement vers le haut
+      if (UCanvasPanelSlot* CanvasSlot = Cast<UCanvasPanelSlot>(MatchStartText->Slot.Get()))
+      {
+        CanvasSlot->SetAnchors(FAnchors(0.5f, 0.4f, 0.5f, 0.4f));
+        CanvasSlot->SetAlignment(FVector2D(0.5f, 0.5f));
+        CanvasSlot->SetAutoSize(true);
+      }
+    }
+  }
+
+  MatchStartText->SetText(Message);
+  MatchStartText->SetVisibility(ESlateVisibility::HitTestInvisible);
+  MatchStartMessageTimer = MatchStartMessageDuration;
+}
+
+void URevenantOpsHUD::UpdateMatchStartMessage(float DeltaTime)
+{
+  if (!MatchStartText || MatchStartMessageTimer <= 0.f) return;
+
+  MatchStartMessageTimer -= DeltaTime;
+
+  // Fade out dans la dernière seconde
+  const float FadeDuration = 1.f;
+  if (MatchStartMessageTimer < FadeDuration)
+  {
+    const float Alpha = FMath::Clamp(MatchStartMessageTimer / FadeDuration, 0.f, 1.f);
+    MatchStartText->SetColorAndOpacity(FSlateColor(FLinearColor(0.95f, 0.93f, 0.88f, Alpha)));
+  }
+
+  if (MatchStartMessageTimer <= 0.f)
+  {
+    MatchStartText->SetVisibility(ESlateVisibility::Collapsed);
+    MatchStartMessageTimer = 0.f;
+  }
+}
+
+// =============================================================================
+// DAMAGE NUMBERS
+// =============================================================================
+
+void URevenantOpsHUD::AddDamageNumber(const FVector& WorldPos, float Damage, bool bCritical)
+{
+  FDamageNumberEntry Entry;
+  Entry.WorldPos      = WorldPos;
+  Entry.Damage        = Damage;
+  Entry.TimeRemaining = DamageNumberDuration;
+  Entry.bCritical     = bCritical;
+  ActiveDamageNumbers.Add(Entry);
+}
+
+void URevenantOpsHUD::UpdateDamageNumbers(float DeltaTime)
+{
+  for (FDamageNumberEntry& Entry : ActiveDamageNumbers)
+    Entry.TimeRemaining -= DeltaTime;
+
+  ActiveDamageNumbers.RemoveAll([](const FDamageNumberEntry& E) {
+    return E.TimeRemaining <= 0.f;
+  });
+}
+
+int32 URevenantOpsHUD::NativePaint(const FPaintArgs& Args, const FGeometry& AllottedGeometry,
+                                    const FSlateRect& MyCullingRect,
+                                    FSlateWindowElementList& OutDrawElements,
+                                    int32 LayerId, const FWidgetStyle& InWidgetStyle,
+                                    bool bParentEnabled) const
+{
+  const int32 BaseLayer = Super::NativePaint(Args, AllottedGeometry, MyCullingRect,
+                                              OutDrawElements, LayerId, InWidgetStyle, bParentEnabled);
+
+  if (ActiveDamageNumbers.IsEmpty()) return BaseLayer;
+
+  APlayerController* PC = GetOwningPlayer();
+  if (!PC) return BaseLayer;
+
+  FPaintContext Context(AllottedGeometry, MyCullingRect, OutDrawElements, BaseLayer + 1, InWidgetStyle, bParentEnabled);
+
+  for (const FDamageNumberEntry& Entry : ActiveDamageNumbers)
+  {
+    FVector2D ScreenPos;
+    if (!UGameplayStatics::ProjectWorldToScreen(PC, Entry.WorldPos, ScreenPos, false))
+      continue;
+
+    const float Alpha      = FMath::Clamp(Entry.TimeRemaining / DamageNumberDuration, 0.f, 1.f);
+    const float FloatUp    = (1.f - Alpha) * 80.f;  // monte de 80px pendant la durée
+    ScreenPos.Y -= FloatUp;
+
+    // Critique = or + grand, normal = blanc
+    const FLinearColor Color = Entry.bCritical
+      ? FLinearColor(1.f, 0.85f, 0.1f, Alpha)   // or
+      : FLinearColor(1.f, 1.f,   1.f,  Alpha);   // blanc
+
+    const FString        Text = FString::Printf(TEXT("%.0f"), Entry.Damage);
+    const int32          Size = Entry.bCritical ? 36 : 20;
+    const FSlateFontInfo Font = FCoreStyle::GetDefaultFontStyle("Bold", Size);
+    const FVector2D      Extent(Size * Text.Len() * 0.65f, Size * 1.2f); // taille approx
+
+    // Ombre portée
+    FSlateDrawElement::MakeText(OutDrawElements, BaseLayer + 1,
+      AllottedGeometry.ToPaintGeometry(FVector2f(Extent), FSlateLayoutTransform(FVector2f(ScreenPos + FVector2D(2.f, 2.f)))),
+      FText::FromString(Text), Font, ESlateDrawEffect::None,
+      FLinearColor(0.f, 0.f, 0.f, Alpha * 0.7f));
+
+    // Texte principal
+    FSlateDrawElement::MakeText(OutDrawElements, BaseLayer + 2,
+      AllottedGeometry.ToPaintGeometry(FVector2f(Extent), FSlateLayoutTransform(FVector2f(ScreenPos))),
+      FText::FromString(Text), Font, ESlateDrawEffect::None,
+      Color);
+  }
+
+  return BaseLayer + 2;
 }

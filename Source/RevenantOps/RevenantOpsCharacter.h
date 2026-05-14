@@ -262,6 +262,15 @@ protected:
             meta = (ClampMin = 50.f, ClampMax = 600.f))
   float CameraADSArmLength = 175.f;
 
+  /**
+   * Taille de la sonde de collision du spring arm.
+   * Doit être >= max(CameraHipOffset.Y, CameraHipOffset.Z) pour éviter
+   * que le SocketOffset latéral pousse la caméra dans la géométrie.
+   */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera|Offsets",
+            meta = (ClampMin = 8.f, ClampMax = 200.f))
+  float CameraProbeSize = 88.f;
+
   /** Sprint FOV */
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera",
             meta = (ClampMin = 60, ClampMax = 130))
@@ -273,6 +282,9 @@ protected:
   float FOVInterpSpeed = 6.f;
 
   float TargetSpeed = 500.f;
+
+  /** Longueur de bras souhaitée (hip ou ADS) — utilisée par UpdateCameraCollision */
+  float DesiredArmLength = 280.f;
 
   // ========== WEAPON SYSTEM ==========
 
@@ -402,6 +414,8 @@ protected:
   void UpdateMovementSpeed(float DeltaTime);
   void UpdateStamina(float DeltaTime);
   void UpdateCameraFOV(float DeltaTime);
+  /** Trace de la caméra — raccourcit le bras si un mur est détecté (bypass spring arm) */
+  void UpdateCameraCollision();
   /** Updates AimPitch, AimYaw, MovementDirection each tick for ABP */
   void UpdateAnimationValues();
 

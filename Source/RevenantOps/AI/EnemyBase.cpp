@@ -758,6 +758,18 @@ float AEnemyBase::TakeDamage(float DamageAmount, const FDamageEvent& DamageEvent
 
   if (bIsDead || Damage <= 0.f) return Damage;
 
+  // ── Damage number flottant sur le HUD ────────────────────────────────────
+  {
+    const FVector PopupPos = GetActorLocation() + FVector(0.f, 0.f, 90.f); // au-dessus de la tête
+    const bool bCrit = DamageEvent.IsOfType(FPointDamageEvent::ClassID) &&
+                       static_cast<const FPointDamageEvent&>(DamageEvent).HitInfo.BoneName.ToString().ToLower().Contains(TEXT("head"));
+
+    if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
+      if (ARevenantOpsPlayerController* ROPC = Cast<ARevenantOpsPlayerController>(PC))
+        if (URevenantOpsHUD* HUD = ROPC->GetHUDWidget())
+          HUD->AddDamageNumber(PopupPos, Damage, bCrit);
+  }
+
   // Détecter la zone via le nom d'os (si physics asset présent)
   // + fallback automatique sur la hauteur du point d'impact
   if (DamageEvent.IsOfType(FPointDamageEvent::ClassID))

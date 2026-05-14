@@ -62,12 +62,13 @@ ARevenantOpsCharacter::ARevenantOpsCharacter() {
   CameraBoom->SocketOffset   = CameraHipOffset;
   CameraBoom->bUsePawnControlRotation = true;
   CameraBoom->bDoCollisionTest = true;
-  CameraBoom->ProbeSize = 12.f;
-  CameraBoom->ProbeChannel = ECC_Camera;
-  CameraBoom->bEnableCameraLag = true;
-  CameraBoom->CameraLagSpeed = 15.f;
-  CameraBoom->bEnableCameraRotationLag = true;
-  CameraBoom->CameraRotationLagSpeed = 20.f;
+  CameraBoom->ProbeSize = 20.f;
+  CameraBoom->ProbeChannel = ECC_Visibility;
+  // Lag désactivé : quand activé, la caméra continue sur son élan et traverse
+  // les murs même si le spring arm a déjà raccourci. La collision ne sert à rien
+  // si le lag permet à la cam d'être temporairement en dehors de la position corrigée.
+  CameraBoom->bEnableCameraLag = false;
+  CameraBoom->bEnableCameraRotationLag = false;
 
   // Follow camera
   FollowCamera =
@@ -186,6 +187,7 @@ void ARevenantOpsCharacter::Tick(float DeltaTime) {
   UpdateMovementSpeed(DeltaTime);
   UpdateStamina(DeltaTime);
   UpdateCameraFOV(DeltaTime);
+  UpdateCameraCollision();   // après FOV pour avoir TargetArmLength à jour
   UpdateAnimationValues();
   UpdateAimRotation(DeltaTime);
 
@@ -632,17 +634,56 @@ void ARevenantOpsCharacter::UpdateCameraFOV(float DeltaTime) {
       FMath::FInterpTo(CurrentFOV, TargetFOV, DeltaTime, FOVInterpSpeed);
   FollowCamera->SetFieldOfView(NewFOV);
 
-  // Smooth boom offset transition
+  // Smooth boom socket offset transition (hip ↔ ADS)
   const FVector CurrentOffset = CameraBoom->SocketOffset;
   const FVector NewOffset =
       FMath::VInterpTo(CurrentOffset, TargetOffset, DeltaTime, FOVInterpSpeed);
   CameraBoom->SocketOffset = NewOffset;
 
-  // Smooth arm length transition
+  // Stocker la longueur désirée — UpdateCameraCollision l'utilisera comme cible
+  DesiredArmLength = TargetArmLen;
+
+  // Smooth arm length transition (vers la longueur désirée, sans collision)
+  // UpdateCameraCollision() peut raccourcir davantage si un mur est détecté.
   const float CurrentArmLen = CameraBoom->TargetArmLength;
   const float NewArmLen =
-      FMath::FInterpTo(CurrentArmLen, TargetArmLen, DeltaTime, FOVInterpSpeed);
+      FMath::FInterpTo(CurrentArmLen, DesiredArmLength, DeltaTime, FOVInterpSpeed);
   CameraBoom->TargetArmLength = NewArmLen;
+}
+
+void ARevenantOpsCharacter::UpdateCameraCollision()
+{
+  if (!CameraBoom) return;
+
+  const FVector  PivotWorld = CameraBoom->GetComponentLocation();
+  const FRotator BoomRot    = CameraBoom->GetComponentRotation();
+  const FVector  BoomBack   = -(BoomRot.Vector());
+
+  // Position caméra désirée en world space (bras complet + socket offset monde)
+  const FVector BoomEndDesired    = PivotWorld + BoomBack * DesiredArmLength;
+  const FVector SocketOffsetWorld = BoomRot.RotateVector(CameraBoom->SocketOffset);
+  const FVector DesiredCamWorld   = BoomEndDesired + SocketOffsetWorld;
+
+  // Distance totale pivot → caméra désirée (diagonale : bras + offset latéral)
+  const float TotalDesiredDist = FVector::Dist(PivotWorld, DesiredCamWorld);
+  if (TotalDesiredDist < 1.f) return;
+
+  FHitResult Hit;
+  FCollisionQueryParams Params;
+  Params.AddIgnoredActor(this);
+  Params.bTraceComplex = false;
+
+  // ECC_Camera : channel dédié aux probes caméra, bloqué par tous les SM par défaut
+  if (GetWorld()->LineTraceSingleByChannel(
+          Hit, PivotWorld, DesiredCamWorld, ECC_Camera, Params))
+  {
+    // Ratio d'impact → longueur bras proportionnelle (SocketOffset est perpendiculaire,
+    // on ne peut pas le soustraire directement — on projette via le ratio)
+    const float HitDist    = FVector::Dist(PivotWorld, Hit.ImpactPoint);
+    const float Ratio      = FMath::Clamp(HitDist / TotalDesiredDist, 0.f, 1.f);
+    const float SafeArmLen = FMath::Max(Ratio * DesiredArmLength - 10.f, 20.f);
+    CameraBoom->TargetArmLength = FMath::Min(CameraBoom->TargetArmLength, SafeArmLen);
+  }
 }
 
 void ARevenantOpsCharacter::UpdateAimRotation(float DeltaTime)
