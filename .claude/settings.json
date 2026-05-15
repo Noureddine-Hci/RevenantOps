@@ -21,14 +21,18 @@
       "Bash(git fetch*)",
       "Bash(rtk git*)",
       "Bash(ls *)",
-      "Bash(dir *)"
+      "Bash(dir *)",
+      "Bash(rm -rf *Content/_WeaponsPacks*)",
+      "Bash(rm -rf *Content/Mercenaires/Weapons/Meshes*)",
+      "Bash(rm -f *Content/_WeaponsPacks*)",
+      "Bash(find *Content*)"
     ],
     "deny": [
       "Bash(git push --force*)",
       "Bash(git push -f *)",
       "Bash(git reset --hard*)",
       "Bash(git clean -f*)",
-      "Bash(rm -rf *)"
+      "Bash(rm -rf /)"
     ]
   },
   "hooks": {
