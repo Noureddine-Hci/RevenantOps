@@ -41,6 +41,17 @@ enum class EWeaponCategory : uint8 {
 };
 
 /**
+ *  Style de réticule à afficher pour cette arme
+ */
+UENUM(BlueprintType)
+enum class ECrosshairStyle : uint8 {
+  None     UMETA(DisplayName = "Aucun (mêlée)"),
+  Cross    UMETA(DisplayName = "Croix standard"),
+  WideCross UMETA(DisplayName = "Croix large (shotgun)"),
+  Dot      UMETA(DisplayName = "Point central (sniper)"),
+};
+
+/**
  *  Weapon state
  */
 UENUM(BlueprintType)
@@ -243,6 +254,24 @@ protected:
   /** Current dynamic spread */
   float CurrentSpread = 0.f;
 
+  // ========== CROSSHAIR ==========
+
+  /** Style de réticule à afficher quand cette arme est équipée */
+  UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Weapon|Crosshair")
+  ECrosshairStyle CrosshairStyle = ECrosshairStyle::Cross;
+
+  /**
+   *  Texture de scope (lunette) affichée plein écran quand le joueur ADS avec cette arme.
+   *  Laisser nul pour les armes sans lunette. Typique du sniper.
+   */
+  UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Weapon|Crosshair")
+  TObjectPtr<UTexture2D> ScopeOverlayTexture = nullptr;
+
+  /** Multiplicateur du FOV ADS pour scope (sniper = 0.4 = très zoomé). Ignoré si pas de scope. */
+  UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Weapon|Crosshair",
+            meta = (ClampMin = 0.1f, ClampMax = 1.f, EditCondition = "ScopeOverlayTexture != nullptr"))
+  float ScopeFOVMultiplier = 0.4f;
+
   // ========== ADS (Aim Down Sights) ==========
 
   /** ADS FOV (zoomed in) */
@@ -398,6 +427,18 @@ public:
   /** Gets current spread in degrees */
   UFUNCTION(BlueprintCallable, Category = "Weapon")
   float GetCurrentSpread() const;
+
+  /** Style de réticule de cette arme */
+  UFUNCTION(BlueprintCallable, Category = "Weapon|Crosshair")
+  ECrosshairStyle GetCrosshairStyle() const { return CrosshairStyle; }
+
+  /** Texture de scope (nullptr si pas de scope) */
+  UFUNCTION(BlueprintCallable, Category = "Weapon|Crosshair")
+  UTexture2D* GetScopeOverlayTexture() const { return ScopeOverlayTexture; }
+
+  /** True si cette arme a un scope (sniper) */
+  UFUNCTION(BlueprintCallable, Category = "Weapon|Crosshair")
+  bool HasScope() const { return ScopeOverlayTexture != nullptr; }
 
   /** Gets ADS alpha (0 = hip, 1 = fully aimed) for blending */
   UFUNCTION(BlueprintCallable, Category = "Weapon")

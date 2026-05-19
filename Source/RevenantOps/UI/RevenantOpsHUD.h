@@ -65,15 +65,17 @@ protected:
   UPROPERTY(meta = (BindWidgetOptional))
   UTextBlock *WeaponNameText;
 
-  /** Crosshair image (legacy — remplace par les 4 traits ci-dessous) */
-  UPROPERTY(meta = (BindWidgetOptional))
-  UImage *CrosshairImage;
-
   // 4 traits du viseur style CS
   UPROPERTY() UImage *CrosshairTop    = nullptr;
   UPROPERTY() UImage *CrosshairBottom = nullptr;
   UPROPERTY() UImage *CrosshairLeft   = nullptr;
   UPROPERTY() UImage *CrosshairRight  = nullptr;
+
+  /** Point central du réticule (utilisé pour le sniper en mode Dot) */
+  UPROPERTY() UImage *CrosshairDot = nullptr;
+
+  /** Overlay plein écran pour la lunette du sniper (texture noir + lentille au centre) */
+  UPROPERTY() UImage *ScopeOverlayImage = nullptr;
 
   /** Hit marker image (flash on hit) */
   UPROPERTY(meta = (BindWidgetOptional))

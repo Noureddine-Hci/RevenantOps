@@ -34,19 +34,7 @@ public class RevenantOps : ModuleRules
 			"RevenantOps/UI",
 			"RevenantOps/AI",
 			"RevenantOps/Gameplay",
-			"RevenantOps/Variant_Platforming",
-			"RevenantOps/Variant_Platforming/Animation",
-			"RevenantOps/Variant_Combat",
-			"RevenantOps/Variant_Combat/AI",
-			"RevenantOps/Variant_Combat/Animation",
-			"RevenantOps/Variant_Combat/Gameplay",
-			"RevenantOps/Variant_Combat/Interfaces",
-			"RevenantOps/Variant_Combat/UI",
-			"RevenantOps/Variant_SideScrolling",
-			"RevenantOps/Variant_SideScrolling/AI",
-			"RevenantOps/Variant_SideScrolling/Gameplay",
-			"RevenantOps/Variant_SideScrolling/Interfaces",
-			"RevenantOps/Variant_SideScrolling/UI"
+			"RevenantOps/Audio"
 		});
 
 		// Uncomment if you are using Slate UI

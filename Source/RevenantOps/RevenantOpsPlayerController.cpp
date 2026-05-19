@@ -264,15 +264,13 @@ void ARevenantOpsPlayerController::OnCharacterChosen(FCharacterInfo CharacterInf
   if (URevenantOpsGameInstance* GI = Cast<URevenantOpsGameInstance>(GetGameInstance())) {
     GI->PendingCharacter = CharacterInfo;
     // Pré-remplir les armes depuis les StartingItems du personnage
-    GI->PendingPrimaryWeapon   = nullptr;
-    GI->PendingSecondaryWeapon = nullptr;
+    GI->PendingWeapons.Empty();
     for (const FStartingItem& Entry : CharacterInfo.StartingItems)
     {
       if (Entry.Definition && Entry.Definition->ItemType == EInventoryItemType::Weapon
           && Entry.Definition->WeaponClass)
       {
-        if (!GI->PendingPrimaryWeapon)        GI->PendingPrimaryWeapon   = Entry.Definition->WeaponClass;
-        else if (!GI->PendingSecondaryWeapon) GI->PendingSecondaryWeapon = Entry.Definition->WeaponClass;
+        GI->PendingWeapons.AddUnique(Entry.Definition->WeaponClass);
       }
     }
   }
@@ -342,8 +340,9 @@ void ARevenantOpsPlayerController::OnLoadoutConfirmed(
   FName LevelToLoad = TEXT("Lvl_ThirdPerson"); // fallback
   if (URevenantOpsGameInstance* GI = Cast<URevenantOpsGameInstance>(GetGameInstance()))
   {
-    GI->PendingPrimaryWeapon   = Primary;
-    GI->PendingSecondaryWeapon = Secondary;
+    GI->PendingWeapons.Empty();
+    if (Primary)   GI->PendingWeapons.Add(Primary);
+    if (Secondary && Secondary != Primary) GI->PendingWeapons.Add(Secondary);
     GI->bPendingMatchStart     = true;
     if (!GI->PendingLevel.MapName.IsNone())
       LevelToLoad = GI->PendingLevel.MapName;
@@ -408,11 +407,17 @@ void ARevenantOpsPlayerController::StartMercenairesMatch() {
         MercChar->ApplyTalents();
       }
 
-      // Armes du loadout (extraites de l'inventaire par défaut)
+      // Armes du loadout joueur + armes par défaut du BP
       TArray<TSubclassOf<AWeaponBase>> Loadout;
-      if (GI->PendingPrimaryWeapon)   Loadout.Add(GI->PendingPrimaryWeapon);
-      if (GI->PendingSecondaryWeapon && GI->PendingSecondaryWeapon != GI->PendingPrimaryWeapon)
-          Loadout.Add(GI->PendingSecondaryWeapon);
+      for (const TSubclassOf<AWeaponBase>& W : GI->PendingWeapons)
+      {
+        if (W) Loadout.AddUnique(W);
+      }
+      for (const TSubclassOf<AWeaponBase>& Extra : MercChar->ExtraStartingWeapons)
+      {
+        if (Extra) Loadout.AddUnique(Extra);
+      }
+
       if (Loadout.Num() > 0)
       {
         MercChar->SetDefaultWeaponClasses(Loadout);
@@ -475,8 +480,8 @@ void ARevenantOpsPlayerController::StartMercenairesMatch() {
     {
       UE_LOG(LogTemp, Warning, TEXT("[PC] Calling StartEncounter on %s"), *S->GetName());
 
-      // Quand toutes les vagues sont terminées → fin de match (victoire)
-      WS->OnAllWavesCompleted.AddDynamic(this, &ARevenantOpsPlayerController::OnAllWavesCompleted);
+      // Quand le cap de kills est atteint → fin de match (victoire)
+      WS->OnKillCapReached.AddDynamic(this, &ARevenantOpsPlayerController::OnAllWavesCompleted);
 
       WS->StartEncounter();
     }

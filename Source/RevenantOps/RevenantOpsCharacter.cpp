@@ -688,11 +688,11 @@ void ARevenantOpsCharacter::UpdateCameraCollision()
 
 void ARevenantOpsCharacter::UpdateAimRotation(float DeltaTime)
 {
-  const bool bShouldOrientToAim = bIsArmed && !bIsSprinting && !bIsDodging;
+  const bool bShouldOrientToAim = bIsAiming && bIsArmed && !bIsSprinting && !bIsDodging;
 
   if (bShouldOrientToAim)
   {
-    // Le personnage fait face à la direction de visée
+    // Le personnage fait face à la direction de visée (ADS uniquement)
     bUseControllerRotationYaw = true;
     GetCharacterMovement()->bOrientRotationToMovement = false;
   }
@@ -855,8 +855,9 @@ void ARevenantOpsCharacter::SpawnDefaultWeapons() {
     EquipWeapon(0);
   }
 
-  // Sync weapon slots into RE5 inventory (slots 0 and 1)
-  for (int32 i = 0; i < WeaponInventory.Num() && i < 2; ++i) {
+  // Sync weapon slots into RE5 inventory — autant de slots qu'il y a d'armes (max 9)
+  const int32 MaxWeaponSlots = FMath::Min(WeaponInventory.Num(), Inventory.Num());
+  for (int32 i = 0; i < MaxWeaponSlots; ++i) {
     if (!WeaponInventory[i]) continue;
     FInventoryItem& Slot = Inventory[i];
     Slot.Type        = EInventoryItemType::Weapon;
@@ -1160,6 +1161,23 @@ void ARevenantOpsCharacter::UpdateAnimationValues()
   {
     MovementDirection = 0.f;
   }
+
+  // --- Weapon category + index pour Blend Poses by int dans l'ABP ---
+  CurrentWeaponCategory = CurrentWeapon
+    ? CurrentWeapon->GetWeaponCategory()
+    : EWeaponCategory::Pistol;
+
+  switch (CurrentWeaponCategory)
+  {
+    case EWeaponCategory::Pistol:                      WeaponAnimIndex = 0; break;
+    case EWeaponCategory::AssaultRifle:
+    case EWeaponCategory::SMG:
+    case EWeaponCategory::LMG:                         WeaponAnimIndex = 1; break;
+    case EWeaponCategory::Shotgun:                     WeaponAnimIndex = 2; break;
+    case EWeaponCategory::Sniper:                      WeaponAnimIndex = 3; break;
+    case EWeaponCategory::Melee:                       WeaponAnimIndex = 4; break;
+    default:                                           WeaponAnimIndex = 0; break;
+  }
 }
 
 void ARevenantOpsCharacter::EquipWeapon(int32 Index) {
@@ -1217,12 +1235,6 @@ void ARevenantOpsCharacter::FirePressed() {
       TargetSpeed = WalkSpeed;
     }
 
-    // Orient character to camera direction when firing
-    if (!bIsAiming) {
-      GetCharacterMovement()->bOrientRotationToMovement = false;
-      bUseControllerRotationYaw = true;
-    }
-
     CurrentWeapon->StartFire();
   }
 }
@@ -1230,12 +1242,6 @@ void ARevenantOpsCharacter::FirePressed() {
 void ARevenantOpsCharacter::FireReleased() {
   if (CurrentWeapon) {
     CurrentWeapon->StopFire();
-
-    // Restore rotation mode if not aiming
-    if (!bIsAiming) {
-      GetCharacterMovement()->bOrientRotationToMovement = true;
-      bUseControllerRotationYaw = false;
-    }
   }
 }
 

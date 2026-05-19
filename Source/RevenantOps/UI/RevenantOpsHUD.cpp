@@ -204,15 +204,20 @@ void URevenantOpsHUD::BuildDefaultUI()
   if (KillNotificationText) KillNotificationText->SetColorAndOpacity(FSlateColor(C_Gold));
 
   // ── Images ───────────────────────────────────────────────────────────────
-  // Ancien CrosshairImage masqué — remplacé par les 4 traits
-  MakeImg(CrosshairImage,       FName("CrosshairImage"),       FVector2D(0.f, 0.f), FVector2D(1.f, 1.f), FAnchors(0.5f, 0.5f));
-  if (CrosshairImage) CrosshairImage->SetVisibility(ESlateVisibility::Collapsed);
 
   // 4 traits du viseur (positions initiales au repos, gap=4)
   MakeImg(CrosshairTop,    FName("CrosshairTop"),    FVector2D(-1.f, -(4.f + 10.f)), FVector2D(2.f, 10.f), FAnchors(0.5f, 0.5f));
   MakeImg(CrosshairBottom, FName("CrosshairBottom"), FVector2D(-1.f,   4.f),          FVector2D(2.f, 10.f), FAnchors(0.5f, 0.5f));
   MakeImg(CrosshairLeft,   FName("CrosshairLeft"),   FVector2D(-(4.f + 10.f), -1.f), FVector2D(10.f, 2.f), FAnchors(0.5f, 0.5f));
   MakeImg(CrosshairRight,  FName("CrosshairRight"),  FVector2D(4.f,          -1.f),  FVector2D(10.f, 2.f), FAnchors(0.5f, 0.5f));
+
+  // Point central pour les armes en mode Dot (sniper)
+  MakeImg(CrosshairDot, FName("CrosshairDot"), FVector2D(-2.f, -2.f), FVector2D(4.f, 4.f), FAnchors(0.5f, 0.5f));
+  if (CrosshairDot) CrosshairDot->SetVisibility(ESlateVisibility::Collapsed);
+
+  // Scope overlay plein écran (sniper ADS)
+  MakeImg(ScopeOverlayImage, FName("ScopeOverlayImage"), FVector2D(0.f, 0.f), FVector2D(0.f, 0.f), FAnchors(0.f, 0.f, 1.f, 1.f));
+  if (ScopeOverlayImage) ScopeOverlayImage->SetVisibility(ESlateVisibility::Collapsed);
 
   const FLinearColor LineColor(1.f, 1.f, 1.f, 0.9f);
   for (UImage* Line : {CrosshairTop, CrosshairBottom, CrosshairLeft, CrosshairRight}) {
@@ -665,8 +670,46 @@ void URevenantOpsHUD::UpdateCrosshair() {
   if (!CrosshairTop || !CrosshairBottom || !CrosshairLeft || !CrosshairRight) return;
 
   AWeaponBase* Weapon = CachedCharacter->GetCurrentWeapon();
+  const bool bAiming = CachedCharacter->IsAiming();
 
-  // Calcul du gap cible selon la dispersion
+  // Style de réticule selon l'arme équipée
+  const ECrosshairStyle Style = Weapon ? Weapon->GetCrosshairStyle() : ECrosshairStyle::Cross;
+
+  // ── Scope overlay (sniper) ────────────────────────────────────────────
+  if (ScopeOverlayImage)
+  {
+    const bool bShowScope = bAiming && Weapon && Weapon->HasScope();
+    if (bShowScope)
+    {
+      if (UTexture2D* ScopeTex = Weapon->GetScopeOverlayTexture())
+        ScopeOverlayImage->SetBrushFromTexture(ScopeTex, false);
+      ScopeOverlayImage->SetVisibility(ESlateVisibility::HitTestInvisible);
+    }
+    else
+    {
+      ScopeOverlayImage->SetVisibility(ESlateVisibility::Collapsed);
+    }
+  }
+
+  // ── Visibilité globale ────────────────────────────────────────────────
+  // Pas de réticule si pas en ADS, ou si arme = mêlée, ou si scope actif (l'overlay le remplace)
+  const bool bShowCrosshair = bAiming && Style != ECrosshairStyle::None
+                              && !(Weapon && Weapon->HasScope());
+
+  // Pour le mode Dot : on cache les 4 traits, on affiche juste le point
+  const bool bUseDot = bShowCrosshair && Style == ECrosshairStyle::Dot;
+  const bool bUseCross = bShowCrosshair && (Style == ECrosshairStyle::Cross || Style == ECrosshairStyle::WideCross);
+
+  const ESlateVisibility CrossVis = bUseCross ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed;
+  for (UImage* Line : {CrosshairTop, CrosshairBottom, CrosshairLeft, CrosshairRight})
+    if (Line) Line->SetVisibility(CrossVis);
+
+  if (CrosshairDot)
+    CrosshairDot->SetVisibility(bUseDot ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+
+  if (!bUseCross) return; // dot ou caché : pas besoin de positionner les traits
+
+  // ── Calcul du gap selon la dispersion (en direct) ─────────────────────
   float TargetGap = CrosshairGapMin;
   if (Weapon) {
     const float SpreadAlpha = FMath::GetMappedRangeValueClamped(
@@ -674,10 +717,9 @@ void URevenantOpsHUD::UpdateCrosshair() {
     TargetGap = FMath::Lerp(CrosshairGapMin, CrosshairGapMax, SpreadAlpha);
   }
 
-  // Réduire davantage en ADS
-  if (CachedCharacter->IsAiming()) {
-    TargetGap = CrosshairGapMin * 0.5f;
-  }
+  // Croix large pour shotgun
+  const float StyleMultiplier = (Style == ECrosshairStyle::WideCross) ? 2.0f : 1.0f;
+  TargetGap *= StyleMultiplier;
 
   // Interpolation fluide (style CS : réactif mais pas instantané)
   const float DeltaTime = GetWorld()->GetDeltaSeconds();
@@ -703,13 +745,13 @@ void URevenantOpsHUD::UpdateCrosshair() {
   MoveSlot(CrosshairLeft,   FVector2D(-(G + L * 0.5f), 0.f), FVector2D(L, T));
   MoveSlot(CrosshairRight,  FVector2D(  G + L * 0.5f,  0.f), FVector2D(L, T));
 
-  // Opacité : légèrement réduite en ADS (le viseur disparaît presque)
-  const float Alpha = CachedCharacter->IsAiming() ? 0.4f : 0.9f;
-  const FLinearColor Color(1.f, 1.f, 1.f, Alpha);
+  // Opacité du réticule en ADS
+  const FLinearColor Color(1.f, 1.f, 1.f, 0.85f);
   CrosshairTop->SetColorAndOpacity(Color);
   CrosshairBottom->SetColorAndOpacity(Color);
   CrosshairLeft->SetColorAndOpacity(Color);
   CrosshairRight->SetColorAndOpacity(Color);
+  if (CrosshairDot) CrosshairDot->SetColorAndOpacity(Color);
 }
 
 // =============================================================================

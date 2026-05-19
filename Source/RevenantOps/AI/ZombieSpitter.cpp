@@ -2,38 +2,13 @@
 
 #include "ZombieSpitter.h"
 #include "ZombieProjectile.h"
-#include "GameFramework/CharacterMovementComponent.h"
-#include "HealthComponent.h"
 #include "AIController.h"
-#include "Kismet/GameplayStatics.h"
 
-AZombieSpitter::AZombieSpitter() {
-  // Slower than melee zombies — ranged unit
-  GetCharacterMovement()->MaxWalkSpeed = 250.f;
-
-  // Attack range: fires when player is within 1200cm
-  MeleeRange = 1200.f;
-
-  // Fires every 2.5 seconds
-  MeleeAttackCooldown = 2.5f;
-
-  // Damage comes from projectile, not melee hit
-  MeleeDamage = 0.f;
-
-  // Tries to stay at 1000cm from the player
-  IdealEngagementRange = 1000.f;
-  MaxEngagementRange = 1500.f;
-
-  // Identity
-  EnemyName = FText::FromString(TEXT("Zombie Cracheur"));
-
-  // 100 HP
-  if (HealthComp) {
-    HealthComp->SetMaxHealth(100.f);
-  }
-
-  // Sees further than melee zombies
-  SightRange = 2500.f;
+// Stats globales (HP, vitesse, mêlée) viennent de DT_EnemyStats.
+// IdealEngagementRange/MaxEngagementRange/SightRange restent paramètres BP de cette classe.
+AZombieSpitter::AZombieSpitter()
+{
+    EnemyName = FText::FromString(TEXT("Zombie Cracheur"));
 }
 
 void AZombieSpitter::Tick(float DeltaTime) {

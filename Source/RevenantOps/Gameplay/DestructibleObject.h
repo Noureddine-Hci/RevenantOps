@@ -173,6 +173,21 @@ protected:
               meta = (ClampMin = 0, ClampMax = 300))
     float LootScatterRadius = 60.f;
 
+    /**
+     *  Mapping automatique EAmmoType → BP pickup de munitions.
+     *  La caisse spawne automatiquement les munitions des armes que le joueur possède.
+     *  Ex : Pistol → BP_AmmoPickup_Pistol, Rifle → BP_AmmoPickup_Rifle, etc.
+     */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Destructible|Loot")
+    TMap<EAmmoType, TSubclassOf<AActor>> AmmoPickupClasses;
+
+    /**
+     *  Classe de soin à spawner si le joueur n'a aucune arme connue dans la map
+     *  ou si AmmoPickupClasses est vide.
+     */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Destructible|Loot")
+    TSubclassOf<AActor> HealthFallbackClass;
+
     // ── LOGIQUE INTERNE ────────────────────────────────────────────────────
 
     UFUNCTION()

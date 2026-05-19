@@ -205,7 +205,13 @@ int32 AWeaponBase::GetCurrentReserveAmmo() const
 }
 
 bool AWeaponBase::CanFire() const {
-  return CurrentState == EWeaponState::Idle && CurrentAmmo > 0;
+  if (CurrentState != EWeaponState::Idle || CurrentAmmo <= 0) return false;
+  // RE5 style — tir uniquement en ADS
+  if (ARevenantOpsCharacter* Char = Cast<ARevenantOpsCharacter>(OwnerPawn))
+  {
+    if (!Char->IsAiming()) return false;
+  }
+  return true;
 }
 
 bool AWeaponBase::CanReload() const {
