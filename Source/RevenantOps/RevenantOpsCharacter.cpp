@@ -843,9 +843,9 @@ void ARevenantOpsCharacter::SpawnDefaultWeapons() {
 
       WeaponInventory.Add(NewWeapon);
 
-      // Hide all weapons initially (EquipWeapon will show the active one)
-      NewWeapon->SetActorHiddenInGame(true);
+      // Holster initial (visible sur le perso au socket d'holster) — EquipWeapon(0) sortira la 1ère
       NewWeapon->SetActorTickEnabled(false);
+      HolsterWeapon(NewWeapon);
     }
   }
 
@@ -1185,13 +1185,12 @@ void ARevenantOpsCharacter::EquipWeapon(int32 Index) {
     return;
   }
 
-  // Unequip current weapon
+  // Unequip current weapon — la remettre dans son holster (visible sur le perso)
   if (CurrentWeapon) {
     CurrentWeapon->StopFire();
     CurrentWeapon->StopADS();
-    CurrentWeapon->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
-    CurrentWeapon->SetActorHiddenInGame(true);
     CurrentWeapon->SetActorTickEnabled(false);
+    HolsterWeapon(CurrentWeapon);
   }
 
   // Equip new weapon
@@ -1223,6 +1222,39 @@ void ARevenantOpsCharacter::AttachWeaponToSocket(AWeaponBase *Weapon) {
   // Applique l'offset défini dans le BP de l'arme (position/rotation dans la main)
   const FTransform& Offset = Weapon->GetWeaponAttachOffset();
   Weapon->SetActorRelativeTransform(Offset);
+}
+
+void ARevenantOpsCharacter::HolsterWeapon(AWeaponBase* Weapon)
+{
+  if (!Weapon || !GetMesh()) return;
+
+  const FName Holster = Weapon->GetHolsterSocketName();
+
+  // Pas de holster défini OU socket inexistant → cacher l'arme (ancien comportement)
+  if (Holster.IsNone() || !GetMesh()->DoesSocketExist(Holster))
+  {
+    Weapon->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+    Weapon->SetActorHiddenInGame(true);
+    return;
+  }
+
+  // Cacher toutes les autres armes qui utilisent le même socket d'holster
+  // (une seule arme visible par socket — la plus récemment holstered remplace)
+  for (AWeaponBase* Other : WeaponInventory)
+  {
+    if (Other && Other != Weapon && Other != CurrentWeapon
+        && Other->GetHolsterSocketName() == Holster)
+    {
+      Other->SetActorHiddenInGame(true);
+    }
+  }
+
+  // Attacher l'arme au socket d'holster — visible sur le perso
+  Weapon->SetActorHiddenInGame(false);
+  Weapon->AttachToComponent(GetMesh(),
+                            FAttachmentTransformRules::SnapToTargetNotIncludingScale,
+                            Holster);
+  Weapon->SetActorRelativeTransform(Weapon->GetHolsterOffset());
 }
 
 // ========== WEAPON INPUT HANDLERS ==========
@@ -1287,8 +1319,8 @@ void ARevenantOpsCharacter::AddAndEquipWeapon(AWeaponBase* NewWeapon)
 
     NewWeapon->SetOwnerPawn(this);
     WeaponInventory.Add(NewWeapon);
-    NewWeapon->SetActorHiddenInGame(true);
     NewWeapon->SetActorTickEnabled(false);
+    HolsterWeapon(NewWeapon);
 
     bIsArmed = true;
     EquipWeapon(WeaponInventory.Num() - 1);

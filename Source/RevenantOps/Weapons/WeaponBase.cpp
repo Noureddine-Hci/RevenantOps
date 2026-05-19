@@ -75,11 +75,25 @@ void AWeaponBase::ApplyWeaponDataRow()
         return;
     }
 
-    // Map DT fields to weapon properties (per D-11)
-    BaseDamage = Row->Damage;
-    FireRate = Row->FireRate;
+    // Balance
+    BaseDamage   = Row->Damage;
+    FireRate     = Row->FireRate;
     MagazineSize = Row->MaxAmmo;
-    MaxRange = Row->Range;
+    MaxRange     = Row->Range;
+
+    // Crosshair — source unique : DT_WeaponStats
+    CrosshairStyle     = Row->CrosshairStyle;
+    ScopeFOVMultiplier = Row->ScopeFOVMultiplier;
+
+    // Scope texture : résolution synchrone (asset déjà cooked/chargé en éditeur)
+    if (!Row->ScopeOverlayTexture.IsNull())
+    {
+        ScopeOverlayTexture = Row->ScopeOverlayTexture.LoadSynchronous();
+    }
+    else
+    {
+        ScopeOverlayTexture = nullptr;
+    }
 }
 
 void AWeaponBase::Tick(float DeltaTime) {

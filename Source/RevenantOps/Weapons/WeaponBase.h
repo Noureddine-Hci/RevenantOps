@@ -7,6 +7,7 @@
 #include "Engine/DataTable.h"
 #include "Engine/Texture2D.h"
 #include "Gameplay/AmmoTypes.h"
+#include "CrosshairTypes.h"
 #include "WeaponBase.generated.h"
 
 class USkeletalMeshComponent;
@@ -38,17 +39,6 @@ enum class EWeaponCategory : uint8 {
   LMG UMETA(DisplayName = "LMG"),
   Launcher UMETA(DisplayName = "Launcher"),
   Melee UMETA(DisplayName = "Melee")
-};
-
-/**
- *  Style de réticule à afficher pour cette arme
- */
-UENUM(BlueprintType)
-enum class ECrosshairStyle : uint8 {
-  None     UMETA(DisplayName = "Aucun (mêlée)"),
-  Cross    UMETA(DisplayName = "Croix standard"),
-  WideCross UMETA(DisplayName = "Croix large (shotgun)"),
-  Dot      UMETA(DisplayName = "Point central (sniper)"),
 };
 
 /**
@@ -255,21 +245,19 @@ protected:
   float CurrentSpread = 0.f;
 
   // ========== CROSSHAIR ==========
+  // Ces valeurs sont lues depuis DT_WeaponStats via ApplyWeaponDataRow().
+  // Ne pas les modifier dans le BP — modifier la DataTable à la place.
 
-  /** Style de réticule à afficher quand cette arme est équipée */
-  UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Weapon|Crosshair")
+  /** Style de réticule — chargé depuis DT_WeaponStats */
+  UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Crosshair")
   ECrosshairStyle CrosshairStyle = ECrosshairStyle::Cross;
 
-  /**
-   *  Texture de scope (lunette) affichée plein écran quand le joueur ADS avec cette arme.
-   *  Laisser nul pour les armes sans lunette. Typique du sniper.
-   */
-  UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Weapon|Crosshair")
+  /** Texture de scope ADS (sniper) — chargée depuis DT_WeaponStats */
+  UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Crosshair")
   TObjectPtr<UTexture2D> ScopeOverlayTexture = nullptr;
 
-  /** Multiplicateur du FOV ADS pour scope (sniper = 0.4 = très zoomé). Ignoré si pas de scope. */
-  UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Weapon|Crosshair",
-            meta = (ClampMin = 0.1f, ClampMax = 1.f, EditCondition = "ScopeOverlayTexture != nullptr"))
+  /** Multiplicateur FOV scope — chargé depuis DT_WeaponStats */
+  UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Crosshair")
   float ScopeFOVMultiplier = 0.4f;
 
   // ========== ADS (Aim Down Sights) ==========
@@ -352,6 +340,18 @@ protected:
   /** Position/rotation offset appliqué après l'attach au socket — ajuster par BP */
   UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Weapon|Sockets")
   FTransform WeaponAttachOffset = FTransform::Identity;
+
+  /**
+   *  Socket d'holster — où l'arme est attachée quand elle n'est PAS équipée.
+   *  Ex: "HolsterBack" pour fusil, "HolsterHip" pour pistolet.
+   *  Si vide ou socket inexistant, l'arme est cachée.
+   */
+  UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Weapon|Sockets")
+  FName HolsterSocketName = NAME_None;
+
+  /** Offset position/rotation appliqué quand l'arme est dans son holster */
+  UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Weapon|Sockets")
+  FTransform HolsterOffset = FTransform::Identity;
 
   // ========== STATE ==========
 
@@ -504,6 +504,12 @@ public:
   EAmmoType GetWeaponAmmoType() const { return WeaponAmmoType; }
   EWeaponCategory GetWeaponCategory() const { return WeaponCategory; }
   FTransform GetWeaponAttachOffset() const { return WeaponAttachOffset; }
+
+  /** Socket d'holster (NAME_None si arme à cacher quand non équipée) */
+  FName GetHolsterSocketName() const { return HolsterSocketName; }
+
+  /** Offset à appliquer dans l'holster */
+  FTransform GetHolsterOffset() const { return HolsterOffset; }
   void SetMaxReserveAmmo(int32 NewMax)
   {
     MaxReserveAmmo = FMath::Max(1, NewMax);

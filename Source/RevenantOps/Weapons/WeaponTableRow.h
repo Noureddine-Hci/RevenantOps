@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataTable.h"
+#include "Engine/Texture2D.h"
+#include "CrosshairTypes.h"
 #include "WeaponTableRow.generated.h"
 
 /**
@@ -15,6 +17,8 @@ USTRUCT(BlueprintType)
 struct FWeaponTableRow : public FTableRowBase
 {
     GENERATED_BODY()
+
+    // ========== BALANCE ==========
 
     /** Base damage per hit */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
@@ -31,4 +35,25 @@ struct FWeaponTableRow : public FTableRowBase
     /** Maximum hitscan range in cm */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
     float Range = 10000.f;
+
+    // ========== CROSSHAIR ==========
+
+    /** Style de réticule affiché quand cette arme est équipée */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crosshair")
+    ECrosshairStyle CrosshairStyle = ECrosshairStyle::Cross;
+
+    /**
+     *  Texture de scope affichée plein écran en ADS (sniper uniquement).
+     *  Laisser vide pour les armes sans lunette.
+     */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crosshair")
+    TSoftObjectPtr<UTexture2D> ScopeOverlayTexture;
+
+    /**
+     *  Multiplicateur FOV ADS avec scope (ex: 0.4 = très zoomé).
+     *  Ignoré si ScopeOverlayTexture est vide.
+     */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crosshair",
+              meta = (ClampMin = 0.1f, ClampMax = 1.f))
+    float ScopeFOVMultiplier = 0.4f;
 };

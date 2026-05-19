@@ -525,6 +525,9 @@ protected:
   /** Attaches current weapon to the character mesh */
   void AttachWeaponToSocket(AWeaponBase *Weapon);
 
+  /** Attache l'arme à son socket d'holster (visible sur le perso). Cache l'arme si pas de holster défini. */
+  void HolsterWeapon(AWeaponBase* Weapon);
+
 public:
   UFUNCTION(BlueprintCallable, Category = "Input")
   virtual void DoMove(float Right, float Forward);
