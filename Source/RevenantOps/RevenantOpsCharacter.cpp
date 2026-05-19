@@ -62,12 +62,13 @@ ARevenantOpsCharacter::ARevenantOpsCharacter() {
   CameraBoom->SocketOffset   = CameraHipOffset;
   CameraBoom->bUsePawnControlRotation = true;
   CameraBoom->bDoCollisionTest = true;
-  CameraBoom->ProbeSize = 12.f;
-  CameraBoom->ProbeChannel = ECC_Camera;
-  CameraBoom->bEnableCameraLag = true;
-  CameraBoom->CameraLagSpeed = 15.f;
-  CameraBoom->bEnableCameraRotationLag = true;
-  CameraBoom->CameraRotationLagSpeed = 20.f;
+  CameraBoom->ProbeSize = 20.f;
+  CameraBoom->ProbeChannel = ECC_Visibility;
+  // Lag désactivé : quand activé, la caméra continue sur son élan et traverse
+  // les murs même si le spring arm a déjà raccourci. La collision ne sert à rien
+  // si le lag permet à la cam d'être temporairement en dehors de la position corrigée.
+  CameraBoom->bEnableCameraLag = false;
+  CameraBoom->bEnableCameraRotationLag = false;
 
   // Follow camera
   FollowCamera =
@@ -186,6 +187,7 @@ void ARevenantOpsCharacter::Tick(float DeltaTime) {
   UpdateMovementSpeed(DeltaTime);
   UpdateStamina(DeltaTime);
   UpdateCameraFOV(DeltaTime);
+  UpdateCameraCollision();   // après FOV pour avoir TargetArmLength à jour
   UpdateAnimationValues();
   UpdateAimRotation(DeltaTime);
 
@@ -632,26 +634,65 @@ void ARevenantOpsCharacter::UpdateCameraFOV(float DeltaTime) {
       FMath::FInterpTo(CurrentFOV, TargetFOV, DeltaTime, FOVInterpSpeed);
   FollowCamera->SetFieldOfView(NewFOV);
 
-  // Smooth boom offset transition
+  // Smooth boom socket offset transition (hip ↔ ADS)
   const FVector CurrentOffset = CameraBoom->SocketOffset;
   const FVector NewOffset =
       FMath::VInterpTo(CurrentOffset, TargetOffset, DeltaTime, FOVInterpSpeed);
   CameraBoom->SocketOffset = NewOffset;
 
-  // Smooth arm length transition
+  // Stocker la longueur désirée — UpdateCameraCollision l'utilisera comme cible
+  DesiredArmLength = TargetArmLen;
+
+  // Smooth arm length transition (vers la longueur désirée, sans collision)
+  // UpdateCameraCollision() peut raccourcir davantage si un mur est détecté.
   const float CurrentArmLen = CameraBoom->TargetArmLength;
   const float NewArmLen =
-      FMath::FInterpTo(CurrentArmLen, TargetArmLen, DeltaTime, FOVInterpSpeed);
+      FMath::FInterpTo(CurrentArmLen, DesiredArmLength, DeltaTime, FOVInterpSpeed);
   CameraBoom->TargetArmLength = NewArmLen;
+}
+
+void ARevenantOpsCharacter::UpdateCameraCollision()
+{
+  if (!CameraBoom) return;
+
+  const FVector  PivotWorld = CameraBoom->GetComponentLocation();
+  const FRotator BoomRot    = CameraBoom->GetComponentRotation();
+  const FVector  BoomBack   = -(BoomRot.Vector());
+
+  // Position caméra désirée en world space (bras complet + socket offset monde)
+  const FVector BoomEndDesired    = PivotWorld + BoomBack * DesiredArmLength;
+  const FVector SocketOffsetWorld = BoomRot.RotateVector(CameraBoom->SocketOffset);
+  const FVector DesiredCamWorld   = BoomEndDesired + SocketOffsetWorld;
+
+  // Distance totale pivot → caméra désirée (diagonale : bras + offset latéral)
+  const float TotalDesiredDist = FVector::Dist(PivotWorld, DesiredCamWorld);
+  if (TotalDesiredDist < 1.f) return;
+
+  FHitResult Hit;
+  FCollisionQueryParams Params;
+  Params.AddIgnoredActor(this);
+  Params.bTraceComplex = false;
+
+  // ECC_Camera : channel dédié aux probes caméra, bloqué par tous les SM par défaut
+  if (GetWorld()->LineTraceSingleByChannel(
+          Hit, PivotWorld, DesiredCamWorld, ECC_Camera, Params))
+  {
+    // Ratio d'impact → longueur bras proportionnelle (SocketOffset est perpendiculaire,
+    // on ne peut pas le soustraire directement — on projette via le ratio)
+    const float HitDist    = FVector::Dist(PivotWorld, Hit.ImpactPoint);
+    const float Ratio      = FMath::Clamp(HitDist / TotalDesiredDist, 0.f, 1.f);
+    const float SafeArmLen = FMath::Max(Ratio * DesiredArmLength - 10.f, 20.f);
+    CameraBoom->TargetArmLength = FMath::Min(CameraBoom->TargetArmLength, SafeArmLen);
+  }
 }
 
 void ARevenantOpsCharacter::UpdateAimRotation(float DeltaTime)
 {
-  const bool bShouldOrientToAim = bIsArmed && !bIsSprinting && !bIsDodging;
+  const bool bShouldOrientToAim = bIsAiming && bIsArmed && !bIsSprinting && !bIsDodging;
 
   if (bShouldOrientToAim)
   {
-    // Le personnage fait face à la direction de visée
+    // Le personnage fait face à la direction de visée (ADS uniquement)
     bUseControllerRotationYaw = true;
     GetCharacterMovement()->bOrientRotationToMovement = false;
   }
@@ -802,9 +843,9 @@ void ARevenantOpsCharacter::SpawnDefaultWeapons() {
 
       WeaponInventory.Add(NewWeapon);
 
-      // Hide all weapons initially (EquipWeapon will show the active one)
-      NewWeapon->SetActorHiddenInGame(true);
+      // Holster initial (visible sur le perso au socket d'holster) — EquipWeapon(0) sortira la 1ère
       NewWeapon->SetActorTickEnabled(false);
+      HolsterWeapon(NewWeapon);
     }
   }
 
@@ -814,8 +855,9 @@ void ARevenantOpsCharacter::SpawnDefaultWeapons() {
     EquipWeapon(0);
   }
 
-  // Sync weapon slots into RE5 inventory (slots 0 and 1)
-  for (int32 i = 0; i < WeaponInventory.Num() && i < 2; ++i) {
+  // Sync weapon slots into RE5 inventory — autant de slots qu'il y a d'armes (max 9)
+  const int32 MaxWeaponSlots = FMath::Min(WeaponInventory.Num(), Inventory.Num());
+  for (int32 i = 0; i < MaxWeaponSlots; ++i) {
     if (!WeaponInventory[i]) continue;
     FInventoryItem& Slot = Inventory[i];
     Slot.Type        = EInventoryItemType::Weapon;
@@ -1119,6 +1161,23 @@ void ARevenantOpsCharacter::UpdateAnimationValues()
   {
     MovementDirection = 0.f;
   }
+
+  // --- Weapon category + index pour Blend Poses by int dans l'ABP ---
+  CurrentWeaponCategory = CurrentWeapon
+    ? CurrentWeapon->GetWeaponCategory()
+    : EWeaponCategory::Pistol;
+
+  switch (CurrentWeaponCategory)
+  {
+    case EWeaponCategory::Pistol:                      WeaponAnimIndex = 0; break;
+    case EWeaponCategory::AssaultRifle:
+    case EWeaponCategory::SMG:
+    case EWeaponCategory::LMG:                         WeaponAnimIndex = 1; break;
+    case EWeaponCategory::Shotgun:                     WeaponAnimIndex = 2; break;
+    case EWeaponCategory::Sniper:                      WeaponAnimIndex = 3; break;
+    case EWeaponCategory::Melee:                       WeaponAnimIndex = 4; break;
+    default:                                           WeaponAnimIndex = 0; break;
+  }
 }
 
 void ARevenantOpsCharacter::EquipWeapon(int32 Index) {
@@ -1126,13 +1185,12 @@ void ARevenantOpsCharacter::EquipWeapon(int32 Index) {
     return;
   }
 
-  // Unequip current weapon
+  // Unequip current weapon — la remettre dans son holster (visible sur le perso)
   if (CurrentWeapon) {
     CurrentWeapon->StopFire();
     CurrentWeapon->StopADS();
-    CurrentWeapon->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
-    CurrentWeapon->SetActorHiddenInGame(true);
     CurrentWeapon->SetActorTickEnabled(false);
+    HolsterWeapon(CurrentWeapon);
   }
 
   // Equip new weapon
@@ -1166,6 +1224,39 @@ void ARevenantOpsCharacter::AttachWeaponToSocket(AWeaponBase *Weapon) {
   Weapon->SetActorRelativeTransform(Offset);
 }
 
+void ARevenantOpsCharacter::HolsterWeapon(AWeaponBase* Weapon)
+{
+  if (!Weapon || !GetMesh()) return;
+
+  const FName Holster = Weapon->GetHolsterSocketName();
+
+  // Pas de holster défini OU socket inexistant → cacher l'arme (ancien comportement)
+  if (Holster.IsNone() || !GetMesh()->DoesSocketExist(Holster))
+  {
+    Weapon->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+    Weapon->SetActorHiddenInGame(true);
+    return;
+  }
+
+  // Cacher toutes les autres armes qui utilisent le même socket d'holster
+  // (une seule arme visible par socket — la plus récemment holstered remplace)
+  for (AWeaponBase* Other : WeaponInventory)
+  {
+    if (Other && Other != Weapon && Other != CurrentWeapon
+        && Other->GetHolsterSocketName() == Holster)
+    {
+      Other->SetActorHiddenInGame(true);
+    }
+  }
+
+  // Attacher l'arme au socket d'holster — visible sur le perso
+  Weapon->SetActorHiddenInGame(false);
+  Weapon->AttachToComponent(GetMesh(),
+                            FAttachmentTransformRules::SnapToTargetNotIncludingScale,
+                            Holster);
+  Weapon->SetActorRelativeTransform(Weapon->GetHolsterOffset());
+}
+
 // ========== WEAPON INPUT HANDLERS ==========
 
 void ARevenantOpsCharacter::FirePressed() {
@@ -1176,12 +1267,6 @@ void ARevenantOpsCharacter::FirePressed() {
       TargetSpeed = WalkSpeed;
     }
 
-    // Orient character to camera direction when firing
-    if (!bIsAiming) {
-      GetCharacterMovement()->bOrientRotationToMovement = false;
-      bUseControllerRotationYaw = true;
-    }
-
     CurrentWeapon->StartFire();
   }
 }
@@ -1189,12 +1274,6 @@ void ARevenantOpsCharacter::FirePressed() {
 void ARevenantOpsCharacter::FireReleased() {
   if (CurrentWeapon) {
     CurrentWeapon->StopFire();
-
-    // Restore rotation mode if not aiming
-    if (!bIsAiming) {
-      GetCharacterMovement()->bOrientRotationToMovement = true;
-      bUseControllerRotationYaw = false;
-    }
   }
 }
 
@@ -1240,8 +1319,8 @@ void ARevenantOpsCharacter::AddAndEquipWeapon(AWeaponBase* NewWeapon)
 
     NewWeapon->SetOwnerPawn(this);
     WeaponInventory.Add(NewWeapon);
-    NewWeapon->SetActorHiddenInGame(true);
     NewWeapon->SetActorTickEnabled(false);
+    HolsterWeapon(NewWeapon);
 
     bIsArmed = true;
     EquipWeapon(WeaponInventory.Num() - 1);

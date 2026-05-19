@@ -31,8 +31,12 @@ class URevenantOpsHUD : public UUserWidget {
 public:
   virtual TSharedRef<SWidget> RebuildWidget() override;
   virtual void NativeConstruct() override;
-  virtual void NativeTick(const FGeometry &MyGeometry,
-                          float InDeltaTime) override;
+  virtual void NativeTick(const FGeometry &MyGeometry, float InDeltaTime) override;
+  virtual int32 NativePaint(const FPaintArgs& Args, const FGeometry& AllottedGeometry,
+                             const FSlateRect& MyCullingRect,
+                             FSlateWindowElementList& OutDrawElements,
+                             int32 LayerId, const FWidgetStyle& InWidgetStyle,
+                             bool bParentEnabled) const override;
 
 protected:
   // ========== BOUND WIDGETS (set in Blueprint) ==========
@@ -61,15 +65,17 @@ protected:
   UPROPERTY(meta = (BindWidgetOptional))
   UTextBlock *WeaponNameText;
 
-  /** Crosshair image (legacy — remplace par les 4 traits ci-dessous) */
-  UPROPERTY(meta = (BindWidgetOptional))
-  UImage *CrosshairImage;
-
   // 4 traits du viseur style CS
   UPROPERTY() UImage *CrosshairTop    = nullptr;
   UPROPERTY() UImage *CrosshairBottom = nullptr;
   UPROPERTY() UImage *CrosshairLeft   = nullptr;
   UPROPERTY() UImage *CrosshairRight  = nullptr;
+
+  /** Point central du réticule (utilisé pour le sniper en mode Dot) */
+  UPROPERTY() UImage *CrosshairDot = nullptr;
+
+  /** Overlay plein écran pour la lunette du sniper (texture noir + lentille au centre) */
+  UPROPERTY() UImage *ScopeOverlayImage = nullptr;
 
   /** Hit marker image (flash on hit) */
   UPROPERTY(meta = (BindWidgetOptional))
@@ -157,6 +163,21 @@ protected:
   float CrosshairBaseSize = 20.f;
   float CrosshairMaxSize  = 60.f;
 
+  // ========== DAMAGE NUMBERS ==========
+
+  struct FDamageNumberEntry
+  {
+    FVector WorldPos;
+    float   Damage;
+    float   TimeRemaining;
+    bool    bCritical;
+  };
+
+  TArray<FDamageNumberEntry> ActiveDamageNumbers;
+  static constexpr float DamageNumberDuration = 1.5f;
+
+  void UpdateDamageNumbers(float DeltaTime);
+
   // ========== INTERNAL STATE ==========
 
   /** Timer for hit marker fade */
@@ -242,6 +263,10 @@ protected:
   UPROPERTY() UTextBlock* FinisherPromptText = nullptr;
 
 public:
+  /** Affiche un chiffre de dégâts flottant au-dessus de la position monde donnée */
+  UFUNCTION(BlueprintCallable, Category = "HUD")
+  void AddDamageNumber(const FVector& WorldPos, float Damage, bool bCritical = false);
+
   /** Shows the hit marker (call from weapon hit event) */
   UFUNCTION(BlueprintCallable, Category = "HUD")
   void ShowHitMarker();
@@ -265,4 +290,23 @@ public:
 
   /** Cache le prompt de finisher */
   void HideFinisherPrompt();
+
+  // ========== MATCH START MESSAGE ==========
+
+  /** Affiche le message de début de match ("C'est Parti !") pendant MessageDuration secondes */
+  UFUNCTION(BlueprintCallable, Category = "HUD")
+  void ShowMatchStartMessage(const FText& Message);
+
+protected:
+  /** Widget texte centré affiché au début du match */
+  UPROPERTY() UTextBlock* MatchStartText = nullptr;
+
+  /** Durée d'affichage du message de début de match */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HUD|Config",
+            meta = (ClampMin = 0.5, ClampMax = 10.0))
+  float MatchStartMessageDuration = 2.5f;
+
+  float MatchStartMessageTimer = 0.f;
+
+  void UpdateMatchStartMessage(float DeltaTime);
 };

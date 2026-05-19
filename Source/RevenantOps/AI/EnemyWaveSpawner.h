@@ -10,192 +10,162 @@ class AEnemyBase;
 class UBoxComponent;
 
 /**
- *  Configuration for a single enemy in a wave
+ *  Entrée de la pool d'ennemis — classe + poids de sélection aléatoire.
+ *  Plus le poids est élevé, plus l'ennemi apparaît fréquemment.
  */
 USTRUCT(BlueprintType)
-struct FWaveEnemyEntry {
-  GENERATED_BODY()
+struct FEnemyPoolEntry
+{
+    GENERATED_BODY()
 
-  /** Enemy class to spawn */
-  UPROPERTY(EditAnywhere, BlueprintReadWrite)
-  TSubclassOf<AEnemyBase> EnemyClass;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Pool")
+    TSubclassOf<AEnemyBase> EnemyClass;
 
-  /** Number of this enemy type in the wave */
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = 1, ClampMax = 50))
-  int32 Count = 1;
+    /**
+     *  Poids de sélection (1 = normal, 2 = deux fois plus probable).
+     *  Ce poids est multiplié par le ScaleAtMaxDifficulty quand la difficulté est max.
+     */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Pool",
+              meta = (ClampMin = 0.1f, ClampMax = 10.f))
+    float Weight = 1.f;
 
-  /** Delay before spawning this group (seconds from wave start) */
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = 0, ClampMax = 30))
-  float SpawnDelay = 0.f;
+    /**
+     *  Seuil de kills à partir duquel cet ennemi peut apparaître (0 = dès le début).
+     *  Exemple : Tank = 30 kills minimum.
+     */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Pool",
+              meta = (ClampMin = 0))
+    int32 UnlockAtKills = 0;
 };
 
-/**
- *  Configuration for a wave of enemies
- */
-USTRUCT(BlueprintType)
-struct FEnemyWave {
-  GENERATED_BODY()
+// ─────────────────────────────────────────────────────────────────────────────
 
-  /** Enemies in this wave */
-  UPROPERTY(EditAnywhere, BlueprintReadWrite)
-  TArray<FWaveEnemyEntry> Enemies;
-
-  /** Delay before the next wave starts after this one is cleared */
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = 0, ClampMax = 60))
-  float DelayAfterWave = 3.f;
-};
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnKillCountChanged, int32, TotalKills);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnKillCapReached);
 
 /**
- *  Delegate fired when a wave starts
- */
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnWaveStarted,
-                                              int32, WaveNumber,
-                                              int32, TotalWaves);
-
-/**
- *  Delegate fired when all waves are completed
- */
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAllWavesCompleted);
-
-/**
- *  Wave-based enemy spawner.
- *  Place in level with spawn points, configure waves in Blueprint.
- *  Can be triggered by volume overlap or manually.
+ *  Spawner style RE5 Mercenaires.
+ *
+ *  - Pool d'ennemis avec poids et seuils d'apparition
+ *  - Cap de kills configurable (défaut 150)
+ *  - Max ennemis simultanés configurable (défaut 20)
+ *  - Dès qu'un ennemi meurt → un nouveau spawne immédiatement
+ *  - Difficulté croissante : spawn delay diminue avec les kills
  */
 UCLASS(Blueprintable)
-class AEnemyWaveSpawner : public AActor {
-  GENERATED_BODY()
+class AEnemyWaveSpawner : public AActor
+{
+    GENERATED_BODY()
 
 public:
-  AEnemyWaveSpawner();
+    AEnemyWaveSpawner();
 
 protected:
-  virtual void BeginPlay() override;
+    virtual void BeginPlay() override;
 
-  // ========== COMPONENTS ==========
+    // ── COMPOSANTS ────────────────────────────────────────────────────────
 
-  /** Trigger volume to start the encounter */
-  UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-  UBoxComponent *TriggerVolume;
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+    UBoxComponent* TriggerVolume;
 
-  // ========== WAVE CONFIGURATION ==========
+    // ── CONFIGURATION ─────────────────────────────────────────────────────
 
-  /** List of waves to spawn */
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawner|Waves")
-  TArray<FEnemyWave> Waves;
+    /** Pool d'ennemis disponibles avec leurs poids */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawner|Config")
+    TArray<FEnemyPoolEntry> EnemyPool;
 
-  /** If true, the encounter starts when the player enters the trigger volume */
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawner|Config")
-  bool bTriggerOnOverlap = true;
+    /** Points de spawn dans le level */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawner|Config")
+    TArray<AActor*> SpawnPoints;
 
-  /** If true, loops waves infinitely (survival mode) */
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawner|Config")
-  bool bInfiniteMode = false;
+    /** Nombre total de kills pour finir le match (RE5 = 150) */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawner|Config",
+              meta = (ClampMin = 10, ClampMax = 500))
+    int32 KillCap = 150;
 
-  /** Spawn points (actors placed in the level) */
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawner|Config")
-  TArray<AActor *> SpawnPoints;
+    /** Nombre max d'ennemis en vie simultanément */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawner|Config",
+              meta = (ClampMin = 1, ClampMax = 50))
+    int32 MaxAliveEnemies = 20;
 
-  /** Maximum number of enemies alive at once */
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawner|Config",
-            meta = (ClampMin = 1, ClampMax = 50))
-  int32 MaxAliveEnemies = 8;
+    /** Délai initial entre chaque spawn (secondes) */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawner|Config",
+              meta = (ClampMin = 0.1f, ClampMax = 5.f))
+    float SpawnDelayInitial = 1.5f;
 
-  // ========== STATE ==========
+    /** Délai minimal entre spawns (à difficulté max) */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawner|Config",
+              meta = (ClampMin = 0.1f, ClampMax = 3.f))
+    float SpawnDelayMinimum = 0.3f;
 
-  /** Current wave index */
-  UPROPERTY(BlueprintReadOnly, Category = "Spawner|State")
-  int32 CurrentWaveIndex = -1;
+    /** Si true, démarre automatiquement au BeginPlay */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawner|Config")
+    bool bAutoStart = true;
 
-  /** Is the encounter active */
-  UPROPERTY(BlueprintReadOnly, Category = "Spawner|State")
-  bool bIsActive = false;
+    /** Si true, démarre quand le joueur entre dans le TriggerVolume */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawner|Config")
+    bool bTriggerOnOverlap = false;
 
-  /** Currently alive enemies from this spawner */
-  UPROPERTY()
-  TArray<AEnemyBase *> AliveEnemies;
+    // ── ÉTAT ──────────────────────────────────────────────────────────────
 
-  /** Total enemies killed across all waves */
-  UPROPERTY(BlueprintReadOnly, Category = "Spawner|State")
-  int32 TotalKilled = 0;
+    UPROPERTY(BlueprintReadOnly, Category = "Spawner|State")
+    int32 TotalKilled = 0;
 
-  /** Total enemies to kill in the current wave (all entries combined) */
-  int32 WaveEnemyTotal = 0;
+    UPROPERTY(BlueprintReadOnly, Category = "Spawner|State")
+    bool bIsActive = false;
 
-  /** Enemies killed so far in the current wave */
-  int32 WaveEnemyKilled = 0;
+    UPROPERTY()
+    TArray<AEnemyBase*> AliveEnemies;
 
-  /** Timer handles for delayed spawns */
-  TArray<FTimerHandle> SpawnTimers;
+    FTimerHandle SpawnLoopTimer;
 
-  /** Timer for next wave delay */
-  FTimerHandle NextWaveTimer;
+    // ── LOGIQUE INTERNE ───────────────────────────────────────────────────
+
+    void SpawnOneEnemy();
+    TSubclassOf<AEnemyBase> PickEnemyClass() const;
+    FTransform GetRandomSpawnTransform() const;
+    float GetCurrentSpawnDelay() const;
+    void SetupDefaultPool();
+
+    UFUNCTION()
+    void OnEnemyDied(AEnemyBase* Enemy, AController* KilledBy);
+
+    UFUNCTION()
+    void OnTriggerOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
+                          UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
+                          bool bFromSweep, const FHitResult& SweepResult);
+
+    // ── HOOKS BP ──────────────────────────────────────────────────────────
+
 
 public:
-  // ========== EVENTS ==========
+    // ── API PUBLIQUE ──────────────────────────────────────────────────────
 
-  UPROPERTY(BlueprintAssignable, Category = "Spawner|Events")
-  FOnWaveStarted OnWaveStarted;
+    UPROPERTY(BlueprintAssignable, Category = "Spawner|Events")
+    FOnKillCountChanged OnKillCountChanged;
 
-  UPROPERTY(BlueprintAssignable, Category = "Spawner|Events")
-  FOnAllWavesCompleted OnAllWavesCompleted;
+    UPROPERTY(BlueprintAssignable, Category = "Spawner|Events")
+    FOnKillCapReached OnKillCapReached;
 
-  // ========== PUBLIC API ==========
+    UFUNCTION(BlueprintCallable, Category = "Spawner")
+    void StartEncounter();
 
-  /** Manually start the encounter */
-  UFUNCTION(BlueprintCallable, Category = "Spawner")
-  void StartEncounter();
+    UFUNCTION(BlueprintCallable, Category = "Spawner")
+    void StopEncounter();
 
-  /** Get the current wave number (1-based for UI) */
-  UFUNCTION(BlueprintCallable, Category = "Spawner")
-  int32 GetCurrentWaveNumber() const { return CurrentWaveIndex + 1; }
+    UFUNCTION(BlueprintCallable, Category = "Spawner")
+    int32 GetTotalKilled() const { return TotalKilled; }
 
-  /** Get total number of waves */
-  UFUNCTION(BlueprintCallable, Category = "Spawner")
-  int32 GetTotalWaves() const { return Waves.Num(); }
+    UFUNCTION(BlueprintCallable, Category = "Spawner")
+    int32 GetKillCap() const { return KillCap; }
 
-  /** Get number of alive enemies */
-  UFUNCTION(BlueprintCallable, Category = "Spawner")
-  int32 GetAliveEnemyCount() const { return AliveEnemies.Num(); }
+    UFUNCTION(BlueprintCallable, Category = "Spawner")
+    int32 GetAliveEnemyCount() const { return AliveEnemies.Num(); }
 
-  /** Set the wave configuration at runtime */
-  UFUNCTION(BlueprintCallable, Category = "Spawner")
-  void SetWaves(const TArray<FEnemyWave>& NewWaves) { Waves = NewWaves; }
+    // Compatibilité avec l'ancien système (HUD etc.)
+    UFUNCTION(BlueprintCallable, Category = "Spawner")
+    int32 GetCurrentWaveNumber() const { return FMath::Min(TotalKilled / 30 + 1, 5); }
 
-  /** Set the max alive enemies cap */
-  UFUNCTION(BlueprintCallable, Category = "Spawner")
-  void SetMaxAliveEnemies(int32 NewMax) { MaxAliveEnemies = FMath::Clamp(NewMax, 1, 50); }
-
-protected:
-  /** Starts the next wave */
-  void StartNextWave();
-
-  /** Spawns enemies from a wave entry */
-  void SpawnWaveEntry(const FWaveEnemyEntry &Entry);
-
-  /** Gets a random spawn point transform */
-  FTransform GetRandomSpawnTransform() const;
-
-  /** Called when an enemy dies */
-  UFUNCTION()
-  void OnEnemyDied(AEnemyBase *Enemy, AController *KilledBy);
-
-  /** Trigger volume overlap */
-  UFUNCTION()
-  void OnTriggerOverlap(UPrimitiveComponent *OverlappedComp, AActor *OtherActor,
-                        UPrimitiveComponent *OtherComp, int32 OtherBodyIndex,
-                        bool bFromSweep, const FHitResult &SweepResult);
-
-  /** Builds 3 hardcoded default waves when none are configured in the editor */
-  void SetupDefaultWaves();
-
-  // ========== BLUEPRINT HOOKS ==========
-
-  UFUNCTION(BlueprintImplementableEvent, Category = "Spawner|Events",
-            meta = (DisplayName = "On Wave Started"))
-  void BP_OnWaveStarted(int32 WaveNumber);
-
-  UFUNCTION(BlueprintImplementableEvent, Category = "Spawner|Events",
-            meta = (DisplayName = "On All Waves Completed"))
-  void BP_OnAllWavesCompleted();
+    UFUNCTION(BlueprintCallable, Category = "Spawner")
+    int32 GetTotalWaves() const { return KillCap / 30; }
 };

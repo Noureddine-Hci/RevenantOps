@@ -151,7 +151,7 @@ void UTitleScreenWidget::BuildDefaultUI()
     SpacerTopSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
 
     // "REVENANTOPS"
-    UTextBlock* TitleTxt = MakeText(TEXT("REVENANTOPS"), 64, Col_Gold);
+    UTextBlock* TitleTxt = MakeText(TEXT("REVENANT OPS"), 64, Col_Gold);
     UVerticalBoxSlot* TitleSlot = LeftVBox->AddChildToVerticalBox(TitleTxt);
     TitleSlot->SetPadding(FMargin(0.f, 0.f, 0.f, 6.f));
 
@@ -173,7 +173,7 @@ void UTitleScreenWidget::BuildDefaultUI()
     SpacerBotSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
 
     // Version build (bas gauche)
-    UTextBlock* VersionTxt = MakeText(TEXT("v4.0 — BUILD 2026"), 11, Col_Grey);
+    UTextBlock* VersionTxt = MakeText(TEXT("v2.0 — BUILD 2026"), 11, Col_Grey);
     UVerticalBoxSlot* VerSlot = LeftVBox->AddChildToVerticalBox(VersionTxt);
     VerSlot->SetPadding(FMargin(0.f, 0.f, 0.f, 10.f));
 
@@ -218,7 +218,7 @@ void UTitleScreenWidget::BuildDefaultUI()
 
     // JOUER — rouge sang, texte blanc
     AddBtn(PlayButton,
-        TEXT(">> DEPLOYER"),
+        TEXT(">> COMMENCER <<"),
         UUIHelpers::WithAlpha(Col_Red, 0.85f),
         Col_Red,
         UUIHelpers::WithAlpha(Col_Red, 0.6f),
@@ -226,7 +226,7 @@ void UTitleScreenWidget::BuildDefaultUI()
 
     // OPTIONS — panneau fonce, texte or
     AddBtn(OptionsButton,
-        TEXT("   BRIEFING"),
+        TEXT("   OPTIONS"),
         UUIHelpers::WithAlpha(Col_BgPanel, 0.9f),
         Col_BtnHov,
         Col_BtnPress,

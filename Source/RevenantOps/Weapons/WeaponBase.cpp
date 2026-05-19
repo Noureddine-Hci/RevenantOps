@@ -75,11 +75,25 @@ void AWeaponBase::ApplyWeaponDataRow()
         return;
     }
 
-    // Map DT fields to weapon properties (per D-11)
-    BaseDamage = Row->Damage;
-    FireRate = Row->FireRate;
+    // Balance
+    BaseDamage   = Row->Damage;
+    FireRate     = Row->FireRate;
     MagazineSize = Row->MaxAmmo;
-    MaxRange = Row->Range;
+    MaxRange     = Row->Range;
+
+    // Crosshair — source unique : DT_WeaponStats
+    CrosshairStyle     = Row->CrosshairStyle;
+    ScopeFOVMultiplier = Row->ScopeFOVMultiplier;
+
+    // Scope texture : résolution synchrone (asset déjà cooked/chargé en éditeur)
+    if (!Row->ScopeOverlayTexture.IsNull())
+    {
+        ScopeOverlayTexture = Row->ScopeOverlayTexture.LoadSynchronous();
+    }
+    else
+    {
+        ScopeOverlayTexture = nullptr;
+    }
 }
 
 void AWeaponBase::Tick(float DeltaTime) {
@@ -205,7 +219,13 @@ int32 AWeaponBase::GetCurrentReserveAmmo() const
 }
 
 bool AWeaponBase::CanFire() const {
-  return CurrentState == EWeaponState::Idle && CurrentAmmo > 0;
+  if (CurrentState != EWeaponState::Idle || CurrentAmmo <= 0) return false;
+  // RE5 style — tir uniquement en ADS
+  if (ARevenantOpsCharacter* Char = Cast<ARevenantOpsCharacter>(OwnerPawn))
+  {
+    if (!Char->IsAiming()) return false;
+  }
+  return true;
 }
 
 bool AWeaponBase::CanReload() const {
@@ -266,36 +286,45 @@ void AWeaponBase::FireShot() {
     }
   }
 
-  // Get aim direction from camera (center of screen)
-  FVector TraceStart;
-  FRotator AimRotation;
-  if (APlayerController *PC = Cast<APlayerController>(OwnerController)) {
-    PC->GetPlayerViewPoint(TraceStart, AimRotation);
-  } else {
-    TraceStart = MuzzleLocation;
-    AimRotation = MuzzleRotation;
+  // ── Tir standard TPS (RE5 / Gears of War) ───────────────────────────────
+  //
+  // Les DÉGÂTS viennent des yeux (GetPawnViewLocation) — toujours dans la
+  // capsule, jamais dans un mur. Ce que le crosshair vise = ce qui est touché.
+  //
+  // Le MUZZLE sert uniquement aux VFX (flash, son). Il n'est pas l'origine
+  // du rayon de dégâts → plus de parallaxe OTS, crosshair = impact garanti.
+
+  FRotator CamRot;
+  FVector  EyeLocation   = MuzzleLocation; // fallback si pas de PC
+  FVector  AimEnd        = MuzzleLocation + MuzzleRotation.Vector() * MaxRange;
+
+  if (APlayerController* PC = Cast<APlayerController>(OwnerController))
+  {
+    // CamPos = position exacte de la caméra = origine du rayon crosshair.
+    // GetPawnViewLocation() est décalé bas-gauche vs caméra OTS → ne pas utiliser.
+    FVector CamPos;
+    PC->GetPlayerViewPoint(CamPos, CamRot);
+    EyeLocation = CamPos;
+    AimEnd      = CamPos + CamRot.Vector() * MaxRange;
   }
 
-  // Play fire sound
-  if (FireSound) {
+  // VFX uniquement au muzzle — avant la trace de dégâts
+  if (FireSound)
     UGameplayStatics::PlaySoundAtLocation(this, FireSound, MuzzleLocation);
-  }
 
-  // Spawn muzzle flash VFX — seulement si le socket existe (sinon MuzzleLocation = camera = flash blanc)
-  if (MuzzleFlashVFX && WeaponMesh && WeaponMesh->DoesSocketExist(MuzzleSocketName)) {
-    UNiagaraFunctionLibrary::SpawnSystemAtLocation(
-        this, MuzzleFlashVFX, MuzzleLocation, MuzzleRotation);
-  }
+  if (MuzzleFlashVFX && WeaponMesh && WeaponMesh->DoesSocketExist(MuzzleSocketName))
+    UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, MuzzleFlashVFX, MuzzleLocation, MuzzleRotation);
 
-  // Fire pellets (1 for normal weapons, multiple for shotguns)
-  for (int32 i = 0; i < PelletsPerShot; ++i) {
-    // Apply spread
-    const float SpreadAngle = GetCurrentSpread();
-    const float SpreadRad = FMath::DegreesToRadians(SpreadAngle);
-    const FVector SpreadDirection =
-        FMath::VRandCone(AimRotation.Vector(), SpreadRad);
+  // Spread appliqué sur la direction de visée (depuis les yeux)
+  const float   SpreadAngle = GetCurrentSpread();
+  const float   SpreadRad   = FMath::DegreesToRadians(SpreadAngle);
+  const FVector AimDir      = (AimEnd - EyeLocation).GetSafeNormal();
 
-    HitscanTrace(TraceStart, SpreadDirection);
+  // Tir des projectiles — dégâts depuis les yeux, crosshair = impact
+  for (int32 i = 0; i < PelletsPerShot; ++i)
+  {
+    const FVector SpreadDir = FMath::VRandCone(AimDir, SpreadRad);
+    HitscanTrace(EyeLocation, SpreadDir);
   }
 
   // Apply recoil

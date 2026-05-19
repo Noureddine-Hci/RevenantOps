@@ -7,6 +7,7 @@
 #include "Engine/DataTable.h"
 #include "Engine/Texture2D.h"
 #include "Gameplay/AmmoTypes.h"
+#include "CrosshairTypes.h"
 #include "WeaponBase.generated.h"
 
 class USkeletalMeshComponent;
@@ -243,6 +244,22 @@ protected:
   /** Current dynamic spread */
   float CurrentSpread = 0.f;
 
+  // ========== CROSSHAIR ==========
+  // Ces valeurs sont lues depuis DT_WeaponStats via ApplyWeaponDataRow().
+  // Ne pas les modifier dans le BP — modifier la DataTable à la place.
+
+  /** Style de réticule — chargé depuis DT_WeaponStats */
+  UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Crosshair")
+  ECrosshairStyle CrosshairStyle = ECrosshairStyle::Cross;
+
+  /** Texture de scope ADS (sniper) — chargée depuis DT_WeaponStats */
+  UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Crosshair")
+  TObjectPtr<UTexture2D> ScopeOverlayTexture = nullptr;
+
+  /** Multiplicateur FOV scope — chargé depuis DT_WeaponStats */
+  UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Crosshair")
+  float ScopeFOVMultiplier = 0.4f;
+
   // ========== ADS (Aim Down Sights) ==========
 
   /** ADS FOV (zoomed in) */
@@ -324,6 +341,18 @@ protected:
   UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Weapon|Sockets")
   FTransform WeaponAttachOffset = FTransform::Identity;
 
+  /**
+   *  Socket d'holster — où l'arme est attachée quand elle n'est PAS équipée.
+   *  Ex: "HolsterBack" pour fusil, "HolsterHip" pour pistolet.
+   *  Si vide ou socket inexistant, l'arme est cachée.
+   */
+  UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Weapon|Sockets")
+  FName HolsterSocketName = NAME_None;
+
+  /** Offset position/rotation appliqué quand l'arme est dans son holster */
+  UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Weapon|Sockets")
+  FTransform HolsterOffset = FTransform::Identity;
+
   // ========== STATE ==========
 
   /** Current weapon state */
@@ -399,6 +428,18 @@ public:
   UFUNCTION(BlueprintCallable, Category = "Weapon")
   float GetCurrentSpread() const;
 
+  /** Style de réticule de cette arme */
+  UFUNCTION(BlueprintCallable, Category = "Weapon|Crosshair")
+  ECrosshairStyle GetCrosshairStyle() const { return CrosshairStyle; }
+
+  /** Texture de scope (nullptr si pas de scope) */
+  UFUNCTION(BlueprintCallable, Category = "Weapon|Crosshair")
+  UTexture2D* GetScopeOverlayTexture() const { return ScopeOverlayTexture; }
+
+  /** True si cette arme a un scope (sniper) */
+  UFUNCTION(BlueprintCallable, Category = "Weapon|Crosshair")
+  bool HasScope() const { return ScopeOverlayTexture != nullptr; }
+
   /** Gets ADS alpha (0 = hip, 1 = fully aimed) for blending */
   UFUNCTION(BlueprintCallable, Category = "Weapon")
   float GetADSAlpha() const { return ADSAlpha; }
@@ -463,6 +504,12 @@ public:
   EAmmoType GetWeaponAmmoType() const { return WeaponAmmoType; }
   EWeaponCategory GetWeaponCategory() const { return WeaponCategory; }
   FTransform GetWeaponAttachOffset() const { return WeaponAttachOffset; }
+
+  /** Socket d'holster (NAME_None si arme à cacher quand non équipée) */
+  FName GetHolsterSocketName() const { return HolsterSocketName; }
+
+  /** Offset à appliquer dans l'holster */
+  FTransform GetHolsterOffset() const { return HolsterOffset; }
   void SetMaxReserveAmmo(int32 NewMax)
   {
     MaxReserveAmmo = FMath::Max(1, NewMax);

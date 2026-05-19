@@ -8,13 +8,13 @@
 #include "Gameplay/InventoryItem.h"
 #include "Gameplay/ItemDefinition.h"
 #include "Gameplay/TalentDefinition.h"
+#include "Weapons/WeaponBase.h"
 #include "RevenantOpsCharacter.generated.h"
 
 class USpringArmComponent;
 class UCameraComponent;
 class UInputAction;
 class UAnimMontage;
-class AWeaponBase;
 class UHealthComponent;
 class AAmmoBonusPickup;
 class AHealthPickup;
@@ -262,6 +262,15 @@ protected:
             meta = (ClampMin = 50.f, ClampMax = 600.f))
   float CameraADSArmLength = 175.f;
 
+  /**
+   * Taille de la sonde de collision du spring arm.
+   * Doit être >= max(CameraHipOffset.Y, CameraHipOffset.Z) pour éviter
+   * que le SocketOffset latéral pousse la caméra dans la géométrie.
+   */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera|Offsets",
+            meta = (ClampMin = 8.f, ClampMax = 200.f))
+  float CameraProbeSize = 88.f;
+
   /** Sprint FOV */
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera",
             meta = (ClampMin = 60, ClampMax = 130))
@@ -274,16 +283,33 @@ protected:
 
   float TargetSpeed = 500.f;
 
+  /** Longueur de bras souhaitée (hip ou ADS) — utilisée par UpdateCameraCollision */
+  float DesiredArmLength = 280.f;
+
   // ========== WEAPON SYSTEM ==========
 
-  /** Weapon classes to spawn on begin play (loadout) */
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon",
-            meta = (AllowPrivateAccess = "true"))
+  /**
+   *  Armes spawnées au démarrage. Rempli par le système de loadout
+   *  (PlayerController::StartMercenairesMatch) à partir de GameInstance->PendingWeapons
+   *  + ExtraStartingWeapons. Pas la peine d'éditer dans le BP — utiliser ExtraStartingWeapons.
+   */
+  UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Debug")
   TArray<TSubclassOf<AWeaponBase>> DefaultWeaponClasses;
+
+public:
+  /**
+   *  Armes supplémentaires ajoutées en plus du loadout (Primary + Secondary).
+   *  Configurable dans BP_ThirdPersonCharacter pour donner des armes de base
+   *  (couteau, grenades, etc.) à tous les personnages.
+   */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
+  TArray<TSubclassOf<AWeaponBase>> ExtraStartingWeapons;
+
+protected:
 
   /** Socket name to attach weapons to the character mesh */
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
-  FName WeaponAttachSocket = FName("hand_r");
+  FName WeaponAttachSocket = FName("WeaponSocket");
 
   /** Currently equipped weapon */
   UPROPERTY(BlueprintReadOnly, Category = "Weapon")
@@ -303,6 +329,21 @@ protected:
   /** True when the character has at least one weapon equipped — used by ABP */
   UPROPERTY(BlueprintReadOnly, Category = "Animation")
   bool bIsArmed = false;
+
+  /**
+   * Catégorie de l'arme équipée — lue chaque tick depuis CurrentWeapon.
+   * Utilisée par l'ABP pour choisir les animations (idle/run/reload) par type.
+   * Unarmed = pas d'arme.
+   */
+  UPROPERTY(BlueprintReadOnly, Category = "Animation")
+  EWeaponCategory CurrentWeaponCategory = EWeaponCategory::Pistol;
+
+  /**
+   * Index entier pour "Blend Poses by int" dans l'ABP.
+   * 0 = Pistol  |  1 = Rifle/SMG/LMG  |  2 = Shotgun  |  3 = Sniper  |  4 = Melee
+   */
+  UPROPERTY(BlueprintReadOnly, Category = "Animation")
+  int32 WeaponAnimIndex = 0;
 
   /** Aim pitch delta (control vs actor), clamped [-90, 90] — used by AimOffset in ABP */
   UPROPERTY(BlueprintReadOnly, Category = "Animation")
@@ -402,6 +443,8 @@ protected:
   void UpdateMovementSpeed(float DeltaTime);
   void UpdateStamina(float DeltaTime);
   void UpdateCameraFOV(float DeltaTime);
+  /** Trace de la caméra — raccourcit le bras si un mur est détecté (bypass spring arm) */
+  void UpdateCameraCollision();
   /** Updates AimPitch, AimYaw, MovementDirection each tick for ABP */
   void UpdateAnimationValues();
 
@@ -481,6 +524,9 @@ protected:
 
   /** Attaches current weapon to the character mesh */
   void AttachWeaponToSocket(AWeaponBase *Weapon);
+
+  /** Attache l'arme à son socket d'holster (visible sur le perso). Cache l'arme si pas de holster défini. */
+  void HolsterWeapon(AWeaponBase* Weapon);
 
 public:
   UFUNCTION(BlueprintCallable, Category = "Input")

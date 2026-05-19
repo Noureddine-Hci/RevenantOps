@@ -65,6 +65,10 @@ void ADestructibleObject::HandleDeath(UHealthComponent* /*HealthComponent*/,
                                        const AController* InstigatedBy,
                                        AActor* /*DamageCauser*/)
 {
+    UE_LOG(LogTemp, Warning, TEXT("DestructibleObject: HandleDeath appelé, AmmoPickupClasses=%d, HealthFallback=%s"),
+        AmmoPickupClasses.Num(),
+        HealthFallbackClass ? *HealthFallbackClass->GetName() : TEXT("NULL"));
+
     if (bExplodesOnDestruction)
         ApplyExplosionDamage(const_cast<AController*>(InstigatedBy));
 
@@ -81,7 +85,7 @@ void ADestructibleObject::HandleDeath(UHealthComponent* /*HealthComponent*/,
 // ─────────────────────────────────────────────────────────────────────────────
 void ADestructibleObject::SpawnLoot()
 {
-    if (LootTable.IsEmpty()) return;
+    if (LootTable.IsEmpty() && AmmoPickupClasses.IsEmpty() && !HealthFallbackClass) return;
 
     // Collecter les types d'armes du joueur (filtre adaptatif munitions)
     TSet<EAmmoType> PlayerAmmoTypes;
@@ -111,9 +115,41 @@ void ADestructibleObject::SpawnLoot()
                                        FRotator::ZeroRotator, SP);
     };
 
-    // ── Mode Independent : chaque entree tiree separement ─────────────────
+    // ── Drop automatique selon armes du joueur ────────────────────────────
+    if (!AmmoPickupClasses.IsEmpty())
+    {
+        UE_LOG(LogTemp, Warning, TEXT("SpawnLoot: PlayerAmmoTypes=%d"), PlayerAmmoTypes.Num());
+        bool bAnyAmmoDropped = false;
+        for (EAmmoType AmmoType : PlayerAmmoTypes)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("SpawnLoot: checking AmmoType=%d"), (int32)AmmoType);
+            if (TSubclassOf<AActor>* PickupClass = AmmoPickupClasses.Find(AmmoType))
+            {
+                if (*PickupClass)
+                {
+                    FCrateLootEntry AutoEntry;
+                    AutoEntry.ActorClass = *PickupClass;
+                    SpawnEntry(AutoEntry);
+                    bAnyAmmoDropped = true;
+                    UE_LOG(LogTemp, Warning, TEXT("SpawnLoot: dropped ammo for type=%d"), (int32)AmmoType);
+                }
+            }
+        }
+        // Fallback soin si aucune munition matchée
+        if (!bAnyAmmoDropped && HealthFallbackClass)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("SpawnLoot: fallback soin"));
+            FCrateLootEntry FallbackEntry;
+            FallbackEntry.ActorClass = HealthFallbackClass;
+            SpawnEntry(FallbackEntry);
+        }
+        return;
+    }
+
+    // ── Mode Independent : chaque entree tiree separement (LootTable manuel) ─
     if (LootMode == ELootMode::Independent)
     {
+        bool bAnyAmmoDropped = false;
         for (const FCrateLootEntry& Entry : LootTable)
         {
             if (!Entry.ActorClass) continue;
@@ -121,6 +157,14 @@ void ADestructibleObject::SpawnLoot()
                 !PlayerAmmoTypes.Contains(Entry.AmmoTypeFilter)) continue;
             if (!Entry.bGuaranteed && FMath::FRand() > Entry.DropChance) continue;
             SpawnEntry(Entry);
+            if (Entry.AmmoTypeFilter != EAmmoType::None)
+                bAnyAmmoDropped = true;
+        }
+        if (!bAnyAmmoDropped && HealthFallbackClass)
+        {
+            FCrateLootEntry FallbackEntry;
+            FallbackEntry.ActorClass = HealthFallbackClass;
+            SpawnEntry(FallbackEntry);
         }
         return;
     }

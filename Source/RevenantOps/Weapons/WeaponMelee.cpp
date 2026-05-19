@@ -4,47 +4,12 @@
 #include "Engine/DamageEvents.h"
 #include "GameFramework/Pawn.h"
 
-AWeaponMelee::AWeaponMelee() {
-  // Identity
-  WeaponName = FText::FromString(TEXT("Machette"));
-  WeaponCategory = EWeaponCategory::Melee;
-
-  // Firing
-  FireMode = EWeaponFireMode::SemiAuto;
-  FireRate = 120.f; // 2 swings per second
-  PelletsPerShot = 1;
-  MaxRange = 100.f;
-
-  // Damage — high risk/reward
-  BaseDamage = 35.f;
-  HeadshotMultiplier = 1.5f;
-  DamageFalloffStart = 100.f;
-  DamageFalloffEnd = 100.f;
-  MinDamageMultiplier = 1.0f; // No falloff for melee
-
-  // Ammo — infinite, never runs out
-  MagazineSize = 999;
-  CurrentAmmo = 999;
-  MaxReserveAmmo = 0;
-  CurrentReserveAmmo = 0;
-  ReloadTime = 0.f;
-
-  // Recoil — none for melee
-  VerticalRecoil = 0.f;
-  HorizontalRecoilRange = 0.f;
-
-  // Spread — none for melee
-  BaseSpread = 0.f;
-  MaxSpread = 0.f;
-  SpreadPerShot = 0.f;
-
-  // ADS — no zoom, full speed
-  ADSFOV = 90.f;
-  ADSMoveSpeedMultiplier = 1.0f;
-
-  // Melee-specific
-  MeleeRange = 100.f;
-  MeleeRadius = 50.f;
+// Stats globales (dégâts, fire rate, etc.) viennent de DT_WeaponStats.
+// MeleeRange/MeleeRadius restent spécifiques à cette classe (paramètres BP).
+AWeaponMelee::AWeaponMelee()
+{
+    WeaponName     = FText::FromString(TEXT("Machette"));
+    WeaponCategory = EWeaponCategory::Melee;
 }
 
 void AWeaponMelee::FireShot() {

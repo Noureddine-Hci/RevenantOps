@@ -204,15 +204,20 @@ void URevenantOpsHUD::BuildDefaultUI()
   if (KillNotificationText) KillNotificationText->SetColorAndOpacity(FSlateColor(C_Gold));
 
   // ── Images ───────────────────────────────────────────────────────────────
-  // Ancien CrosshairImage masqué — remplacé par les 4 traits
-  MakeImg(CrosshairImage,       FName("CrosshairImage"),       FVector2D(0.f, 0.f), FVector2D(1.f, 1.f), FAnchors(0.5f, 0.5f));
-  if (CrosshairImage) CrosshairImage->SetVisibility(ESlateVisibility::Collapsed);
 
   // 4 traits du viseur (positions initiales au repos, gap=4)
   MakeImg(CrosshairTop,    FName("CrosshairTop"),    FVector2D(-1.f, -(4.f + 10.f)), FVector2D(2.f, 10.f), FAnchors(0.5f, 0.5f));
   MakeImg(CrosshairBottom, FName("CrosshairBottom"), FVector2D(-1.f,   4.f),          FVector2D(2.f, 10.f), FAnchors(0.5f, 0.5f));
   MakeImg(CrosshairLeft,   FName("CrosshairLeft"),   FVector2D(-(4.f + 10.f), -1.f), FVector2D(10.f, 2.f), FAnchors(0.5f, 0.5f));
   MakeImg(CrosshairRight,  FName("CrosshairRight"),  FVector2D(4.f,          -1.f),  FVector2D(10.f, 2.f), FAnchors(0.5f, 0.5f));
+
+  // Point central pour les armes en mode Dot (sniper)
+  MakeImg(CrosshairDot, FName("CrosshairDot"), FVector2D(-2.f, -2.f), FVector2D(4.f, 4.f), FAnchors(0.5f, 0.5f));
+  if (CrosshairDot) CrosshairDot->SetVisibility(ESlateVisibility::Collapsed);
+
+  // Scope overlay plein écran (sniper ADS)
+  MakeImg(ScopeOverlayImage, FName("ScopeOverlayImage"), FVector2D(0.f, 0.f), FVector2D(0.f, 0.f), FAnchors(0.f, 0.f, 1.f, 1.f));
+  if (ScopeOverlayImage) ScopeOverlayImage->SetVisibility(ESlateVisibility::Collapsed);
 
   const FLinearColor LineColor(1.f, 1.f, 1.f, 0.9f);
   for (UImage* Line : {CrosshairTop, CrosshairBottom, CrosshairLeft, CrosshairRight}) {
@@ -572,6 +577,8 @@ void URevenantOpsHUD::NativeTick(const FGeometry &MyGeometry,
   UpdateReloadBar();
   UpdateDamageDirection(InDeltaTime);
   UpdateKillNotification(InDeltaTime);
+  UpdateMatchStartMessage(InDeltaTime);
+  UpdateDamageNumbers(InDeltaTime);
 }
 
 // =============================================================================
@@ -663,8 +670,46 @@ void URevenantOpsHUD::UpdateCrosshair() {
   if (!CrosshairTop || !CrosshairBottom || !CrosshairLeft || !CrosshairRight) return;
 
   AWeaponBase* Weapon = CachedCharacter->GetCurrentWeapon();
+  const bool bAiming = CachedCharacter->IsAiming();
 
-  // Calcul du gap cible selon la dispersion
+  // Style de réticule selon l'arme équipée
+  const ECrosshairStyle Style = Weapon ? Weapon->GetCrosshairStyle() : ECrosshairStyle::Cross;
+
+  // ── Scope overlay (sniper) ────────────────────────────────────────────
+  if (ScopeOverlayImage)
+  {
+    const bool bShowScope = bAiming && Weapon && Weapon->HasScope();
+    if (bShowScope)
+    {
+      if (UTexture2D* ScopeTex = Weapon->GetScopeOverlayTexture())
+        ScopeOverlayImage->SetBrushFromTexture(ScopeTex, false);
+      ScopeOverlayImage->SetVisibility(ESlateVisibility::HitTestInvisible);
+    }
+    else
+    {
+      ScopeOverlayImage->SetVisibility(ESlateVisibility::Collapsed);
+    }
+  }
+
+  // ── Visibilité globale ────────────────────────────────────────────────
+  // Pas de réticule si pas en ADS, ou si arme = mêlée, ou si scope actif (l'overlay le remplace)
+  const bool bShowCrosshair = bAiming && Style != ECrosshairStyle::None
+                              && !(Weapon && Weapon->HasScope());
+
+  // Pour le mode Dot : on cache les 4 traits, on affiche juste le point
+  const bool bUseDot = bShowCrosshair && Style == ECrosshairStyle::Dot;
+  const bool bUseCross = bShowCrosshair && (Style == ECrosshairStyle::Cross || Style == ECrosshairStyle::WideCross);
+
+  const ESlateVisibility CrossVis = bUseCross ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed;
+  for (UImage* Line : {CrosshairTop, CrosshairBottom, CrosshairLeft, CrosshairRight})
+    if (Line) Line->SetVisibility(CrossVis);
+
+  if (CrosshairDot)
+    CrosshairDot->SetVisibility(bUseDot ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+
+  if (!bUseCross) return; // dot ou caché : pas besoin de positionner les traits
+
+  // ── Calcul du gap selon la dispersion (en direct) ─────────────────────
   float TargetGap = CrosshairGapMin;
   if (Weapon) {
     const float SpreadAlpha = FMath::GetMappedRangeValueClamped(
@@ -672,10 +717,9 @@ void URevenantOpsHUD::UpdateCrosshair() {
     TargetGap = FMath::Lerp(CrosshairGapMin, CrosshairGapMax, SpreadAlpha);
   }
 
-  // Réduire davantage en ADS
-  if (CachedCharacter->IsAiming()) {
-    TargetGap = CrosshairGapMin * 0.5f;
-  }
+  // Croix large pour shotgun
+  const float StyleMultiplier = (Style == ECrosshairStyle::WideCross) ? 2.0f : 1.0f;
+  TargetGap *= StyleMultiplier;
 
   // Interpolation fluide (style CS : réactif mais pas instantané)
   const float DeltaTime = GetWorld()->GetDeltaSeconds();
@@ -701,13 +745,13 @@ void URevenantOpsHUD::UpdateCrosshair() {
   MoveSlot(CrosshairLeft,   FVector2D(-(G + L * 0.5f), 0.f), FVector2D(L, T));
   MoveSlot(CrosshairRight,  FVector2D(  G + L * 0.5f,  0.f), FVector2D(L, T));
 
-  // Opacité : légèrement réduite en ADS (le viseur disparaît presque)
-  const float Alpha = CachedCharacter->IsAiming() ? 0.4f : 0.9f;
-  const FLinearColor Color(1.f, 1.f, 1.f, Alpha);
+  // Opacité du réticule en ADS
+  const FLinearColor Color(1.f, 1.f, 1.f, 0.85f);
   CrosshairTop->SetColorAndOpacity(Color);
   CrosshairBottom->SetColorAndOpacity(Color);
   CrosshairLeft->SetColorAndOpacity(Color);
   CrosshairRight->SetColorAndOpacity(Color);
+  if (CrosshairDot) CrosshairDot->SetColorAndOpacity(Color);
 }
 
 // =============================================================================
@@ -1007,4 +1051,143 @@ void URevenantOpsHUD::HideFinisherPrompt()
 {
   if (FinisherPromptBG)
     FinisherPromptBG->SetVisibility(ESlateVisibility::Collapsed);
+}
+
+// =============================================================================
+// MATCH START MESSAGE
+// =============================================================================
+
+void URevenantOpsHUD::ShowMatchStartMessage(const FText& Message)
+{
+  if (!WidgetTree) return;
+
+  // Créer le TextBlock si pas encore fait
+  if (!MatchStartText)
+  {
+    MatchStartText = WidgetTree->ConstructWidget<UTextBlock>(
+        UTextBlock::StaticClass(), FName("MatchStartText"));
+    if (!MatchStartText) return;
+
+    // Style : gros, centré, blanc cassé
+    FSlateFontInfo Font = FCoreStyle::GetDefaultFontStyle("Bold", 52);
+    MatchStartText->SetFont(Font);
+    MatchStartText->SetColorAndOpacity(FSlateColor(FLinearColor(0.95f, 0.93f, 0.88f, 1.f)));
+    MatchStartText->SetJustification(ETextJustify::Center);
+    MatchStartText->SetShadowOffset(FVector2D(2.f, 2.f));
+    MatchStartText->SetShadowColorAndOpacity(FLinearColor(0.f, 0.f, 0.f, 0.8f));
+
+    // Attacher au canvas racine
+    if (UCanvasPanel* Root = Cast<UCanvasPanel>(WidgetTree->RootWidget))
+    {
+      Root->AddChildToCanvas(MatchStartText);
+      // Ancré au centre, décalé légèrement vers le haut
+      if (UCanvasPanelSlot* CanvasSlot = Cast<UCanvasPanelSlot>(MatchStartText->Slot.Get()))
+      {
+        CanvasSlot->SetAnchors(FAnchors(0.5f, 0.4f, 0.5f, 0.4f));
+        CanvasSlot->SetAlignment(FVector2D(0.5f, 0.5f));
+        CanvasSlot->SetAutoSize(true);
+      }
+    }
+  }
+
+  MatchStartText->SetText(Message);
+  MatchStartText->SetVisibility(ESlateVisibility::HitTestInvisible);
+  MatchStartMessageTimer = MatchStartMessageDuration;
+}
+
+void URevenantOpsHUD::UpdateMatchStartMessage(float DeltaTime)
+{
+  if (!MatchStartText || MatchStartMessageTimer <= 0.f) return;
+
+  MatchStartMessageTimer -= DeltaTime;
+
+  // Fade out dans la dernière seconde
+  const float FadeDuration = 1.f;
+  if (MatchStartMessageTimer < FadeDuration)
+  {
+    const float Alpha = FMath::Clamp(MatchStartMessageTimer / FadeDuration, 0.f, 1.f);
+    MatchStartText->SetColorAndOpacity(FSlateColor(FLinearColor(0.95f, 0.93f, 0.88f, Alpha)));
+  }
+
+  if (MatchStartMessageTimer <= 0.f)
+  {
+    MatchStartText->SetVisibility(ESlateVisibility::Collapsed);
+    MatchStartMessageTimer = 0.f;
+  }
+}
+
+// =============================================================================
+// DAMAGE NUMBERS
+// =============================================================================
+
+void URevenantOpsHUD::AddDamageNumber(const FVector& WorldPos, float Damage, bool bCritical)
+{
+  FDamageNumberEntry Entry;
+  Entry.WorldPos      = WorldPos;
+  Entry.Damage        = Damage;
+  Entry.TimeRemaining = DamageNumberDuration;
+  Entry.bCritical     = bCritical;
+  ActiveDamageNumbers.Add(Entry);
+}
+
+void URevenantOpsHUD::UpdateDamageNumbers(float DeltaTime)
+{
+  for (FDamageNumberEntry& Entry : ActiveDamageNumbers)
+    Entry.TimeRemaining -= DeltaTime;
+
+  ActiveDamageNumbers.RemoveAll([](const FDamageNumberEntry& E) {
+    return E.TimeRemaining <= 0.f;
+  });
+}
+
+int32 URevenantOpsHUD::NativePaint(const FPaintArgs& Args, const FGeometry& AllottedGeometry,
+                                    const FSlateRect& MyCullingRect,
+                                    FSlateWindowElementList& OutDrawElements,
+                                    int32 LayerId, const FWidgetStyle& InWidgetStyle,
+                                    bool bParentEnabled) const
+{
+  const int32 BaseLayer = Super::NativePaint(Args, AllottedGeometry, MyCullingRect,
+                                              OutDrawElements, LayerId, InWidgetStyle, bParentEnabled);
+
+  if (ActiveDamageNumbers.IsEmpty()) return BaseLayer;
+
+  APlayerController* PC = GetOwningPlayer();
+  if (!PC) return BaseLayer;
+
+  FPaintContext Context(AllottedGeometry, MyCullingRect, OutDrawElements, BaseLayer + 1, InWidgetStyle, bParentEnabled);
+
+  for (const FDamageNumberEntry& Entry : ActiveDamageNumbers)
+  {
+    FVector2D ScreenPos;
+    if (!UGameplayStatics::ProjectWorldToScreen(PC, Entry.WorldPos, ScreenPos, false))
+      continue;
+
+    const float Alpha      = FMath::Clamp(Entry.TimeRemaining / DamageNumberDuration, 0.f, 1.f);
+    const float FloatUp    = (1.f - Alpha) * 80.f;  // monte de 80px pendant la durée
+    ScreenPos.Y -= FloatUp;
+
+    // Critique = or + grand, normal = blanc
+    const FLinearColor Color = Entry.bCritical
+      ? FLinearColor(1.f, 0.85f, 0.1f, Alpha)   // or
+      : FLinearColor(1.f, 1.f,   1.f,  Alpha);   // blanc
+
+    const FString        Text = FString::Printf(TEXT("%.0f"), Entry.Damage);
+    const int32          Size = Entry.bCritical ? 36 : 20;
+    const FSlateFontInfo Font = FCoreStyle::GetDefaultFontStyle("Bold", Size);
+    const FVector2D      Extent(Size * Text.Len() * 0.65f, Size * 1.2f); // taille approx
+
+    // Ombre portée
+    FSlateDrawElement::MakeText(OutDrawElements, BaseLayer + 1,
+      AllottedGeometry.ToPaintGeometry(FVector2f(Extent), FSlateLayoutTransform(FVector2f(ScreenPos + FVector2D(2.f, 2.f)))),
+      FText::FromString(Text), Font, ESlateDrawEffect::None,
+      FLinearColor(0.f, 0.f, 0.f, Alpha * 0.7f));
+
+    // Texte principal
+    FSlateDrawElement::MakeText(OutDrawElements, BaseLayer + 2,
+      AllottedGeometry.ToPaintGeometry(FVector2f(Extent), FSlateLayoutTransform(FVector2f(ScreenPos))),
+      FText::FromString(Text), Font, ESlateDrawEffect::None,
+      Color);
+  }
+
+  return BaseLayer + 2;
 }

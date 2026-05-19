@@ -4,6 +4,8 @@
 #include "Components/AudioComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "EnemyBase.h"
+#include "RevenantOpsPlayerController.h"
+#include "UI/RevenantOpsHUD.h"
 
 AMercenairesGameState::AMercenairesGameState() {
   PrimaryActorTick.bCanEverTick = true;
@@ -80,6 +82,18 @@ void AMercenairesGameState::StartMatch() {
   OnTimerChanged.Broadcast(TimeRemaining);
   OnScoreChanged.Broadcast(0, 0);
   OnComboChanged.Broadcast(1, 0.f);
+
+  // Afficher le message "C'est Parti !" sur le HUD du joueur local
+  if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
+  {
+    if (ARevenantOpsPlayerController* ROPC = Cast<ARevenantOpsPlayerController>(PC))
+    {
+      if (URevenantOpsHUD* HUD = ROPC->GetHUDWidget())
+      {
+        HUD->ShowMatchStartMessage(NSLOCTEXT("Mercenaires", "MatchStart", "C'est Parti !"));
+      }
+    }
+  }
 }
 
 void AMercenairesGameState::EndMatch() {

@@ -7,276 +7,221 @@
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
 
-AEnemyWaveSpawner::AEnemyWaveSpawner() {
-  PrimaryActorTick.bCanEverTick = false;
-
-  // Create trigger volume
-  TriggerVolume =
-      CreateDefaultSubobject<UBoxComponent>(TEXT("TriggerVolume"));
-  RootComponent = TriggerVolume;
-  TriggerVolume->SetBoxExtent(FVector(500.f, 500.f, 200.f));
-  TriggerVolume->SetCollisionProfileName(TEXT("Trigger"));
-}
-
-void AEnemyWaveSpawner::BeginPlay() {
-  Super::BeginPlay();
-
-  if (bTriggerOnOverlap) {
-    TriggerVolume->OnComponentBeginOverlap.AddDynamic(
-        this, &AEnemyWaveSpawner::OnTriggerOverlap);
-  }
-
-  // If no waves were configured in the editor, build default waves at runtime.
-  if (Waves.IsEmpty()) {
-    SetupDefaultWaves();
-  }
-}
-
-void AEnemyWaveSpawner::SetupDefaultWaves()
+AEnemyWaveSpawner::AEnemyWaveSpawner()
 {
-  static const TCHAR* ZombiePaths[] = {
-    TEXT("/Game/Mercenaires/Zombies/BP_ZombieSlow.BP_ZombieSlow_C"),
-    TEXT("/Game/Mercenaires/Zombies/BP_ZombieRunner.BP_ZombieRunner_C"),
-    TEXT("/Game/Mercenaires/Zombies/BP_ZombieTank.BP_ZombieTank_C"),
-    TEXT("/Game/Mercenaires/Zombies/BP_ZombieSpitter.BP_ZombieSpitter_C"),
-  };
+    PrimaryActorTick.bCanEverTick = false;
 
-  TSubclassOf<AEnemyBase> SlowClass, RunnerClass, TankClass;
-  for (const TCHAR* Path : ZombiePaths)
-  {
-    if (UClass* C = LoadClass<AEnemyBase>(nullptr, Path))
+    TriggerVolume = CreateDefaultSubobject<UBoxComponent>(TEXT("TriggerVolume"));
+    RootComponent = TriggerVolume;
+    TriggerVolume->SetBoxExtent(FVector(500.f, 500.f, 200.f));
+    TriggerVolume->SetCollisionProfileName(TEXT("Trigger"));
+}
+
+void AEnemyWaveSpawner::BeginPlay()
+{
+    Super::BeginPlay();
+
+    if (bTriggerOnOverlap)
     {
-      FString PathStr(Path);
-      if (!SlowClass   && PathStr.Contains(TEXT("Slow")))   SlowClass   = C;
-      if (!RunnerClass && PathStr.Contains(TEXT("Runner"))) RunnerClass = C;
-      if (!TankClass   && PathStr.Contains(TEXT("Tank")))   TankClass   = C;
-      if (!SlowClass   && PathStr.Contains(TEXT("Spitter"))) SlowClass  = C;
+        TriggerVolume->OnComponentBeginOverlap.AddDynamic(
+            this, &AEnemyWaveSpawner::OnTriggerOverlap);
     }
-  }
 
-  // Fallback: use whatever loaded first if specific types not found
-  for (const TCHAR* Path : ZombiePaths)
-  {
-    if (!SlowClass) SlowClass = LoadClass<AEnemyBase>(nullptr, Path);
-    if (SlowClass) break;
-  }
+    if (EnemyPool.IsEmpty())
+        SetupDefaultPool();
 
-  if (!SlowClass)
-  {
-    UE_LOG(LogTemp, Warning, TEXT("EnemyWaveSpawner: no zombie class found, cannot build default waves."));
-    return;
-  }
-
-  if (!RunnerClass) RunnerClass = SlowClass;
-  if (!TankClass)   TankClass   = SlowClass;
-
-  // Wave 1: 5 slow zombies
-  {
-    FEnemyWave W;
-    W.DelayAfterWave = 3.f;
-    FWaveEnemyEntry E; E.EnemyClass = SlowClass; E.Count = 5; E.SpawnDelay = 0.f;
-    W.Enemies.Add(E);
-    Waves.Add(W);
-  }
-  // Wave 2: 4 slow + 3 runners (runners delayed 5s)
-  {
-    FEnemyWave W;
-    W.DelayAfterWave = 3.f;
-    FWaveEnemyEntry E1; E1.EnemyClass = SlowClass;   E1.Count = 4; E1.SpawnDelay = 0.f;
-    FWaveEnemyEntry E2; E2.EnemyClass = RunnerClass; E2.Count = 3; E2.SpawnDelay = 5.f;
-    W.Enemies.Add(E1); W.Enemies.Add(E2);
-    Waves.Add(W);
-  }
-  // Wave 3: 4 runners + 2 tanks (tanks delayed 8s)
-  {
-    FEnemyWave W;
-    W.DelayAfterWave = 5.f;
-    FWaveEnemyEntry E1; E1.EnemyClass = RunnerClass; E1.Count = 4; E1.SpawnDelay = 0.f;
-    FWaveEnemyEntry E2; E2.EnemyClass = TankClass;   E2.Count = 2; E2.SpawnDelay = 8.f;
-    W.Enemies.Add(E1); W.Enemies.Add(E2);
-    Waves.Add(W);
-  }
-
-  UE_LOG(LogTemp, Log, TEXT("EnemyWaveSpawner: built %d default waves (Slow/Runner/Tank)."), Waves.Num());
+    if (bAutoStart)
+        StartEncounter();
 }
 
 // =============================================================================
-// ENCOUNTER MANAGEMENT
+//  POOL PAR DÉFAUT
 // =============================================================================
 
-void AEnemyWaveSpawner::StartEncounter() {
-  UE_LOG(LogTemp, Warning, TEXT("[WaveSpawner] StartEncounter called. bIsActive=%d, Waves=%d"), bIsActive, Waves.Num());
-  if (bIsActive) {
-    UE_LOG(LogTemp, Warning, TEXT("[WaveSpawner] Already active, ignoring."));
-    return;
-  }
+void AEnemyWaveSpawner::SetupDefaultPool()
+{
+    static const struct { const TCHAR* Path; float Weight; int32 UnlockAt; } Defaults[] =
+    {
+        { TEXT("/Game/Mercenaires/Zombies/BP_ZombieSlow.BP_ZombieSlow_C"),       3.f,  0  },
+        { TEXT("/Game/Mercenaires/Zombies/BP_ZombieRunner.BP_ZombieRunner_C"),   2.f,  20 },
+        { TEXT("/Game/Mercenaires/Zombies/BP_ZombieTank.BP_ZombieTank_C"),       1.f,  50 },
+        { TEXT("/Game/Mercenaires/Zombies/BP_ZombieSpitter.BP_ZombieSpitter_C"), 1.5f, 30 },
+    };
 
-  bIsActive = true;
-  CurrentWaveIndex = -1;
-  TotalKilled = 0;
+    for (const auto& D : Defaults)
+    {
+        if (UClass* C = LoadClass<AEnemyBase>(nullptr, D.Path))
+        {
+            FEnemyPoolEntry Entry;
+            Entry.EnemyClass   = C;
+            Entry.Weight       = D.Weight;
+            Entry.UnlockAtKills = D.UnlockAt;
+            EnemyPool.Add(Entry);
+        }
+    }
 
-  // Clear any leftover timers from previous encounter
-  for (FTimerHandle &Handle : SpawnTimers) {
-    GetWorld()->GetTimerManager().ClearTimer(Handle);
-  }
-  SpawnTimers.Empty();
-  GetWorld()->GetTimerManager().ClearTimer(NextWaveTimer);
-  AliveEnemies.Empty();
-
-  StartNextWave();
+    UE_LOG(LogTemp, Log, TEXT("[WaveSpawner] Default pool built: %d types"), EnemyPool.Num());
 }
 
-void AEnemyWaveSpawner::StartNextWave() {
-  ++CurrentWaveIndex;
+// =============================================================================
+//  ENCOUNTER
+// =============================================================================
 
-  // Check if all waves are done
-  if (!bInfiniteMode && CurrentWaveIndex >= Waves.Num()) {
+void AEnemyWaveSpawner::StartEncounter()
+{
+    if (bIsActive) return;
+
+    bIsActive  = true;
+    TotalKilled = 0;
+    AliveEnemies.Empty();
+
+    // Remplir jusqu'au cap dès le départ
+    for (int32 i = AliveEnemies.Num(); i < MaxAliveEnemies; ++i)
+        SpawnOneEnemy();
+
+    UE_LOG(LogTemp, Log, TEXT("[WaveSpawner] Encounter started — cap=%d, maxAlive=%d"), KillCap, MaxAliveEnemies);
+}
+
+void AEnemyWaveSpawner::StopEncounter()
+{
     bIsActive = false;
-    OnAllWavesCompleted.Broadcast();
-    BP_OnAllWavesCompleted();
-    return;
-  }
-
-  // In infinite mode, loop back
-  const int32 WaveIdx =
-      bInfiniteMode ? CurrentWaveIndex % Waves.Num() : CurrentWaveIndex;
-  const FEnemyWave &CurrentWave = Waves[WaveIdx];
-
-  // Reset per-wave kill counters
-  WaveEnemyKilled = 0;
-  WaveEnemyTotal = 0;
-  for (const FWaveEnemyEntry& E : CurrentWave.Enemies)
-    WaveEnemyTotal += E.Count;
-
-  // Broadcast wave start
-  OnWaveStarted.Broadcast(CurrentWaveIndex + 1, Waves.Num());
-  BP_OnWaveStarted(CurrentWaveIndex + 1);
-
-  // Spawn each enemy group (with optional delay)
-  for (const FWaveEnemyEntry &Entry : CurrentWave.Enemies) {
-    if (Entry.SpawnDelay > 0.f) {
-      FTimerHandle TimerHandle;
-      FWaveEnemyEntry EntryCopy = Entry;
-      GetWorld()->GetTimerManager().SetTimer(
-          TimerHandle,
-          [this, EntryCopy]() { SpawnWaveEntry(EntryCopy); },
-          Entry.SpawnDelay, false);
-      SpawnTimers.Add(TimerHandle);
-    } else {
-      SpawnWaveEntry(Entry);
-    }
-  }
-}
-
-void AEnemyWaveSpawner::SpawnWaveEntry(const FWaveEnemyEntry &Entry) {
-  if (!Entry.EnemyClass) {
-    UE_LOG(LogTemp, Error, TEXT("[WaveSpawner] SpawnWaveEntry: EnemyClass is NULL!"));
-    return;
-  }
-
-  UE_LOG(LogTemp, Warning, TEXT("[WaveSpawner] SpawnWaveEntry: class=%s count=%d alive=%d/%d"),
-    *Entry.EnemyClass->GetName(), Entry.Count, AliveEnemies.Num(), MaxAliveEnemies);
-
-  for (int32 i = 0; i < Entry.Count; ++i) {
-    // Respect max alive limit
-    if (AliveEnemies.Num() >= MaxAliveEnemies) {
-      break;
-    }
-
-    const FTransform SpawnTransform = GetRandomSpawnTransform();
-    const FVector SL = SpawnTransform.GetLocation();
-    UE_LOG(LogTemp, Warning, TEXT("[WaveSpawner] Spawning at (%.0f,%.0f,%.0f)"), SL.X, SL.Y, SL.Z);
-
-    FActorSpawnParameters SpawnParams;
-    SpawnParams.SpawnCollisionHandlingOverride =
-        ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
-
-    AEnemyBase *NewEnemy = GetWorld()->SpawnActor<AEnemyBase>(
-        Entry.EnemyClass, SpawnTransform, SpawnParams);
-
-    if (NewEnemy) {
-      UE_LOG(LogTemp, Warning, TEXT("[WaveSpawner] Spawned OK: %s"), *NewEnemy->GetName());
-      AliveEnemies.Add(NewEnemy);
-
-      // Subscribe to death event
-      NewEnemy->OnEnemyDied.AddDynamic(this,
-                                        &AEnemyWaveSpawner::OnEnemyDied);
-
-      // Immediately alert spawned enemies to the player
-      if (APawn *Player = UGameplayStatics::GetPlayerPawn(this, 0)) {
-        NewEnemy->AlertToLocation(Player->GetActorLocation());
-      }
-    }
-  }
-}
-
-FTransform AEnemyWaveSpawner::GetRandomSpawnTransform() const {
-  // Try configured SpawnPoints first — but only if they're within 2000u of the player
-  APawn *Player = UGameplayStatics::GetPlayerPawn(this, 0);
-  const FVector PlayerLoc = Player ? Player->GetActorLocation() : GetActorLocation();
-
-  if (SpawnPoints.Num() > 0) {
-    TArray<int32> ValidIndices;
-    for (int32 i = 0; i < SpawnPoints.Num(); ++i) {
-      if (SpawnPoints[i]) {
-        ValidIndices.Add(i);
-      }
-    }
-
-    if (ValidIndices.Num() > 0) {
-      const int32 Pick = ValidIndices[FMath::RandRange(0, ValidIndices.Num() - 1)];
-      return SpawnPoints[Pick]->GetActorTransform();
-    }
-  }
-
-  // Spawn directly in front/sides of the player at 300-400u — guaranteed visible
-  if (Player)
-  {
-    const FVector Fwd   = Player->GetActorForwardVector();
-    const FVector Right = Player->GetActorRightVector();
-    const float   Fwd2D   = FMath::FRandRange(250.f, 400.f);
-    const float   Side2D  = FMath::FRandRange(-200.f, 200.f);
-    const FVector SpawnLoc = PlayerLoc + Fwd * Fwd2D + Right * Side2D;
-    return FTransform(FRotator::ZeroRotator, FVector(SpawnLoc.X, SpawnLoc.Y, PlayerLoc.Z));
-  }
-
-  // Last resort: directly at spawner location
-  return FTransform(FRotator::ZeroRotator, GetActorLocation());
+    GetWorld()->GetTimerManager().ClearTimer(SpawnLoopTimer);
 }
 
 // =============================================================================
-// EVENTS
+//  SPAWN
 // =============================================================================
 
-void AEnemyWaveSpawner::OnEnemyDied(AEnemyBase *Enemy,
-                                      AController *KilledBy) {
-  AliveEnemies.Remove(Enemy);
-  ++TotalKilled;
-  ++WaveEnemyKilled;
+void AEnemyWaveSpawner::SpawnOneEnemy()
+{
+    if (!bIsActive) return;
+    if (AliveEnemies.Num() >= MaxAliveEnemies) return;
 
-  // Wave is cleared only when ALL enemies of the wave are dead
-  if (WaveEnemyKilled >= WaveEnemyTotal && bIsActive) {
-    const int32 WaveIdx =
-        bInfiniteMode ? CurrentWaveIndex % Waves.Num() : CurrentWaveIndex;
+    TSubclassOf<AEnemyBase> EnemyClass = PickEnemyClass();
+    if (!EnemyClass) return;
 
-    if (Waves.IsValidIndex(WaveIdx)) {
-      const float Delay = Waves[WaveIdx].DelayAfterWave;
-      GetWorld()->GetTimerManager().SetTimer(
-          NextWaveTimer, this, &AEnemyWaveSpawner::StartNextWave, Delay,
-          false);
+    FActorSpawnParameters SP;
+    SP.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+    AEnemyBase* NewEnemy = GetWorld()->SpawnActor<AEnemyBase>(
+        EnemyClass, GetRandomSpawnTransform(), SP);
+
+    if (NewEnemy)
+    {
+        AliveEnemies.Add(NewEnemy);
+        NewEnemy->OnEnemyDied.AddDynamic(this, &AEnemyWaveSpawner::OnEnemyDied);
+
+        if (APawn* Player = UGameplayStatics::GetPlayerPawn(this, 0))
+            NewEnemy->AlertToLocation(Player->GetActorLocation());
     }
-  }
+}
+
+TSubclassOf<AEnemyBase> AEnemyWaveSpawner::PickEnemyClass() const
+{
+    // Filtrer les entrées éligibles selon le nombre de kills
+    float TotalWeight = 0.f;
+    for (const FEnemyPoolEntry& Entry : EnemyPool)
+    {
+        if (!Entry.EnemyClass) continue;
+        if (TotalKilled < Entry.UnlockAtKills) continue;
+        TotalWeight += FMath::Max(Entry.Weight, 0.01f);
+    }
+
+    if (TotalWeight <= 0.f) return nullptr;
+
+    float Roll  = FMath::FRand() * TotalWeight;
+    float Cumul = 0.f;
+
+    for (const FEnemyPoolEntry& Entry : EnemyPool)
+    {
+        if (!Entry.EnemyClass) continue;
+        if (TotalKilled < Entry.UnlockAtKills) continue;
+        Cumul += FMath::Max(Entry.Weight, 0.01f);
+        if (Roll <= Cumul)
+            return Entry.EnemyClass;
+    }
+
+    return EnemyPool.Last().EnemyClass;
+}
+
+float AEnemyWaveSpawner::GetCurrentSpawnDelay() const
+{
+    // Interpolation linéaire : SpawnDelayInitial → SpawnDelayMinimum sur KillCap kills
+    const float Alpha = FMath::Clamp((float)TotalKilled / (float)KillCap, 0.f, 1.f);
+    return FMath::Lerp(SpawnDelayInitial, SpawnDelayMinimum, Alpha);
+}
+
+FTransform AEnemyWaveSpawner::GetRandomSpawnTransform() const
+{
+    APawn* Player = UGameplayStatics::GetPlayerPawn(this, 0);
+    const FVector PlayerLoc = Player ? Player->GetActorLocation() : GetActorLocation();
+
+    if (SpawnPoints.Num() > 0)
+    {
+        TArray<int32> Valid;
+        for (int32 i = 0; i < SpawnPoints.Num(); ++i)
+            if (SpawnPoints[i]) Valid.Add(i);
+
+        if (Valid.Num() > 0)
+        {
+            const int32 Pick = Valid[FMath::RandRange(0, Valid.Num() - 1)];
+            return SpawnPoints[Pick]->GetActorTransform();
+        }
+    }
+
+    // Fallback : spawn autour du joueur
+    if (Player)
+    {
+        const FVector Fwd   = Player->GetActorForwardVector();
+        const FVector Right = Player->GetActorRightVector();
+        const FVector Loc   = PlayerLoc
+            + Fwd   * FMath::FRandRange(300.f, 500.f)
+            + Right * FMath::FRandRange(-300.f, 300.f);
+        return FTransform(FRotator::ZeroRotator, FVector(Loc.X, Loc.Y, PlayerLoc.Z));
+    }
+
+    return FTransform(FRotator::ZeroRotator, GetActorLocation());
+}
+
+// =============================================================================
+//  EVENTS
+// =============================================================================
+
+void AEnemyWaveSpawner::OnEnemyDied(AEnemyBase* Enemy, AController* /*KilledBy*/)
+{
+    AliveEnemies.Remove(Enemy);
+    ++TotalKilled;
+
+    OnKillCountChanged.Broadcast(TotalKilled);
+
+    // Cap atteint → fin du match
+    if (TotalKilled >= KillCap)
+    {
+        StopEncounter();
+        OnKillCapReached.Broadcast();
+        return;
+    }
+
+    // Spawner un remplaçant avec un léger délai (difficulté croissante)
+    if (bIsActive)
+    {
+        const float Delay = GetCurrentSpawnDelay();
+        FTimerHandle TmpTimer;
+        GetWorld()->GetTimerManager().SetTimer(
+            TmpTimer,
+            [this]() { SpawnOneEnemy(); },
+            Delay, false);
+    }
 }
 
 void AEnemyWaveSpawner::OnTriggerOverlap(
-    UPrimitiveComponent *OverlappedComp, AActor *OtherActor,
-    UPrimitiveComponent *OtherComp, int32 OtherBodyIndex, bool bFromSweep,
-    const FHitResult &SweepResult) {
-  // Only trigger for the player
-  if (OtherActor && OtherActor->ActorHasTag(FName("Player"))) {
-    StartEncounter();
-
-    // Disable trigger after activation
-    TriggerVolume->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-  }
+    UPrimitiveComponent* /*OverlappedComp*/, AActor* OtherActor,
+    UPrimitiveComponent* /*OtherComp*/, int32 /*OtherBodyIndex*/,
+    bool /*bFromSweep*/, const FHitResult& /*SweepResult*/)
+{
+    if (OtherActor && OtherActor->ActorHasTag(FName("Player")))
+    {
+        StartEncounter();
+        TriggerVolume->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    }
 }

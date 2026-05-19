@@ -33,10 +33,7 @@ public:
     UPROPERTY(BlueprintReadWrite, Category = "Menu")
     bool bPendingMatchStart = false;
 
-    /** Armes choisies dans le loadout */
+    /** Armes choisies dans le loadout (ordre = ordre d'équipement) */
     UPROPERTY(BlueprintReadWrite, Category = "Menu")
-    TSubclassOf<AWeaponBase> PendingPrimaryWeapon;
-
-    UPROPERTY(BlueprintReadWrite, Category = "Menu")
-    TSubclassOf<AWeaponBase> PendingSecondaryWeapon;
+    TArray<TSubclassOf<AWeaponBase>> PendingWeapons;
 };

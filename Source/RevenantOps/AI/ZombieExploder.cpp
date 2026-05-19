@@ -1,33 +1,14 @@
 // Copyright RevenantOps. All Rights Reserved.
 
 #include "ZombieExploder.h"
-#include "GameFramework/CharacterMovementComponent.h"
-#include "HealthComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "NiagaraFunctionLibrary.h"
-#include "NiagaraSystem.h"
-#include "Engine/DamageEvents.h"
 
-AZombieExploder::AZombieExploder() {
-  // Fast runner - rushes at player
-  GetCharacterMovement()->MaxWalkSpeed = 350.f;
-
-  // Detonation proximity (same as explosion radius)
-  MeleeRange = 300.f;
-
-  // Explodes immediately when in range
-  MeleeAttackCooldown = 0.f;
-
-  // No melee damage - damage comes from explosion
-  MeleeDamage = 0.f;
-
-  // Display name
-  EnemyName = FText::FromString(TEXT("Zombie Explosif"));
-
-  // Low health - fragile but fast
-  if (HealthComp) {
-    HealthComp->SetMaxHealth(60.f);
-  }
+// Stats globales viennent de DT_EnemyStats.
+// ExplosionDamage/ExplosionRadius restent paramètres BP de cette classe.
+AZombieExploder::AZombieExploder()
+{
+    EnemyName = FText::FromString(TEXT("Zombie Explosif"));
 }
 
 void AZombieExploder::PerformMeleeAttack() {
