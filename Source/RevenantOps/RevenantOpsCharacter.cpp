@@ -23,7 +23,6 @@
 #include "Gameplay/HealthPickup.h"
 #include "Gameplay/InventoryDropPickup.h"
 #include "Gameplay/PickupInterface.h"
-#include "Gameplay/WeaponPickup.h"
 #include "Kismet/GameplayStatics.h"
 #include "AI/EnemyBase.h"
 
@@ -116,6 +115,14 @@ void ARevenantOpsCharacter::BeginPlay() {
 
   // Spawn weapons from loadout
   SpawnDefaultWeapons();
+}
+
+void ARevenantOpsCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+    // Nettoyer les raw refs avant destruction pour éviter dangling ptrs
+    PendingInteractable  = nullptr;
+    PendingWeaponPickup  = nullptr;
+    Super::EndPlay(EndPlayReason);
 }
 
 // =============================================================================

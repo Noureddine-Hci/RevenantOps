@@ -8,6 +8,7 @@
 #include "Gameplay/InventoryItem.h"
 #include "Gameplay/ItemDefinition.h"
 #include "Gameplay/TalentDefinition.h"
+#include "Gameplay/WeaponPickup.h"
 #include "Weapons/WeaponBase.h"
 #include "RevenantOpsCharacter.generated.h"
 
@@ -388,7 +389,7 @@ public:
 
   /** Talents actifs sur ce personnage (assignés depuis FCharacterInfo ou en debug) */
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Character|Talents")
-  TArray<TObjectPtr<UTalentDefinition>> AssignedTalents;
+  TArray<UTalentDefinition*> AssignedTalents;
 
   /** Applique les bonus de tous les talents assignés (appelé dans BeginPlay) */
   UFUNCTION(BlueprintCallable, Category = "Character|Talents")
@@ -400,12 +401,14 @@ public:
 
   /**
    *  Pickup actif en zone (munitions, soins...) — interroge via IPickupInterface.
-   *  Raw ptr intentionnel (pas de UPROPERTY pour eviter CDO crash).
+   *  Transient : runtime only, pas sérialisé. GC nullifie automatiquement si l'acteur est détruit.
    */
+  UPROPERTY(Transient)
   AActor* PendingInteractable = nullptr;
 
-  /** Weapon pickup en zone — raw ptr */
-  class AWeaponPickup *PendingWeaponPickup = nullptr;
+  /** Weapon pickup en zone — Transient, GC-safe */
+  UPROPERTY(Transient)
+  AWeaponPickup* PendingWeaponPickup = nullptr;
 
   // ========== INVENTORY (RE5-style, 9 slots) ==========
 
@@ -418,6 +421,7 @@ public:
 
 protected:
   virtual void BeginPlay() override;
+  virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
   virtual void Tick(float DeltaTime) override;
   virtual void SetupPlayerInputComponent(
       class UInputComponent *PlayerInputComponent) override;
