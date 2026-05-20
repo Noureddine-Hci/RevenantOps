@@ -21,6 +21,13 @@ void AHealthPickup::BeginPlay()
 
     InitialZ = GetActorLocation().Z;
 
+    // Applique le mesh 3D depuis le DA si défini
+    if (ItemDefinition && ItemDefinition->PickupMesh && PickupMesh)
+    {
+        PickupMesh->SetStaticMesh(ItemDefinition->PickupMesh);
+        PickupMesh->SetRelativeScale3D(ItemDefinition->PickupMeshScale);
+    }
+
     CollisionSphere->OnComponentBeginOverlap.AddDynamic(
         this, &AHealthPickup::OnHealthOverlapBegin);
     CollisionSphere->OnComponentEndOverlap.AddDynamic(

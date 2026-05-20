@@ -33,8 +33,13 @@ void AAmmoBonusPickup::BeginPlay() {
   CollisionSphere->OnComponentBeginOverlap.AddDynamic(this, &AAmmoBonusPickup::OnOverlapBegin);
   CollisionSphere->OnComponentEndOverlap.AddDynamic(this, &AAmmoBonusPickup::OnOverlapEnd);
 
-  // Le timer DropLifetime est démarré manuellement via StartLifetimeTimer()
-  // après que les propriétés post-spawn ont été assignées.
+  // Pickup statique dans le niveau : ItemDefinition déjà connu en BeginPlay
+  // Pour les drops ennemis, c'est StartLifetimeTimer() qui applique le mesh (appelé après assignation)
+  if (DropLifetime == 0.f && ItemDefinition && ItemDefinition->PickupMesh)
+  {
+      PickupMesh->SetStaticMesh(ItemDefinition->PickupMesh);
+      PickupMesh->SetRelativeScale3D(ItemDefinition->PickupMeshScale);
+  }
 }
 
 void AAmmoBonusPickup::Tick(float DeltaTime) {
@@ -121,18 +126,62 @@ void AAmmoBonusPickup::TryPickup(ARevenantOpsCharacter* Player) {
 
   BP_OnPickedUp(Player, AmmoAmount);
 
-  // Drop ennemi : on détruit l'acteur, pas de respawn
+  // Drop ennemi : cherche un autre pickup proche avant de se détruire
   if (DropLifetime > 0.f)
   {
     GetWorldTimerManager().ClearTimer(LifetimeTimer);
+    ScanNearbyAmmoPickups(Player);
     Destroy();
   }
   else
     HidePickup();
 }
 
+void AAmmoBonusPickup::ScanNearbyAmmoPickups(ARevenantOpsCharacter* Player)
+{
+  if (!Player || !GetWorld()) return;
+
+  TArray<AActor*> Nearby;
+  UGameplayStatics::GetAllActorsOfClass(GetWorld(), AAmmoBonusPickup::StaticClass(), Nearby);
+
+  const float Radius = CollisionSphere->GetScaledSphereRadius() * 1.5f;
+  for (AActor* Actor : Nearby)
+  {
+    AAmmoBonusPickup* Other = Cast<AAmmoBonusPickup>(Actor);
+    if (!Other || Other == this || Other->DropLifetime <= 0.f) continue;
+
+    if (FVector::Dist(GetActorLocation(), Other->GetActorLocation()) <= Radius)
+    {
+      Other->PendingPlayer = Player;
+      Player->SetPendingPickup(Other);
+      Player->ShowPickupPrompt(
+          Other->GetPickupIcon_Implementation(),
+          Other->GetPickupDisplayName_Implementation(),
+          Other->GetPickupDisplayAmount_Implementation());
+      return;
+    }
+  }
+}
+
 void AAmmoBonusPickup::StartLifetimeTimer()
 {
+  // Applique le mesh ici — appelé APRÈS que ItemDefinition est assigné par le code de spawn
+  if (ItemDefinition && ItemDefinition->PickupMesh)
+  {
+    PickupMesh->SetStaticMesh(ItemDefinition->PickupMesh);
+    PickupMesh->SetRelativeScale3D(ItemDefinition->PickupMeshScale);
+  }
+  else if (!PickupMesh->GetStaticMesh())
+  {
+    // Fallback : cube Engine si aucun mesh n'est configuré dans le DA
+    if (UStaticMesh* Cube = LoadObject<UStaticMesh>(
+            nullptr, TEXT("/Engine/BasicShapes/Cube.Cube")))
+    {
+        PickupMesh->SetStaticMesh(Cube);
+        PickupMesh->SetRelativeScale3D(FVector(0.15f));
+    }
+  }
+
   if (DropLifetime > 0.f && !GetWorldTimerManager().IsTimerActive(LifetimeTimer))
   {
     GetWorldTimerManager().SetTimer(LifetimeTimer, this,

@@ -393,6 +393,69 @@ feat(16): demo jouable — HUD programmatique + ReceivedPlayer fix + WaveSpawner
 
 ---
 
+## Etat Phase 20 — Holster + Centralisation crosshair (COMPLETE 2026-05-19)
+- Système holster : armes non équipées visibles sur sockets dédiés du squelette (one per socket)
+- `HolsterWeapon(AWeaponBase*)` : remplace `SetActorHiddenInGame(true)` partout
+- `HolsterSocketName` + `HolsterOffset` sur WeaponBase (configurés en BP)
+- `ExtraStartingWeapons[]` : armes supplémentaires assignées au spawn (au-delà du loadout)
+- `PendingWeapons[]` (TArray) remplace `PendingPrimaryWeapon/PendingSecondaryWeapon` dans GameInstance
+- **Centralisation crosshair DT_WeaponStats** :
+  - `CrosshairTypes.h` : ECrosshairStyle extrait dans son propre header (évite include circulaire)
+  - `FWeaponTableRow` : +CrosshairStyle, +ScopeOverlayTexture (TSoftObjectPtr), +ScopeFOVMultiplier
+  - `ApplyWeaponDataRow()` lit + applique les 3 champs (LoadSynchronous pour la scope texture)
+  - Les UPROPERTY crosshair dans WeaponBase.h passent EditDefaultsOnly → VisibleAnywhere (DT = source unique)
+- Dernier commit : 4886e40
+
+## Etat Phase 21 — Pack ajouts pro (EN COURS 2026-05-20, NON COMMITÉ)
+
+### Étape 1 — Score Milestones + HP scaling endgame
+`AI/EnemyWaveSpawner.h/.cpp`
+- Delegate `OnMilestoneReached(int32 Milestone)` (défaut 25/50/75/100/125)
+- `Milestones[]` sorted au StartEncounter, index interne `NextMilestoneIndex`
+- HP scaling endgame : `GetCurrentHealthMultiplier()` lerp 1.0 → 2.0 sur les `EndgameKillsWindow` (50) derniers kills
+- Applique via `HC->SetMaxHealth(HC->GetMaxHealth() * Mult)` au moment du spawn (avant BeginPlay du HealthComp)
+
+### Étape 2 — Settings persistants
+`Gameplay/SettingsSaveGame.h` (nouveau) + `Gameplay/RevenantOpsGameInstance.h/.cpp`
+- `USettingsSaveGame` : MasterVolume, MusicVolume, SFXVolume, MouseSensitivity, ADSSensitivityMultiplier, FieldOfView, bInvertY, GraphicsQuality, WindowMode
+- `Init()` charge depuis slot "Settings", crée default sinon → `ApplySettings()` automatique
+- `Shutdown()` save auto
+- API BP : `SaveSettings()`, `ApplySettings()`
+
+### Étape 3 — SoundManagerSubsystem
+`Audio/SoundManagerSubsystem.h/.cpp` (nouveau)
+- `UGameInstanceSubsystem` + `TMap<FName, USoundBase*>`
+- API : `RegisterSound`, `Play(WorldCtx, Key, Loc)`, `Play2D`, `GetSound`
+- Usage : `GetGameInstance()->GetSubsystem<USoundManagerSubsystem>()->Play(this, "Weapon.Pistol.Fire", Loc);`
+
+### Étape 4 — CheatManager
+`RevenantOpsCheatManager.h/.cpp` (nouveau) + constructeur ajouté à `ARevenantOpsPlayerController`
+- `CheatClass = URevenantOpsCheatManager::StaticClass()` dans ctor
+- Commandes (Exec) : GodMode, KillAll, GiveAmmo, SetKills, AddTime, HealFull, SetCombo, EndMatch
+
+### Étape 5 — Photo Mode
+`Gameplay/PhotoModeComponent.h/.cpp` (nouveau)
+- `UActorComponent` à attacher au PC
+- Freeze time (TimeDilation 0.0001f), spawn `ASpectatorPawn` avec `CustomTimeDilation` qui bypass le freeze
+- API : `TogglePhotoMode`, `EnterPhotoMode`, `ExitPhotoMode`, `IsActive`
+
+### Étape 6 — Niagara polish (à créer en éditeur)
+- NS_BloodPool, NS_BulletTrail, NS_KillMilestone
+
+### Configuration BP à faire (après Live Coding)
+1. BP_ThirdPersonPlayerController : ajouter `UPhotoModeComponent` + bind F11 → `TogglePhotoMode`
+2. BP_EnemyWaveSpawner : brancher `OnMilestoneReached` → son annonceur + flash écran HUD
+3. Enregistrer les sons via `SoundMgr->RegisterSound(Key, Sound)` au boot (OptionsWidget Init ou GI Init)
+4. Tests console (~) : `GodMode true`, `KillAll`, `SetKills 145`, etc.
+
+### Patterns importants Phase 21
+- `UCheatManager` instancié auto par le moteur en build Development uniquement — pas en Shipping
+- `ASpectatorPawn::CustomTimeDilation = 1/0.0001f` permet de bouger librement même quand le monde est gelé
+- `UGameInstanceSubsystem` survit aux changements de level (vs `UWorldSubsystem` qui meurt avec le world)
+- `USettingsSaveGame` séparé du Leaderboard (slots indépendants)
+
+---
+
 ## COLLABORATION — Noureddine & Jilani (depuis 2026-04-06)
 
 ### Identification du dev actif

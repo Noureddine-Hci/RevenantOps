@@ -4,6 +4,7 @@
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
 #include "Engine/Texture2D.h"
+#include "Engine/StaticMesh.h"
 #include "Gameplay/InventoryItem.h"
 #include "Gameplay/AmmoTypes.h"
 #include "ItemDefinition.generated.h"
@@ -41,6 +42,18 @@ public:
     /** Icône affichée dans le slot inventaire */
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item|Identity")
     TObjectPtr<UTexture2D> ItemIcon = nullptr;
+
+    /**
+     *  Mesh 3D affiché sur l'actor pickup dans le monde.
+     *  Laisser vide = pickup invisible (juste la collision).
+     *  Ex : boîte de munitions Kenney, spray médical, etc.
+     */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item|Visual")
+    TObjectPtr<UStaticMesh> PickupMesh = nullptr;
+
+    /** Scale appliqué au mesh 3D du pickup (ajuster selon la taille du mesh) */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item|Visual")
+    FVector PickupMeshScale = FVector(1.f);
 
     // ── Weapon ────────────────────────────────────────────────────────────────
 

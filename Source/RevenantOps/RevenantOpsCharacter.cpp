@@ -871,8 +871,26 @@ void ARevenantOpsCharacter::SpawnDefaultWeapons() {
     Slot.DisplayName = WeaponInventory[i]->GetWeaponName();
     Slot.Description = FText::FromString(TEXT("Arme equipee"));
     Slot.Quantity    = 1;
-    Slot.WeaponClass = WeaponInventory[i]->GetClass();
-    Slot.ItemIcon    = WeaponInventory[i]->GetWeaponIcon();
+    Slot.WeaponClass   = WeaponInventory[i]->GetClass();
+    Slot.ItemIcon      = WeaponInventory[i]->GetWeaponIcon();
+    // Mesh de drop : skeletal en priorité, sinon static (Kenney = static meshes)
+    if (USkeletalMeshComponent* SKC = WeaponInventory[i]->FindComponentByClass<USkeletalMeshComponent>())
+      Slot.DropSkeletalMesh = SKC->GetSkeletalMeshAsset();
+    if (!Slot.DropSkeletalMesh)
+    {
+      // Cherche le premier StaticMeshComponent avec un mesh assigné
+      TArray<UStaticMeshComponent*> SMCs;
+      WeaponInventory[i]->GetComponents<UStaticMeshComponent>(SMCs);
+      for (UStaticMeshComponent* SMC : SMCs)
+      {
+        if (SMC && SMC->GetStaticMesh())
+        {
+          Slot.DropMesh = SMC->GetStaticMesh();
+          break;
+        }
+      }
+    }
+    Slot.DropMeshScale = FVector(0.4f);
   }
 
   // ── RE5 : munitions en inventaire seulement via StartingItems / pickups ─────

@@ -9,6 +9,7 @@
 
 class USphereComponent;
 class UStaticMeshComponent;
+class USkeletalMeshComponent;
 class ARevenantOpsCharacter;
 
 /**
@@ -36,8 +37,15 @@ protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
     UStaticMeshComponent* Mesh;
 
+    /** Mesh skeletal pour les armes droppées */
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+    USkeletalMeshComponent* SkelMesh;
+
     // Joueur en zone — raw ptr pour éviter CDO crash
     ARevenantOpsCharacter* PendingPlayer = nullptr;
+
+    /** Après ramassage, cherche un autre pickup dans la zone et le set comme pending */
+    void ScanNearbyPickups(ARevenantOpsCharacter* Player);
 
     UFUNCTION()
     void OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
@@ -60,7 +68,7 @@ public:
     /** Durée de vie avant disparition (0 = permanent) */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Drop",
               meta = (ClampMin = 0.f, ClampMax = 120.f))
-    float Lifetime = 60.f;
+    float Lifetime = 0.f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Drop|Visual")
     float BobAmplitude = 10.f;

@@ -42,6 +42,7 @@ struct FEnemyPoolEntry
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnKillCountChanged, int32, TotalKills);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnKillCapReached);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMilestoneReached, int32, Milestone);
 
 /**
  *  Spawner style RE5 Mercenaires.
@@ -106,6 +107,27 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawner|Config")
     bool bTriggerOnOverlap = false;
 
+    // ── MILESTONES (annonceur) ────────────────────────────────────────────
+
+    /** Paliers de kills qui déclenchent OnMilestoneReached (ex: 25/50/75/100/125) */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawner|Milestones")
+    TArray<int32> Milestones = { 25, 50, 75, 100, 125 };
+
+    /** Index du prochain milestone à atteindre (état interne) */
+    int32 NextMilestoneIndex = 0;
+
+    // ── ENDGAME HP SCALING ────────────────────────────────────────────────
+
+    /** Nombre de kills avant le cap où le scaling HP commence (ex: 50 = endgame sur les 50 derniers) */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawner|Difficulty",
+              meta = (ClampMin = 0, ClampMax = 200))
+    int32 EndgameKillsWindow = 50;
+
+    /** Multiplicateur de HP appliqué aux ennemis à la fin du match (1.0 = aucun, 2.0 = double HP) */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawner|Difficulty",
+              meta = (ClampMin = 1.f, ClampMax = 5.f))
+    float EndgameHealthMultiplier = 2.0f;
+
     // ── ÉTAT ──────────────────────────────────────────────────────────────
 
     UPROPERTY(BlueprintReadOnly, Category = "Spawner|State")
@@ -146,6 +168,14 @@ public:
 
     UPROPERTY(BlueprintAssignable, Category = "Spawner|Events")
     FOnKillCapReached OnKillCapReached;
+
+    /** Broadcast quand un milestone (palier de kills) est franchi */
+    UPROPERTY(BlueprintAssignable, Category = "Spawner|Events")
+    FOnMilestoneReached OnMilestoneReached;
+
+    /** Retourne le multiplicateur de HP actuel (1.0 → EndgameHealthMultiplier sur la fenêtre endgame) */
+    UFUNCTION(BlueprintCallable, Category = "Spawner|Difficulty")
+    float GetCurrentHealthMultiplier() const;
 
     UFUNCTION(BlueprintCallable, Category = "Spawner")
     void StartEncounter();

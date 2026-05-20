@@ -13,6 +13,8 @@ FInventoryItem UItemDefinition::MakeInventoryItem(int32 Qty) const
     Out.HealAmount       = HealAmount;
     Out.AmmoType         = AmmoType;
     Out.TimeBonusSeconds = TimeBonusSeconds;
+    Out.DropMesh         = PickupMesh.Get();
+    Out.DropMeshScale    = PickupMeshScale;
     return Out;
 }
 

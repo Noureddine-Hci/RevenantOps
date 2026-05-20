@@ -31,7 +31,10 @@ UCLASS(abstract)
 class ARevenantOpsPlayerController : public APlayerController
 {
 	GENERATED_BODY()
-	
+
+public:
+	ARevenantOpsPlayerController();
+
 protected:
 
 	/** Input Mapping Contexts */

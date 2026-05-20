@@ -30,6 +30,14 @@
 #include "Kismet/GameplayStatics.h"
 #include "Gameplay/RevenantOpsGameInstance.h"
 #include "MainMenuGameMode.h"
+#include "RevenantOpsCheatManager.h"
+
+ARevenantOpsPlayerController::ARevenantOpsPlayerController()
+{
+	// Active les commandes console debug (~) en build Development/Editor.
+	// Le moteur n'instancie le CheatManager qu'en build non-shipping.
+	CheatClass = URevenantOpsCheatManager::StaticClass();
+}
 
 void ARevenantOpsPlayerController::BeginPlay()
 {

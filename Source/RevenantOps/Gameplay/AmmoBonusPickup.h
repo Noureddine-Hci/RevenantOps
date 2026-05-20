@@ -77,6 +77,7 @@ protected:
   void HidePickup();
   void RespawnPickup();
   void OnLifetimeExpired();
+  void ScanNearbyAmmoPickups(ARevenantOpsCharacter* Player);
 
 public:
   // ── IPickupInterface ─────────────────────────────────────────────────────

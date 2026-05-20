@@ -6,6 +6,7 @@
 #include "GameFramework/Character.h"
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
+#include "Weapons/HealthComponent.h"
 
 AEnemyWaveSpawner::AEnemyWaveSpawner()
 {
@@ -73,6 +74,8 @@ void AEnemyWaveSpawner::StartEncounter()
 
     bIsActive  = true;
     TotalKilled = 0;
+    NextMilestoneIndex = 0;
+    Milestones.Sort();
     AliveEnemies.Empty();
 
     // Remplir jusqu'au cap dès le départ
@@ -111,9 +114,32 @@ void AEnemyWaveSpawner::SpawnOneEnemy()
         AliveEnemies.Add(NewEnemy);
         NewEnemy->OnEnemyDied.AddDynamic(this, &AEnemyWaveSpawner::OnEnemyDied);
 
+        // Endgame HP scaling — appliqué AVANT BeginPlay du HealthComp (qui init CurrentHealth)
+        const float HpMult = GetCurrentHealthMultiplier();
+        if (HpMult > 1.001f)
+        {
+            if (UHealthComponent* HC = NewEnemy->FindComponentByClass<UHealthComponent>())
+            {
+                HC->SetMaxHealth(HC->GetMaxHealth() * HpMult);
+            }
+        }
+
         if (APawn* Player = UGameplayStatics::GetPlayerPawn(this, 0))
             NewEnemy->AlertToLocation(Player->GetActorLocation());
     }
+}
+
+float AEnemyWaveSpawner::GetCurrentHealthMultiplier() const
+{
+    if (EndgameKillsWindow <= 0 || EndgameHealthMultiplier <= 1.f)
+        return 1.f;
+
+    const int32 EndgameStart = FMath::Max(0, KillCap - EndgameKillsWindow);
+    if (TotalKilled < EndgameStart) return 1.f;
+
+    const float Range = FMath::Max(1.f, (float)(KillCap - EndgameStart));
+    const float Alpha = FMath::Clamp((float)(TotalKilled - EndgameStart) / Range, 0.f, 1.f);
+    return FMath::Lerp(1.f, EndgameHealthMultiplier, Alpha);
 }
 
 TSubclassOf<AEnemyBase> AEnemyWaveSpawner::PickEnemyClass() const
@@ -193,6 +219,15 @@ void AEnemyWaveSpawner::OnEnemyDied(AEnemyBase* Enemy, AController* /*KilledBy*/
     ++TotalKilled;
 
     OnKillCountChanged.Broadcast(TotalKilled);
+
+    // Milestone franchi → annonceur (sons / flash écran via BP)
+    while (NextMilestoneIndex < Milestones.Num() &&
+           TotalKilled >= Milestones[NextMilestoneIndex])
+    {
+        const int32 M = Milestones[NextMilestoneIndex];
+        OnMilestoneReached.Broadcast(M);
+        ++NextMilestoneIndex;
+    }
 
     // Cap atteint → fin du match
     if (TotalKilled >= KillCap)
