@@ -1093,7 +1093,10 @@ void ARevenantOpsCharacter::InitStartingInventory(const TArray<FStartingItem>& I
                 Entry.Definition->AmmoType,
                 Entry.Quantity,
                 Entry.Definition->ItemIcon.Get(),
-                Entry.Definition->DisplayName);
+                Entry.Definition->DisplayName,
+                999,
+                Entry.Definition->PickupMesh.Get(),
+                Entry.Definition->PickupMeshScale);
             continue;
         }
 
@@ -1136,7 +1139,8 @@ int32 ARevenantOpsCharacter::ConsumeInventoryAmmo(EAmmoType Type, int32 Amount)
 }
 
 void ARevenantOpsCharacter::AddInventoryAmmo(EAmmoType Type, int32 Amount,
-                                              UTexture2D* Icon, FText Name, int32 MaxAmount)
+                                              UTexture2D* Icon, FText Name, int32 MaxAmount,
+                                              UStaticMesh* InDropMesh, FVector InDropMeshScale)
 {
   if (Type == EAmmoType::None || Amount <= 0) return;
 
@@ -1154,11 +1158,13 @@ void ARevenantOpsCharacter::AddInventoryAmmo(EAmmoType Type, int32 Amount,
 
   // Pas de slot existant — créer un nouveau
   FInventoryItem NewItem;
-  NewItem.Type        = EInventoryItemType::Ammo;
-  NewItem.AmmoType    = Type;
-  NewItem.Quantity    = (MaxAmount > 0) ? FMath::Min(Amount, MaxAmount) : Amount;
-  NewItem.ItemIcon    = Icon;
-  NewItem.DisplayName = Name.IsEmpty() ? FText::FromString(TEXT("Munitions")) : Name;
+  NewItem.Type          = EInventoryItemType::Ammo;
+  NewItem.AmmoType      = Type;
+  NewItem.Quantity      = (MaxAmount > 0) ? FMath::Min(Amount, MaxAmount) : Amount;
+  NewItem.ItemIcon      = Icon;
+  NewItem.DisplayName   = Name.IsEmpty() ? FText::FromString(TEXT("Munitions")) : Name;
+  NewItem.DropMesh      = InDropMesh;
+  NewItem.DropMeshScale = InDropMesh ? InDropMeshScale : FVector(1.f);
   AddItemToInventory(NewItem);
 }
 
@@ -1172,8 +1178,14 @@ void ARevenantOpsCharacter::UpdateAnimationValues()
   FRotator Delta = (ControlRot - ActorRot).GetNormalized();
 
   // Pitch: UE stores pitch inverted for controllers — negate for natural up/down
-  AimPitch = FMath::ClampAngle(-Delta.Pitch, -90.f, 90.f);
-  AimYaw   = FMath::ClampAngle( Delta.Yaw,  -180.f, 180.f);
+  const float TargetPitch = FMath::ClampAngle(-Delta.Pitch, -90.f, 90.f);
+  const float TargetYaw   = FMath::ClampAngle( Delta.Yaw,  -180.f, 180.f);
+
+  // Interpolation pour éviter le snap brutal sur l'AimOffset
+  const float AimInterpSpeed = 15.f;
+  const float DT = GetWorld()->GetDeltaSeconds();
+  AimPitch = FMath::FInterpTo(AimPitch, TargetPitch, DT, AimInterpSpeed);
+  AimYaw   = FMath::FInterpTo(AimYaw,   TargetYaw,   DT, AimInterpSpeed);
 
   // --- Movement Direction (velocity relative to actor forward) ---
   const FVector Velocity = GetVelocity();

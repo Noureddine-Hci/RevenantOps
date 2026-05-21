@@ -298,17 +298,6 @@ protected:
 
   FTimerHandle FinisherWindowTimer;
 
-  // ========== HIT FLASH ==========
-
-  /** Dynamic material instances for hit flash effect */
-  TArray<UMaterialInstanceDynamic *> HitFlashMaterials;
-
-  /** Timer for hit flash decay */
-  float HitFlashTimer = 0.f;
-
-  /** Duration of the hit flash in seconds */
-  static constexpr float HitFlashDuration = 0.15f;
-
   // ========== ANIMATIONS ==========
 
   // ========== AMMO DROPS ==========
@@ -359,6 +348,8 @@ protected:
 
   /** Timer pour déclencher le ragdoll après la death anim */
   FTimerHandle DeathRagdollTimer;
+
+  void EnableRagdoll();
 
 public:
   // ========== EVENTS ==========

@@ -111,7 +111,11 @@ void AAmmoDropPickup::OnOverlapBegin(UPrimitiveComponent*, AActor* OtherActor,
     {
         if (Wpn && Wpn->GetWeaponAmmoType() == EffectiveType)
         {
-            Player->AddInventoryAmmo(EffectiveType, AmmoAmount, EffectiveIcon, EffectiveName);
+            UStaticMesh* DropMesh  = (ItemDefinition && ItemDefinition->PickupMesh)
+                                        ? ItemDefinition->PickupMesh.Get() : nullptr;
+            FVector      DropScale = ItemDefinition ? ItemDefinition->PickupMeshScale : FVector(1.f);
+            Player->AddInventoryAmmo(EffectiveType, AmmoAmount, EffectiveIcon, EffectiveName,
+                                     999, DropMesh, DropScale);
             bPickedUp = true;
             break;
         }

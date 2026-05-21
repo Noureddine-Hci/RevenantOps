@@ -114,8 +114,17 @@ void AAmmoBonusPickup::TryPickup(ARevenantOpsCharacter* Player) {
       TypeToAdd = Weapon->GetWeaponAmmoType();
   }
 
+  UStaticMesh* EffectiveDropMesh  = nullptr;
+  FVector       EffectiveDropScale = FVector(1.f);
+  if (ItemDefinition && ItemDefinition->PickupMesh)
+  {
+    EffectiveDropMesh  = ItemDefinition->PickupMesh.Get();
+    EffectiveDropScale = ItemDefinition->PickupMeshScale;
+  }
+
   if (TypeToAdd != EAmmoType::None)
-    Player->AddInventoryAmmo(TypeToAdd, AmmoAmount, EffectiveIcon, EffectiveName);
+    Player->AddInventoryAmmo(TypeToAdd, AmmoAmount, EffectiveIcon, EffectiveName,
+                             999, EffectiveDropMesh, EffectiveDropScale);
 
   PendingPlayer = nullptr;
   Player->ClearPendingPickup();

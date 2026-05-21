@@ -13,6 +13,7 @@
 class USkeletalMeshComponent;
 class UStaticMeshComponent;
 class UAnimMontage;
+class UAnimSequenceBase;
 class USoundBase;
 class UNiagaraSystem;
 
@@ -279,10 +280,10 @@ protected:
 
   // ========== ANIMATIONS ==========
 
-  /** Weapon fire animation (played on weapon mesh) */
+  /** Weapon fire animation (played on weapon mesh — sequence, no AnimBP needed) */
   UPROPERTY(EditDefaultsOnly, BlueprintReadWrite,
             Category = "Weapon|Animation")
-  UAnimMontage *FireMontage;
+  UAnimSequenceBase *FireMontage;
 
   /** Character fire animation (played on character mesh) */
   UPROPERTY(EditDefaultsOnly, BlueprintReadWrite,
@@ -294,10 +295,20 @@ protected:
             Category = "Weapon|Animation")
   UAnimMontage *ReloadMontage;
 
+  /** Weapon-side reload animation (played on weapon mesh — sequence, no AnimBP needed) */
+  UPROPERTY(EditDefaultsOnly, BlueprintReadWrite,
+            Category = "Weapon|Animation")
+  UAnimSequenceBase *WeaponReloadAnim;
+
   /** Character equip animation */
   UPROPERTY(EditDefaultsOnly, BlueprintReadWrite,
             Category = "Weapon|Animation")
   UAnimMontage *EquipMontage;
+
+  /** Socket sur le weapon mesh où la main gauche doit se positionner (Left Hand IK) */
+  UPROPERTY(EditDefaultsOnly, BlueprintReadWrite,
+            Category = "Weapon|Animation")
+  FName LeftHandGripSocket = FName("LeftHandGrip");
 
   // ========== AUDIO ==========
 
@@ -423,6 +434,15 @@ public:
   /** Gets the weapon mesh */
   UFUNCTION(BlueprintCallable, Category = "Weapon")
   USkeletalMeshComponent *GetWeaponMesh() const { return WeaponMesh; }
+
+  /** Retourne le transform monde du socket LeftHandGrip (pour le Left Hand IK dans l'ABP) */
+  UFUNCTION(BlueprintCallable, Category = "Weapon|Animation")
+  FTransform GetLeftHandGripTransform() const
+  {
+    if (WeaponMesh && WeaponMesh->DoesSocketExist(LeftHandGripSocket))
+      return WeaponMesh->GetSocketTransform(LeftHandGripSocket);
+    return FTransform::Identity;
+  }
 
   /** Gets current spread in degrees */
   UFUNCTION(BlueprintCallable, Category = "Weapon")

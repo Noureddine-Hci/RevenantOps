@@ -75,17 +75,6 @@ void AEnemyBase::BeginPlay() {
 
   // Set initial state
   AlertState = EEnemyAlertState::Idle;
-
-  // Create dynamic material instances for hit flash
-  if (GetMesh()) {
-    for (int32 i = 0; i < GetMesh()->GetNumMaterials(); ++i) {
-      UMaterialInstanceDynamic *MID =
-          GetMesh()->CreateAndSetMaterialInstanceDynamic(i);
-      if (MID) {
-        HitFlashMaterials.Add(MID);
-      }
-    }
-  }
 }
 
 void AEnemyBase::Tick(float DeltaTime) {
@@ -106,18 +95,6 @@ void AEnemyBase::Tick(float DeltaTime) {
     if (!Vel.IsNearlyZero(1.f))
     {
       SetActorRotation(FRotator(0.f, Vel.Rotation().Yaw, 0.f));
-    }
-  }
-
-  // Hit flash decay
-  if (HitFlashTimer > 0.f) {
-    HitFlashTimer -= DeltaTime;
-    const float Alpha =
-        FMath::Clamp(HitFlashTimer / HitFlashDuration, 0.f, 1.f);
-    for (UMaterialInstanceDynamic *MID : HitFlashMaterials) {
-      if (MID) {
-        MID->SetScalarParameterValue(FName("HitFlash"), Alpha);
-      }
     }
   }
 
@@ -499,6 +476,17 @@ void AEnemyBase::ReceiveSquadAlert(const FVector &PlayerLocation,
 // DEATH & DAMAGE
 // =============================================================================
 
+void AEnemyBase::EnableRagdoll()
+{
+  if (!IsValid(this) || !GetMesh()) return;
+  // Geler la pose courante — empêche l'AnimBP de snapper vers idle
+  GetMesh()->bPauseAnims = true;
+  // Détacher du capsule pour que la physique ne soit pas perturbée par lui
+  GetMesh()->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
+  GetMesh()->SetSimulatePhysics(true);
+  GetMesh()->SetCollisionProfileName(TEXT("Ragdoll"));
+}
+
 void AEnemyBase::HandleDeath(UHealthComponent *HealthComponent,
                               const AController *InstigatedBy,
                               AActor *DamageCauser) {
@@ -537,26 +525,21 @@ void AEnemyBase::HandleDeath(UHealthComponent *HealthComponent,
     }
   }
 
+  // Annuler toute vélocité résiduelle pour éviter que le corps s'envole
+  GetCharacterMovement()->StopMovementImmediately();
+  GetCharacterMovement()->Velocity = FVector::ZeroVector;
+
   if (RagdollDelay > 0.f)
   {
-    // Ragdoll après la fin de l'anim
+    // Ragdoll légèrement avant la fin du blend-out pour éviter le snap AnimBP
+    const float SafeDelay = FMath::Max(RagdollDelay - 0.05f, 0.1f);
     GetWorldTimerManager().SetTimer(
-        DeathRagdollTimer,
-        [this]()
-        {
-          if (IsValid(this) && GetMesh())
-          {
-            GetMesh()->SetSimulatePhysics(true);
-            GetMesh()->SetCollisionProfileName(TEXT("Ragdoll"));
-          }
-        },
-        RagdollDelay, /*bLoop=*/false);
+        DeathRagdollTimer, this, &AEnemyBase::EnableRagdoll,
+        SafeDelay, /*bLoop=*/false);
   }
   else
   {
-    // Ragdoll immédiat (pas de DeathAnim assignée)
-    GetMesh()->SetSimulatePhysics(true);
-    GetMesh()->SetCollisionProfileName(TEXT("Ragdoll"));
+    EnableRagdoll();
   }
 
   // Hide life bar
@@ -722,9 +705,6 @@ void AEnemyBase::HandleDamage(UHealthComponent *HealthComponent, float Health,
       BP_OnAlertStateChanged(AlertState);
     }
   }
-
-  // Trigger hit flash
-  HitFlashTimer = HitFlashDuration;
 
   // Hit react via slot — retourne automatiquement à la locomotion
   if (HitReactAnim && !bIsDead)

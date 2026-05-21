@@ -172,6 +172,10 @@ void AWeaponBase::StartReload() {
   StopFire();
   ReloadStartTime = GetWorld()->GetTimeSeconds();
 
+  // Play weapon-side reload animation
+  if (WeaponReloadAnim && WeaponMesh)
+    WeaponMesh->PlayAnimation(WeaponReloadAnim, false);
+
   // Play reload montage on character
   UE_LOG(LogTemp, Warning, TEXT("StartReload: ReloadMontage=%s OwnerPawn=%s"),
     ReloadMontage ? *ReloadMontage->GetName() : TEXT("NULL"),
@@ -332,6 +336,10 @@ void AWeaponBase::FireShot() {
 
   // Increase spread bloom
   CurrentSpread = FMath::Min(CurrentSpread + SpreadPerShot, MaxSpread);
+
+  // Play weapon-side fire animation directly on the skeletal mesh (no AnimBP needed)
+  if (FireMontage && WeaponMesh)
+    WeaponMesh->PlayAnimation(FireMontage, false);
 
   // Play character fire montage
   if (CharacterFireMontage && OwnerPawn) {
