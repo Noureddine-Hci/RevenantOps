@@ -142,6 +142,60 @@ unreal.EditorAssetLibrary.save_asset(path)
 
 ---
 
+## Roadmap v5 (2026-05-21) — Récap audit + découpage N/J
+
+**Roadmap complète dans** : `ROADMAP-v5-Phase-20.md` (racine du repo, accessible aux deux devs)
+
+### Vision démo confirmée
+- Solo only (coop = post-démo)
+- 1 seul level (en dernier)
+- Win condition : kill 150 ennemis (drip feed, plus de 3 waves)
+- Pas de deadline fixe
+- Audio : option enregistrement maison au cas par cas
+
+### Audit état projet (2026-05-21)
+- ✅ Combat de base, spawn 150 ennemis drip feed, HUD principal, inventaire RE5, sons armes Silver, pickups, camera shake, build stable, DataTables, Save/Load, Game flow complet
+- 🟡 À améliorer MAINTENANT : caisses destructibles, Hit Marker + Damage Direction + Kill Notification
+- 🗑️ À RETIRER : hit flash matériau ennemi (code + matériau)
+- ❌ PAS FAIT : sons player, level démo entier, tutoriel
+- 🔵 À améliorer PLUS TARD : armes (recoil/spread), ennemis (IA), anims (loco/armes/Hand IK/zombies), viseur dynamique, menus, sons ennemis, sons UI/ambiance, VFX armes, talents, Character Select
+
+---
+
+## Etat Phase 20 — Polish combat solo (EN COURS 2026-05-21)
+
+Phases parallèles N + J avec **ZÉRO fichier commun**, charge équilibrée.
+
+### Lot Noureddine — `noureddine/phase-20-feedback`
+1. **Sons player** (enregistrement maison) : douleur/mort/effort/jump/land
+   - Record → Audacity → WAV → `Content/Mercenaires/Audio/Player/` → SoundCues
+   - UPROPERTY USoundBase* dans `RevenantOpsCharacter.h/.cpp`
+   - Branchement HandleTakeDamage / HandleDeath / AnimNotify footstep
+2. **Feedback HUD polish** : Hit Marker, Damage Direction, Kill Notification
+   - `RevenantOpsHUD.h/.cpp` + `WBP_Mercenaires_HUD`
+
+### Lot Jilani — `jilani/phase-20-caisses`
+1. **Caisses destructibles** :
+   - Valider modes loot Independent/PickOne + AmmoTypeFilter (`DestructibleObject.h/.cpp` + `FCrateLootEntry`)
+   - État endommagé : matériau `M_CrateDamaged` + DamagedThreshold
+   - Peupler BPs LootCrate (Ammo/Health/Weapon) — LootTable + chances
+2. **Retirer hit flash matériau ennemi** :
+   - `EnemyBase.h/.cpp` : supprimer `HitFlashMaterials`, `HitFlashTimer`, MID + appel dans `OnTakeDamage`
+   - Matériaux zombies : retirer param scalaire `HitFlash`
+
+### Règles ownership Phase 20
+- N ne touche **pas** : `DestructibleObject.*`, BPs caisses, matériaux caisses, `EnemyBase.*`, matériaux zombies
+- J ne touche **pas** : `RevenantOpsCharacter.*`, `RevenantOpsHUD.*`, `WBP_Mercenaires_HUD`, Cues player
+- Personne ne touche : `ABP_Mercenaire` (réservé phase 22) ni `.umap` (réservé phase 23)
+
+### Phases suivantes (résumé)
+- **Phase 21** : Tutoriel + sons ennemis (J record possible) + sons UI/pickups/ambiance
+- **Phase 22** : Polish "plus tard" — N = viseur dynamique + menus / J = anims (ABP_Mercenaire J only)
+- **Phase 23** : Level démo — UN SEUL dev à la fois sur le `.umap`
+- **Phase 24+** : Post-démo — coop online + polish profond
+
+---
+
 ## Etat Phase 11 — DataTables (COMPLETE 2026-03-29)
 - FWeaponTableRow + FEnemyTableRow structs C++ OK
 - WeaponBase::ApplyWeaponDataRow() + ZombieBase::ApplyEnemyDataRow() OK
