@@ -621,7 +621,7 @@ public:
    * MaxAmount = plafond du stack (ex: 120 pour les pistolets, 0 = pas de plafond).
    */
   UFUNCTION(BlueprintCallable, Category = "Inventory|Ammo")
-  void AddInventoryAmmo(EAmmoType Type, int32 Amount, UTexture2D* Icon = nullptr,
+  bool AddInventoryAmmo(EAmmoType Type, int32 Amount, UTexture2D* Icon = nullptr,
                         FText Name = FText::GetEmpty(), int32 MaxAmount = 999,
                         UStaticMesh* InDropMesh = nullptr,
                         FVector InDropMeshScale = FVector(1.f));

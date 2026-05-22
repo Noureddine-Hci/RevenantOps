@@ -5,6 +5,7 @@
 #include "Engine/DataAsset.h"
 #include "Engine/Texture2D.h"
 #include "Engine/StaticMesh.h"
+#include "Engine/SkeletalMesh.h"
 #include "Gameplay/InventoryItem.h"
 #include "Gameplay/AmmoTypes.h"
 #include "ItemDefinition.generated.h"
@@ -51,6 +52,10 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item|Visual")
     TObjectPtr<UStaticMesh> PickupMesh = nullptr;
 
+    /** Skeletal mesh pour les armes (prioritaire sur PickupMesh si défini) */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item|Visual")
+    TObjectPtr<USkeletalMesh> PickupSkeletalMesh = nullptr;
+
     /** Scale appliqué au mesh 3D du pickup (ajuster selon la taille du mesh) */
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item|Visual")
     FVector PickupMeshScale = FVector(1.f);
@@ -66,6 +71,11 @@ public:
     /** Type de munitions. Valide si ItemType == Ammo. */
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item|Ammo")
     EAmmoType AmmoType = EAmmoType::None;
+
+    /** Quantité donnée quand droppé depuis une caisse (0 = utiliser AmmoAmount du pickup BP) */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item|Ammo",
+              meta = (ClampMin = 0, ClampMax = 999))
+    int32 DefaultDropAmount = 0;
 
     // ── Health ────────────────────────────────────────────────────────────────
 

@@ -8,6 +8,8 @@
 #include "Kismet/GameplayStatics.h"
 #include "RevenantOpsCharacter.h"
 #include "WeaponBase.h"
+#include "Gameplay/AmmoBonusPickup.h"
+#include "Gameplay/HealthPickup.h"
 
 ADestructibleObject::ADestructibleObject()
 {
@@ -79,9 +81,12 @@ void ADestructibleObject::HandleDeath(UHealthComponent* /*HealthComponent*/,
     OnObjectDestroyed.Broadcast(this);
     BP_OnDestroyed();
 
-    // Désactiver la collision du mesh principal (les fragments prennent le relais)
+    // Cacher et désactiver le mesh principal immédiatement
     if (ObjectMesh)
+    {
+        ObjectMesh->SetHiddenInGame(true, true);
         ObjectMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    }
 
     // Destruction différée pour laisser le temps aux fragments / debris de bouger
     if (DestroyDelay > 0.f)
@@ -95,7 +100,10 @@ void ADestructibleObject::HandleDeath(UHealthComponent* /*HealthComponent*/,
 // ─────────────────────────────────────────────────────────────────────────────
 void ADestructibleObject::SpawnLoot()
 {
-    if (LootTable.IsEmpty() && AmmoPickupClasses.IsEmpty() && !HealthFallbackClass) return;
+    UE_LOG(LogTemp, Warning, TEXT("SpawnLoot: LootTable=%d AmmoClasses=%d HealthDrops=%d FallbackClass=%s"),
+        LootTable.Num(), AmmoPickupClasses.Num(), HealthDrops.Num(),
+        HealthFallbackClass ? *HealthFallbackClass->GetName() : TEXT("NULL"));
+    if (LootTable.IsEmpty() && AmmoPickupClasses.IsEmpty() && !HealthFallbackClass && HealthDrops.IsEmpty()) return;
 
     // Collecter les types d'armes du joueur (filtre adaptatif munitions)
     TSet<EAmmoType> PlayerAmmoTypes;
@@ -120,39 +128,86 @@ void ADestructibleObject::SpawnLoot()
         FVector SpawnLoc = GetActorLocation() + FVector(
             FMath::RandRange(-LootScatterRadius, LootScatterRadius),
             FMath::RandRange(-LootScatterRadius, LootScatterRadius),
-            40.f);
-        GetWorld()->SpawnActor<AActor>(Entry.ActorClass, SpawnLoc,
-                                       FRotator::ZeroRotator, SP);
+            20.f);
+        AActor* Spawned = GetWorld()->SpawnActor<AActor>(Entry.ActorClass, SpawnLoc,
+                                                          FRotator::ZeroRotator, SP);
+        // Appliquer le mesh depuis le DA si c'est un ammo pickup
+        if (AAmmoBonusPickup* AmmoPU = Cast<AAmmoBonusPickup>(Spawned))
+            AmmoPU->StartLifetimeTimer();
+    };
+
+    // Helper : tire un soin au hasard dans HealthFallbackClasses
+    auto SpawnRandomHealth = [&]()
+    {
+        // Nouveau système : HealthDrops avec DA intégré
+        UE_LOG(LogTemp, Warning, TEXT("SpawnRandomHealth: HealthDrops=%d"), HealthDrops.Num());
+        if (!HealthDrops.IsEmpty())
+        {
+            TArray<const FHealthDropEntry*> Valid;
+            for (const FHealthDropEntry& E : HealthDrops)
+                if (E.PickupClass) Valid.Add(&E);
+            UE_LOG(LogTemp, Warning, TEXT("SpawnRandomHealth: Valid=%d"), Valid.Num());
+            if (Valid.IsEmpty()) return;
+
+            const FHealthDropEntry* Chosen = Valid[FMath::RandRange(0, Valid.Num() - 1)];
+            FCrateLootEntry HealthEntry;
+            HealthEntry.ActorClass = Chosen->PickupClass;
+            SpawnEntry(HealthEntry);
+            return;
+        }
+        // Fallback ancien système
+        if (HealthFallbackClass)
+        {
+            FCrateLootEntry FallbackEntry;
+            FallbackEntry.ActorClass = HealthFallbackClass;
+            SpawnEntry(FallbackEntry);
+        }
     };
 
     // ── Drop automatique selon armes du joueur ────────────────────────────
     if (!AmmoPickupClasses.IsEmpty())
     {
         UE_LOG(LogTemp, Warning, TEXT("SpawnLoot: PlayerAmmoTypes=%d"), PlayerAmmoTypes.Num());
-        bool bAnyAmmoDropped = false;
+        // Collecter les paires (classe, DA) valides puis en choisir une au hasard
+        TArray<TPair<TSubclassOf<AActor>, UItemDefinition*>> ValidPairs;
         for (EAmmoType AmmoType : PlayerAmmoTypes)
         {
-            UE_LOG(LogTemp, Warning, TEXT("SpawnLoot: checking AmmoType=%d"), (int32)AmmoType);
-            if (TSubclassOf<AActor>* PickupClass = AmmoPickupClasses.Find(AmmoType))
+            TSubclassOf<AActor>* PickupClass = AmmoPickupClasses.Find(AmmoType);
+            if (!PickupClass || !*PickupClass) continue;
+            UItemDefinition* DA = nullptr;
+            if (TObjectPtr<UItemDefinition>* DAPtr = AmmoItemDefinitions.Find(AmmoType))
+                DA = DAPtr->Get();
+            ValidPairs.Add(TPair<TSubclassOf<AActor>, UItemDefinition*>(*PickupClass, DA));
+        }
+        bool bAnyAmmoDropped = false;
+        if (!ValidPairs.IsEmpty())
+        {
+            auto& Chosen = ValidPairs[FMath::RandRange(0, ValidPairs.Num() - 1)];
+            FCrateLootEntry AutoEntry;
+            AutoEntry.ActorClass = Chosen.Key;
+            // Spawn puis assigner le DA
+            FVector SpawnLoc = GetActorLocation() + FVector(
+                FMath::RandRange(-LootScatterRadius, LootScatterRadius),
+                FMath::RandRange(-LootScatterRadius, LootScatterRadius),
+                20.f);
+            FActorSpawnParameters SP2;
+            SP2.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+            AActor* Spawned = GetWorld()->SpawnActor<AActor>(Chosen.Key, SpawnLoc, FRotator::ZeroRotator, SP2);
+            if (AAmmoBonusPickup* AmmoPU = Cast<AAmmoBonusPickup>(Spawned))
             {
-                if (*PickupClass)
+                if (Chosen.Value)
                 {
-                    FCrateLootEntry AutoEntry;
-                    AutoEntry.ActorClass = *PickupClass;
-                    SpawnEntry(AutoEntry);
-                    bAnyAmmoDropped = true;
-                    UE_LOG(LogTemp, Warning, TEXT("SpawnLoot: dropped ammo for type=%d"), (int32)AmmoType);
+                    AmmoPU->ItemDefinition = Chosen.Value;
+                    if (Chosen.Value->DefaultDropAmount > 0)
+                        AmmoPU->AmmoAmount = Chosen.Value->DefaultDropAmount;
                 }
+                AmmoPU->StartLifetimeTimer();
             }
+            bAnyAmmoDropped = true;
         }
         // Fallback soin si aucune munition matchée
-        if (!bAnyAmmoDropped && HealthFallbackClass)
-        {
-            UE_LOG(LogTemp, Warning, TEXT("SpawnLoot: fallback soin"));
-            FCrateLootEntry FallbackEntry;
-            FallbackEntry.ActorClass = HealthFallbackClass;
-            SpawnEntry(FallbackEntry);
-        }
+        if (!bAnyAmmoDropped)
+            SpawnRandomHealth();
         return;
     }
 
@@ -170,12 +225,8 @@ void ADestructibleObject::SpawnLoot()
             if (Entry.AmmoTypeFilter != EAmmoType::None)
                 bAnyAmmoDropped = true;
         }
-        if (!bAnyAmmoDropped && HealthFallbackClass)
-        {
-            FCrateLootEntry FallbackEntry;
-            FallbackEntry.ActorClass = HealthFallbackClass;
-            SpawnEntry(FallbackEntry);
-        }
+        if (!bAnyAmmoDropped)
+            SpawnRandomHealth();
         return;
     }
 
@@ -190,7 +241,7 @@ void ADestructibleObject::SpawnLoot()
         TotalWeight += FMath::Max(Entry.Weight, 0.01f);
     }
 
-    if (TotalWeight <= 0.f) return;
+    if (TotalWeight <= 0.f) { SpawnRandomHealth(); return; }
 
     // Tirer un nombre aleatoire dans [0, TotalWeight[
     float Roll = FMath::FRand() * TotalWeight;
@@ -269,6 +320,8 @@ void ADestructibleObject::SpawnDebris()
             SMC->SetRelativeScale3D(FVector(DebrisScale));
             SMC->SetSimulatePhysics(true);
             SMC->SetCollisionProfileName(TEXT("PhysicsActor"));
+            // Ignorer le pawn — les débris ne bloquent pas le joueur
+            SMC->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
 
             // Impulsion radiale depuis le centre de la caisse
             const FVector Impulse = (Offset.GetSafeNormal() + FVector(0.f, 0.f, 0.5f))

@@ -47,9 +47,6 @@ protected:
      *  Si assigné → le soin va dans l'inventaire pour être utilisé plus tard.
      *  Si null   → soin immédiat (comportement classique, rétrocompatible).
      */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HealthPickup")
-    TObjectPtr<UItemDefinition> ItemDefinition = nullptr;
-
     /** Joueur actuellement en zone — raw ptr (pas de UPROPERTY pour éviter CDO crash) */
     ARevenantOpsCharacter* PendingPlayer = nullptr;
 
@@ -64,6 +61,9 @@ protected:
                             UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 
 public:
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HealthPickup")
+    TObjectPtr<UItemDefinition> ItemDefinition = nullptr;
+
     // ── IPickupInterface ─────────────────────────────────────────────────
     virtual UTexture2D*  GetPickupIcon_Implementation()          const override
     {

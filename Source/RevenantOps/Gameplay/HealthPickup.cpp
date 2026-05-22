@@ -32,6 +32,9 @@ void AHealthPickup::BeginPlay()
         this, &AHealthPickup::OnHealthOverlapBegin);
     CollisionSphere->OnComponentEndOverlap.AddDynamic(
         this, &AHealthPickup::OnHealthOverlapEnd);
+
+    // Force la détection d'overlaps existants au spawn
+    CollisionSphere->UpdateOverlaps();
 }
 
 void AHealthPickup::OnHealthOverlapBegin(
@@ -41,12 +44,14 @@ void AHealthPickup::OnHealthOverlapBegin(
     ARevenantOpsCharacter* Player = Cast<ARevenantOpsCharacter>(OtherActor);
     if (!Player) return;
 
-    // Ne rien proposer si le joueur est déjà à pleine santé
-    if (UHealthComponent* HC = Player->FindComponentByClass<UHealthComponent>())
+    // Bloquer soin immédiat si pleine santé (mais laisser passer si ItemDefinition = inventaire)
+    if (!ItemDefinition)
     {
-        if (HC->GetHealthPercent() >= 1.f) return;
+        if (UHealthComponent* HC = Player->FindComponentByClass<UHealthComponent>())
+            if (HC->GetHealthPercent() >= 1.f) return;
     }
 
+    UE_LOG(LogTemp, Warning, TEXT("HealthPickup: overlap avec %s"), *Player->GetName());
     PendingPlayer = Player;
     Player->SetPendingHealthPickup(this);
 
@@ -55,7 +60,9 @@ void AHealthPickup::OnHealthOverlapBegin(
     if (UHealthComponent* HC = Player->FindComponentByClass<UHealthComponent>())
         DisplayQty = FMath::RoundToInt(HC->GetMaxHealth() * HealPercent);
 
-    Player->ShowPickupPrompt(PickupIcon, PickupDisplayName, DisplayQty);
+    UTexture2D* Icon = (ItemDefinition && ItemDefinition->ItemIcon) ? ItemDefinition->ItemIcon.Get() : PickupIcon.Get();
+    FText Name = (ItemDefinition && !ItemDefinition->DisplayName.IsEmpty()) ? ItemDefinition->DisplayName : PickupDisplayName;
+    Player->ShowPickupPrompt(Icon, Name, DisplayQty);
 }
 
 void AHealthPickup::OnHealthOverlapEnd(
@@ -98,18 +105,17 @@ void AHealthPickup::TryPickup(ARevenantOpsCharacter* Player)
 
         if (Player->AddItemToInventory(NewItem))
         {
-            // Succès → ramassé dans l'inventaire, pas de soin immédiat
             PendingPlayer = nullptr;
             Player->ClearPendingPickup();
             Player->HidePickupPrompt();
             BP_OnPickedUp(Player);
             HidePickup();
-            return;
         }
-        // Inventaire plein → fallback soin immédiat ci-dessous
+        // Inventaire plein → on ne ramasse pas
+        return;
     }
 
-    // ── Chemin classique : soin immédiat ──────────────────────────────────
+    // Pas d'ItemDefinition → soin immédiat classique (rétrocompat pickups statiques)
     if (HC)
     {
         if (HC->GetHealthPercent() >= 1.f) return;

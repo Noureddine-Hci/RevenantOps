@@ -1138,11 +1138,11 @@ int32 ARevenantOpsCharacter::ConsumeInventoryAmmo(EAmmoType Type, int32 Amount)
   return 0;
 }
 
-void ARevenantOpsCharacter::AddInventoryAmmo(EAmmoType Type, int32 Amount,
+bool ARevenantOpsCharacter::AddInventoryAmmo(EAmmoType Type, int32 Amount,
                                               UTexture2D* Icon, FText Name, int32 MaxAmount,
                                               UStaticMesh* InDropMesh, FVector InDropMeshScale)
 {
-  if (Type == EAmmoType::None || Amount <= 0) return;
+  if (Type == EAmmoType::None || Amount <= 0) return false;
 
   // Chercher un slot existant du même type pour empiler
   for (FInventoryItem& Item : Inventory)
@@ -1152,11 +1152,11 @@ void ARevenantOpsCharacter::AddInventoryAmmo(EAmmoType Type, int32 Amount,
       Item.Quantity = (MaxAmount > 0)
                     ? FMath::Min(Item.Quantity + Amount, MaxAmount)
                     : Item.Quantity + Amount;
-      return;
+      return true;
     }
   }
 
-  // Pas de slot existant — créer un nouveau
+  // Pas de slot existant — créer un nouveau si de la place
   FInventoryItem NewItem;
   NewItem.Type          = EInventoryItemType::Ammo;
   NewItem.AmmoType      = Type;
@@ -1165,7 +1165,7 @@ void ARevenantOpsCharacter::AddInventoryAmmo(EAmmoType Type, int32 Amount,
   NewItem.DisplayName   = Name.IsEmpty() ? FText::FromString(TEXT("Munitions")) : Name;
   NewItem.DropMesh      = InDropMesh;
   NewItem.DropMeshScale = InDropMesh ? InDropMeshScale : FVector(1.f);
-  AddItemToInventory(NewItem);
+  return AddItemToInventory(NewItem);
 }
 
 void ARevenantOpsCharacter::UpdateAnimationValues()

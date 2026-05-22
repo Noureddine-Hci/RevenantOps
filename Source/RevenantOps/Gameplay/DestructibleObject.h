@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Gameplay/AmmoTypes.h"
+#include "Gameplay/ItemDefinition.h"
 #include "DestructibleObject.generated.h"
 
 class UHealthComponent;
@@ -57,6 +58,22 @@ struct FCrateLootEntry
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Loot",
               meta = (ClampMin = 0.01f, ClampMax = 100.f))
     float Weight = 1.f;
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+USTRUCT(BlueprintType)
+struct FHealthDropEntry
+{
+    GENERATED_BODY()
+
+    /** Classe du pickup à spawner (BP_HealthPickup ou enfant) */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Loot")
+    TSubclassOf<AActor> PickupClass;
+
+    /** DA qui définit le mesh, l'icône et le nom affiché */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Loot")
+    TObjectPtr<UItemDefinition> ItemDefinition = nullptr;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -182,9 +199,22 @@ protected:
     TMap<EAmmoType, TSubclassOf<AActor>> AmmoPickupClasses;
 
     /**
-     *  Classe de soin à spawner si le joueur n'a aucune arme connue dans la map
-     *  ou si AmmoPickupClasses est vide.
+     *  DA par type de munitions — assigné au pickup après spawn.
+     *  Ex : Pistol → DA_Item_Ammo_Pistol, Rifle → DA_Item_Ammo_Rifle
+     *  Permet d'avoir mesh + icone + nom corrects sans BPs enfants.
      */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Destructible|Loot")
+    TMap<EAmmoType, TObjectPtr<UItemDefinition>> AmmoItemDefinitions;
+
+    /**
+     *  Soins disponibles — 1 tiré au hasard si aucune munition matchée.
+     *  Chaque entrée = classe BP + DA (mesh, icône, nom).
+     *  Ex : { BP_HealthPickup, DA_Item_Health_Small }, { BP_HealthPickup, DA_Item_Health_Large }
+     */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Destructible|Loot")
+    TArray<FHealthDropEntry> HealthDrops;
+
+    /** Ancien champ unique — ignoré si HealthFallbackClasses n'est pas vide */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Destructible|Loot")
     TSubclassOf<AActor> HealthFallbackClass;
 

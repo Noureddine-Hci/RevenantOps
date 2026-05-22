@@ -32,6 +32,7 @@ void AAmmoBonusPickup::BeginPlay() {
   InitialZ = GetActorLocation().Z;
   CollisionSphere->OnComponentBeginOverlap.AddDynamic(this, &AAmmoBonusPickup::OnOverlapBegin);
   CollisionSphere->OnComponentEndOverlap.AddDynamic(this, &AAmmoBonusPickup::OnOverlapEnd);
+  CollisionSphere->UpdateOverlaps();
 
   // Pickup statique dans le niveau : ItemDefinition déjà connu en BeginPlay
   // Pour les drops ennemis, c'est StartLifetimeTimer() qui applique le mesh (appelé après assignation)
@@ -122,9 +123,11 @@ void AAmmoBonusPickup::TryPickup(ARevenantOpsCharacter* Player) {
     EffectiveDropScale = ItemDefinition->PickupMeshScale;
   }
 
-  if (TypeToAdd != EAmmoType::None)
-    Player->AddInventoryAmmo(TypeToAdd, AmmoAmount, EffectiveIcon, EffectiveName,
-                             999, EffectiveDropMesh, EffectiveDropScale);
+  if (TypeToAdd == EAmmoType::None) return;
+
+  bool bAdded = Player->AddInventoryAmmo(TypeToAdd, AmmoAmount, EffectiveIcon, EffectiveName,
+                                          999, EffectiveDropMesh, EffectiveDropScale);
+  if (!bAdded) return; // Inventaire plein
 
   PendingPlayer = nullptr;
   Player->ClearPendingPickup();
