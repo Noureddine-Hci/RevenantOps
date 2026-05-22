@@ -3,6 +3,7 @@
 #include "Gameplay/DestructibleObject.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/DamageEvents.h"
+#include "Engine/StaticMeshActor.h"
 #include "HealthComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "RevenantOpsCharacter.h"
@@ -73,11 +74,20 @@ void ADestructibleObject::HandleDeath(UHealthComponent* /*HealthComponent*/,
         ApplyExplosionDamage(const_cast<AController*>(InstigatedBy));
 
     SpawnLoot();
+    SpawnDebris();
 
     OnObjectDestroyed.Broadcast(this);
     BP_OnDestroyed();
 
-    Destroy();
+    // Désactiver la collision du mesh principal (les fragments prennent le relais)
+    if (ObjectMesh)
+        ObjectMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+    // Destruction différée pour laisser le temps aux fragments / debris de bouger
+    if (DestroyDelay > 0.f)
+        SetLifeSpan(DestroyDelay);
+    else
+        Destroy();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -219,4 +229,58 @@ void ADestructibleObject::ApplyExplosionDamage(AController* InstigatedBy)
     UGameplayStatics::ApplyRadialDamage(
         this, ExplosionDamage, GetActorLocation(), ExplosionRadius,
         nullptr, TArray<AActor*>{this}, this, InstigatedBy, true);
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Spawn de fragments physiques avec impulsion radiale
+// ─────────────────────────────────────────────────────────────────────────────
+void ADestructibleObject::SpawnDebris()
+{
+    if (DebrisMeshes.IsEmpty() || DebrisCount <= 0) return;
+
+    const FVector Center = GetActorLocation();
+
+    FActorSpawnParameters SP;
+    SP.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+    for (int32 i = 0; i < DebrisCount; ++i)
+    {
+        UStaticMesh* Mesh = DebrisMeshes[FMath::RandRange(0, DebrisMeshes.Num() - 1)];
+        if (!Mesh) continue;
+
+        const FVector Offset(
+            FMath::FRandRange(-30.f, 30.f),
+            FMath::FRandRange(-30.f, 30.f),
+            FMath::FRandRange(0.f, 40.f));
+        const FRotator RandRot(
+            FMath::FRandRange(0.f, 360.f),
+            FMath::FRandRange(0.f, 360.f),
+            FMath::FRandRange(0.f, 360.f));
+
+        AStaticMeshActor* Debris = GetWorld()->SpawnActor<AStaticMeshActor>(
+            AStaticMeshActor::StaticClass(), Center + Offset, RandRot, SP);
+        if (!Debris) continue;
+
+        Debris->SetMobility(EComponentMobility::Movable);
+        if (UStaticMeshComponent* SMC = Debris->GetStaticMeshComponent())
+        {
+            SMC->SetStaticMesh(Mesh);
+            SMC->SetRelativeScale3D(FVector(DebrisScale));
+            SMC->SetSimulatePhysics(true);
+            SMC->SetCollisionProfileName(TEXT("PhysicsActor"));
+
+            // Impulsion radiale depuis le centre de la caisse
+            const FVector Impulse = (Offset.GetSafeNormal() + FVector(0.f, 0.f, 0.5f))
+                                    .GetSafeNormal() * DebrisImpulseStrength;
+            SMC->AddImpulse(Impulse, NAME_None, true);
+            SMC->AddAngularImpulseInDegrees(
+                FVector(FMath::FRandRange(-360.f, 360.f),
+                        FMath::FRandRange(-360.f, 360.f),
+                        FMath::FRandRange(-360.f, 360.f)),
+                NAME_None, true);
+        }
+
+        Debris->SetLifeSpan(DebrisLifetime);
+    }
 }
