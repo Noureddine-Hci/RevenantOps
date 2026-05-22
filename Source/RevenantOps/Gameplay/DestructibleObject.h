@@ -188,6 +188,45 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Destructible|Loot")
     TSubclassOf<AActor> HealthFallbackClass;
 
+    // ── DEBRIS / FRAGMENTATION ─────────────────────────────────────────────
+
+    /**
+     *  Liste de meshes "morceaux" spawnés à la destruction.
+     *  Chaque entrée devient un StaticMeshActor avec physique simulée + impulse.
+     *  Ex : 4-8 fragments de planches/morceaux de bois.
+     */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Destructible|Debris")
+    TArray<TObjectPtr<UStaticMesh>> DebrisMeshes;
+
+    /** Nombre de morceaux à spawner (sélectionnés aléatoirement dans DebrisMeshes) */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Destructible|Debris",
+              meta = (ClampMin = 0, ClampMax = 30))
+    int32 DebrisCount = 6;
+
+    /** Force d'explosion appliquée aux morceaux (impulsion radiale) */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Destructible|Debris",
+              meta = (ClampMin = 0.f, ClampMax = 2000.f))
+    float DebrisImpulseStrength = 500.f;
+
+    /** Durée de vie des morceaux avant disparition (secondes) */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Destructible|Debris",
+              meta = (ClampMin = 1.f, ClampMax = 30.f))
+    float DebrisLifetime = 5.f;
+
+    /** Échelle appliquée aux morceaux */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Destructible|Debris")
+    float DebrisScale = 0.5f;
+
+    /**
+     *  Délai avant Destroy() de l'acteur — laisse le temps aux fragments Chaos
+     *  ou aux debris meshes de bouger avant que la caisse disparaisse.
+     */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Destructible|Debris",
+              meta = (ClampMin = 0.f, ClampMax = 30.f))
+    float DestroyDelay = 5.f;
+
+    void SpawnDebris();
+
     // ── LOGIQUE INTERNE ────────────────────────────────────────────────────
 
     UFUNCTION()

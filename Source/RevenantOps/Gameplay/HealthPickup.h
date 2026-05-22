@@ -65,8 +65,16 @@ protected:
 
 public:
     // ── IPickupInterface ─────────────────────────────────────────────────
-    virtual UTexture2D*  GetPickupIcon_Implementation()          const override { return PickupIcon; }
-    virtual FText        GetPickupDisplayName_Implementation()   const override { return PickupDisplayName; }
+    virtual UTexture2D*  GetPickupIcon_Implementation()          const override
+    {
+        if (ItemDefinition && ItemDefinition->ItemIcon) return ItemDefinition->ItemIcon;
+        return PickupIcon;
+    }
+    virtual FText        GetPickupDisplayName_Implementation()   const override
+    {
+        if (ItemDefinition && !ItemDefinition->DisplayName.IsEmpty()) return ItemDefinition->DisplayName;
+        return PickupDisplayName;
+    }
     virtual int32        GetPickupDisplayAmount_Implementation() const override;
     virtual void         TryPickupInteract_Implementation(ARevenantOpsCharacter* Player) override;
 
